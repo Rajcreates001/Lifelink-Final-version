@@ -26,3 +26,4 @@ pypdf
 pillow
 pytesseract
 pdf2image
+PYTHON_VERSION=3.10.13
