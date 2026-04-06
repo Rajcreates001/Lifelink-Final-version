@@ -26,4 +26,4 @@ pypdf
 pillow
 pytesseract
 pdf2image
-python-multipart
+python-multipart==0.0.9
