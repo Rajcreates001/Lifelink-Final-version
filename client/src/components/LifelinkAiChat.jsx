@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { apiFetch, getAuthToken } from '../config/api';
+import { useAuth } from '../context/AuthContext';
 
 const STORAGE_KEY = 'lifelink:ai-chat:sessions';
 const ACTIVE_KEY = 'lifelink:ai-chat:active';
@@ -169,10 +170,11 @@ const getQuickSuggestions = (moduleKey) => {
 };
 
 const LifelinkAiChat = ({ variant = 'panel', onClose, location, moduleKey = 'general' }) => {
+  const { user, loading: authLoading } = useAuth();
   const [sessions, setSessions] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
-  const [isRemote, setIsRemote] = useState(() => Boolean(getAuthToken()));
+  const [isRemote, setIsRemote] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [suggestionsVisible, setSuggestionsVisible] = useState(true);
   const [input, setInput] = useState('');
@@ -187,8 +189,9 @@ const LifelinkAiChat = ({ variant = 'panel', onClose, location, moduleKey = 'gen
   const quickSuggestions = useMemo(() => getQuickSuggestions(moduleKey), [moduleKey]);
 
   useEffect(() => {
+    if (authLoading) return;
     setIsRemote(Boolean(getAuthToken()));
-  }, []);
+  }, [authLoading, user]);
 
   const initLocalSessions = () => {
     try {
