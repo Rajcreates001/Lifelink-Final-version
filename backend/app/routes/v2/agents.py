@@ -514,36 +514,45 @@ async def ask(
                 prompt=(
                     f"Question: {question}\n"
                     f"Module focus: {module}\n"
-                    f"Conversation history: {history_context}\n"
-                    f"Metadata overview: {metadata_summary}\n"
+                    f"Conversation history:\n{history_context}\n"
                     f"{attachments_context}\n"
                     f"Context:\n{context_text}\n"
+                    f"Metadata overview: {metadata_summary}\n"
                     f"Web results:\n{web_context}\n"
-                    "Provide a direct, human-friendly answer to the user's question first. "
-                    "Then add a short reasoning section labeled 'Reasoning:' and a references section labeled 'References:'. "
-                    "Use metadata only when it supports the answer, and avoid leading with raw counts unless the question specifically asks for them. "
-                    "If you need more information, ask a clarifying follow-up question."
+                    "Instructions: Answer the user's question clearly and directly. "
+                    "Begin with a concise, plain-language response that directly addresses the request. "
+                    "Then, if helpful, add a brief list of 2-3 recommended next steps or actions. "
+                    "Do not open with raw statistics, web-result dumps, or platform summaries. "
+                    "Use metadata and web sources only when they actually support the answer. "
+                    "If the question is ambiguous, ask one clarifying question after providing your best guidance."
                 ),
                 system_prompt=(
-                    "You are LifeLink Assist. Provide accurate and useful responses for public and operational users. "
-                    "Use available LifeLink context and metadata to support the answer, but keep the main response focused on the user's need. "
-                    "When possible, include brief evidence and references. "
-                    "Do not return generic platform statistics as the primary response."
+                    "You are LifeLink Assist, a high-quality healthcare operations assistant. "
+                    "Write in a natural, conversational style similar to modern AI assistants. "
+                    "Use LifeLink context and public sources to make the answer useful, but keep the user's question front and center. "
+                    "Avoid generic fallback language and do not return raw metadata as the main answer."
                 ),
             )
-        except Exception:
+        except Exception as exc:
+            error_text = str(exc)
             context_lines = [line.strip() for line in (context_text or '').splitlines() if line.strip()]
             context_preview = " ".join(context_lines[:2]) if context_lines else "No stored context found."
             attachment_note = "Attachments received." if attachments else "No attachments provided."
             web_note = f"Web results: {len(web_results)} source(s)." if web_results else "Web search disabled or unavailable."
-            answer = (
-                "I could not generate a full response right now. "
-                f"Context: {context_preview} "
-                f"{attachment_note} "
-                f"{web_note} "
-                f"Metadata: {metadata_summary}. "
-                "Please ask a more specific question or provide more details."
-            )
+            if "not configured" in error_text.lower() or "api key" in error_text.lower():
+                answer = (
+                    "The AI assistant cannot generate responses because the backend LLM provider is not configured correctly. "
+                    "Please verify your OPENAI_API_KEY or GROQ_API_KEY and LLM_PROVIDER settings, then retry."
+                )
+            else:
+                answer = (
+                    "I could not generate a complete answer right now. "
+                    f"Context: {context_preview} "
+                    f"{attachment_note} "
+                    f"{web_note} "
+                    f"Metadata: {metadata_summary}. "
+                    "Please try again or ask a more specific question."
+                )
 
     wants_visuals = any(token in (question or "").lower() for token in ["report", "summary", "analysis", "trend", "chart", "graph", "dashboard"]) or bool(attachments)
     charts = []
