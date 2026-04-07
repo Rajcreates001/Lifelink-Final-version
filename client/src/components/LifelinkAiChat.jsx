@@ -37,29 +37,8 @@ const normalizeMessage = (message) => ({
   clarifying: message.clarifying || [],
   orchestration: message.orchestration || null,
   metadata: message.metadata || null,
+  followUp: message.followUp || null,
 });
-
-const MiniBarChart = ({ title, data }) => (
-  <div className="rounded-lg border border-slate-200 bg-white p-3">
-    <p className="text-xs font-semibold text-slate-600 mb-2">{title}</p>
-    <div className="space-y-2">
-      {data.map((item) => (
-        <div key={item.label}>
-          <div className="flex items-center justify-between text-[11px] text-slate-500">
-            <span>{item.label}</span>
-            <span>{item.value}</span>
-          </div>
-          <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-            <div
-              className="h-full bg-slate-800"
-              style={{ width: `${Math.min(100, Math.max(6, Number(item.value) || 0))}%` }}
-            ></div>
-          </div>
-        </div>
-      ))}
-    </div>
-  </div>
-);
 
 const formatTimestamp = (value) => {
   if (!value) return '';
@@ -559,6 +538,15 @@ const LifelinkAiChat = ({ variant = 'panel', onClose, location, moduleKey = 'gen
     const query = message?.sourceQuery || lastUser?.content || '';
     if (!query) return;
     const attachmentsForRegen = lastUser?.attachments || [];
+
+    if (activeSession.messages?.length > 0 && activeSession.messages[activeSession.messages.length - 1].role === 'assistant') {
+      setSessions((prev) => prev.map((session) => (
+        session.id === activeSession.id
+          ? { ...session, messages: session.messages.slice(0, -1), updatedAt: new Date().toISOString() }
+          : session
+      )));
+    }
+
     setLoading(true);
     setError('');
     try {
@@ -730,6 +718,12 @@ const LifelinkAiChat = ({ variant = 'panel', onClose, location, moduleKey = 'gen
                     <div className={`rounded-2xl px-3 py-2 text-[13px] leading-5 shadow-sm break-words overflow-hidden ${message.role === 'user' ? 'bg-sky-600 text-white' : 'bg-white text-slate-800 border border-slate-200'}`}>
                       <p className="whitespace-pre-wrap break-words">{message.content}</p>
 
+                      {message.followUp && (
+                        <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
+                          {message.followUp}
+                        </div>
+                      )}
+
                       {message.clarifying?.length > 0 && (
                         <div className="mt-3 space-y-1 text-[11px] text-slate-500">
                           <p className="font-semibold text-slate-700 text-[11px]">Clarify:</p>
@@ -839,9 +833,6 @@ const LifelinkAiChat = ({ variant = 'panel', onClose, location, moduleKey = 'gen
                       )}
                       {message.role === 'assistant' && (
                         <div className="mt-3 flex items-center gap-3 text-[10px] text-slate-500">
-                          {Number.isFinite(message.confidence) && (
-                            <span className="px-2 py-1 rounded-full bg-slate-100 text-slate-600">Confidence {Math.round(message.confidence * 100)}%</span>
-                          )}
                           <button
                             type="button"
                             onClick={() => handleRegenerate(message)}

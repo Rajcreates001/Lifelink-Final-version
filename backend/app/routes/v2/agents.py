@@ -513,18 +513,22 @@ async def ask(
             answer = generate_text(
                 prompt=(
                     f"Question: {question}\n"
-                    f"Conversation history: {history_context}\n"
-                    f"Learning notes: {learning_note}\n"
                     f"Module focus: {module}\n"
-                    f"Metadata summary: {metadata_summary}\n"
+                    f"Conversation history: {history_context}\n"
+                    f"Metadata overview: {metadata_summary}\n"
                     f"{attachments_context}\n"
-                    f"Context: {context_text}\n"
-                    f"Web results: {web_context}\n"
-                    "Answer with a concise response, then add a short justification and references."
+                    f"Context:\n{context_text}\n"
+                    f"Web results:\n{web_context}\n"
+                    "Provide a direct, human-friendly answer to the user's question first. "
+                    "Then add a short reasoning section labeled 'Reasoning:' and a references section labeled 'References:'. "
+                    "Use metadata only when it supports the answer, and avoid leading with raw counts unless the question specifically asks for them. "
+                    "If you need more information, ask a clarifying follow-up question."
                 ),
                 system_prompt=(
-                    "You are LifeLink Assist. Use only metadata summaries for users and hospitals. "
-                    "If details are missing, ask clarifying questions. Provide concise reasoning and references."
+                    "You are LifeLink Assist. Provide accurate and useful responses for public and operational users. "
+                    "Use available LifeLink context and metadata to support the answer, but keep the main response focused on the user's need. "
+                    "When possible, include brief evidence and references. "
+                    "Do not return generic platform statistics as the primary response."
                 ),
             )
         except Exception:
@@ -533,11 +537,12 @@ async def ask(
             attachment_note = "Attachments received." if attachments else "No attachments provided."
             web_note = f"Web results: {len(web_results)} source(s)." if web_results else "Web search disabled or unavailable."
             answer = (
-                "Quick summary: "
-                f"{context_preview} "
+                "I could not generate a full response right now. "
+                f"Context: {context_preview} "
                 f"{attachment_note} "
                 f"{web_note} "
-                f"Key stats: {metadata_summary}"
+                f"Metadata: {metadata_summary}. "
+                "Please ask a more specific question or provide more details."
             )
 
     wants_visuals = any(token in (question or "").lower() for token in ["report", "summary", "analysis", "trend", "chart", "graph", "dashboard"]) or bool(attachments)
@@ -578,18 +583,30 @@ async def ask(
             "requires_confirmation": True,
         }
 
-    reasoning = [
-        "Used aggregated platform metadata and available context.",
-        "Avoided personal or sensitive records by design.",
-    ]
+    reasoning = []
+    if context_text and context_text != "No additional context found.":
+        reasoning.append("Used indexed LifeLink context relevant to the query.")
+    if web_results:
+        reasoning.append("Referenced available public web sources for additional evidence.")
+    if not reasoning:
+        reasoning.append("Answered using available LifeLink context and metadata.")
+
     references = [
-        {"title": "Internal metadata", "detail": "Aggregated counts from users, hospitals, alerts, requests, donations."},
+        {"title": "Internal metadata", "detail": "Aggregated LifeLink metadata and operational context."},
         {"title": "Knowledge base", "detail": "Context retrieved from indexed summaries."},
     ]
     if web_results:
-        references.append({"title": "Web results", "detail": "Top public sources from DuckDuckGo HTML."})
+        references.extend(
+            {
+                "title": item.get("title") or "Web source",
+                "detail": item.get("url") or item.get("title") or "Unknown source",
+                "url": item.get("url"),
+            }
+            for item in web_results
+        )
 
     confidence = _compute_confidence(len(context_text), len(web_results), len(attachments), regenerate)
+    follow_up = "If you want more detail or a related insight, ask me another question."
 
     append_log(session["id"], {"type": "ask", "by": requester_id, "query": question, "answer": answer})
     update_session(session["id"], {"last_query": question, "last_answer": answer})
@@ -613,6 +630,7 @@ async def ask(
                 "metadata": metadata,
                 "module": module,
                 "mode": mode,
+                "followUp": follow_up,
             },
         )
         persisted_session = await chat_service.get_session_summary(ctx.user_id, memory_id)
@@ -631,6 +649,7 @@ async def ask(
         "references": references,
         "orchestration": orchestration,
         "confidence": confidence,
+        "followUp": follow_up,
         "mode": mode,
         "generatedAt": datetime.utcnow().isoformat(),
         "session": persisted_session,
