@@ -815,16 +815,18 @@ const LifelinkAiChat = ({ variant = 'panel', onClose, location, moduleKey = 'gen
                           <div className="mt-2 grid gap-2">
                             {message.webResults.map((item) => {
                               const parsed = parseUrl(item.url);
+                              const linkText = item.title?.trim() || parsed?.domain || 'Source';
+                              const linkSubtext = parsed?.domain || item.url;
                               return (
                                 <a
-                                  key={item.url}
+                                  key={`${item.url}-${linkText}`}
                                   href={parsed?.href || item.url}
                                   target="_blank"
                                   rel="noreferrer"
                                   className="block rounded-xl border border-sky-100 bg-sky-50 px-3 py-2"
                                 >
-                                  <p className="text-[12px] font-semibold text-sky-900">{item.title || parsed?.domain || 'Source'}</p>
-                                  <p className="text-[10px] text-sky-700">{parsed?.domain || item.url}</p>
+                                  <p className="text-[12px] font-semibold text-sky-900">{linkText}</p>
+                                  <p className="text-[10px] text-sky-700 break-words">{linkSubtext}</p>
                                 </a>
                               );
                             })}

@@ -274,7 +274,7 @@ const SmartSosScreen = ({ user, onBack, rightSlot }) => {
   }, [location, status]);
 
   const handleSubmit = async () => {
-    if (!location || !user?.id) {
+    if (!location) {
       setError('Location is required to dispatch help.');
       return;
     }
@@ -285,7 +285,7 @@ const SmartSosScreen = ({ user, onBack, rightSlot }) => {
       const res = await apiFetch('/v2/public/sos', {
         method: 'POST',
         body: JSON.stringify({
-          userId: user.id,
+          userId: user?.id,
           message: message || 'Emergency',
           latitude: location.lat,
           longitude: location.lng,
@@ -437,69 +437,69 @@ const SmartSosScreen = ({ user, onBack, rightSlot }) => {
         {error && <p className="text-sm text-rose-600">{error}</p>}
 
         {status && (
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
-            <div className="flex items-center justify-between">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3 break-words">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-semibold text-slate-700">Status</p>
               <span className="text-xs font-bold text-emerald-600">{status.status || 'pending'}</span>
             </div>
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="break-words">
                 <p className="text-slate-500">Hospital</p>
-                <p className="font-semibold text-slate-900">{resolvedHospitalName}</p>
+                <p className="font-semibold text-slate-900 break-words whitespace-normal">{resolvedHospitalName}</p>
               </div>
-              <div>
+              <div className="break-words">
                 <p className="text-slate-500">ETA</p>
                 <p className="font-semibold text-slate-900">{resolvedEta ? `${resolvedEta} min` : 'Calculating...'}</p>
               </div>
-              <div>
+              <div className="break-words">
                 <p className="text-slate-500">Ambulance</p>
-                <p className="font-semibold text-slate-900">{ambulance?.code || 'Dispatching'}</p>
+                <p className="font-semibold text-slate-900 break-words whitespace-normal">{ambulance?.code || 'Dispatching'}</p>
               </div>
-              <div>
+              <div className="break-words">
                 <p className="text-slate-500">Severity</p>
                 <p className="font-semibold text-slate-900">{severityLevel}</p>
               </div>
             </div>
-            <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 text-xs">
+            <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 text-xs break-words">
               <p className="text-slate-500">Why this hospital?</p>
-              <p className="font-semibold text-slate-900">{hospitalReason}</p>
+              <p className="font-semibold text-slate-900 whitespace-normal break-words">{hospitalReason}</p>
               <p className="text-slate-500 mt-2">Estimated survival window</p>
               <p className="font-semibold text-slate-900">{survivalWindow} minutes</p>
             </div>
             {hospitalInfo?.beds_available !== undefined && (
-              <div className="rounded-xl border border-slate-200 p-3 text-xs">
+              <div className="rounded-xl border border-slate-200 p-3 text-xs break-words">
                 <p className="text-slate-500">Hospital details</p>
-                <div className="flex items-center justify-between mt-2">
+                <div className="flex flex-wrap items-center justify-between mt-2 gap-2">
                   <span className="text-slate-500">Beds</span>
                   <span className="font-semibold text-slate-900">{hospitalInfo.beds_available}/{hospitalInfo.beds_total}</span>
                 </div>
                 {hospitalInfo.rating && (
-                  <div className="flex items-center justify-between mt-1">
+                  <div className="flex flex-wrap items-center justify-between mt-1 gap-2">
                     <span className="text-slate-500">Rating</span>
                     <span className="font-semibold text-slate-900">{hospitalInfo.rating} ★</span>
                   </div>
                 )}
                 {hospitalInfo.distance_km && (
-                  <div className="flex items-center justify-between mt-1">
+                  <div className="flex flex-wrap items-center justify-between mt-1 gap-2">
                     <span className="text-slate-500">Distance</span>
                     <span className="font-semibold text-slate-900">{hospitalInfo.distance_km} km</span>
                   </div>
                 )}
               </div>
             )}
-            <div className="rounded-xl border border-slate-200 p-3">
+            <div className="rounded-xl border border-slate-200 p-3 break-words">
               <p className="text-xs font-semibold text-slate-700 mb-2">Emergency Timeline</p>
               <div className="space-y-2">
                 {timeline.map((item) => (
-                  <div key={item.label} className="flex items-center justify-between text-xs">
-                    <span className="text-slate-500">{item.label}</span>
-                    <span className="font-semibold text-slate-900">{item.time}</span>
+                  <div key={item.label} className="flex flex-wrap items-center justify-between text-xs gap-2 break-words">
+                    <span className="text-slate-500 break-words whitespace-normal">{item.label}</span>
+                    <span className="font-semibold text-slate-900 break-words whitespace-normal">{item.time}</span>
                   </div>
                 ))}
               </div>
             </div>
             <ExplainabilityPanel meta={explainMeta} />
-            <div className="rounded-xl border border-slate-200 p-3">
+            <div className="rounded-xl border border-slate-200 p-3 break-words">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-slate-700">AI Emergency Assistant</p>
                 <button
@@ -512,9 +512,9 @@ const SmartSosScreen = ({ user, onBack, rightSlot }) => {
                 </button>
               </div>
               {assistantSteps.length > 0 ? (
-                <ul className="mt-2 text-xs text-slate-600 space-y-1">
+                <ul className="mt-2 text-xs text-slate-600 space-y-1 break-words">
                   {assistantSteps.map((step) => (
-                    <li key={step}>• {step}</li>
+                    <li key={step} className="break-words whitespace-normal">• {step}</li>
                   ))}
                 </ul>
               ) : (

@@ -524,6 +524,7 @@ async def ask(
                     "Then, if helpful, add a brief list of 2-3 recommended next steps or actions. "
                     "Do not open with raw statistics, web-result dumps, or platform summaries. "
                     "Use metadata and web sources only when they actually support the answer. "
+                    "If you mention a web source, use a descriptive site name or domain and do not print the long raw URL in the answer body. "
                     "If the question is ambiguous, ask one clarifying question after providing your best guidance."
                 ),
                 system_prompt=(
