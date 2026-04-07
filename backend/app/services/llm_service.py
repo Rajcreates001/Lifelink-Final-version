@@ -6,7 +6,7 @@ from typing import Any
 
 from groq import Groq, GroqError
 
-from app.core.config import get_settings
+from app.core.config import Settings, get_settings
 from app.services.cache_store import CacheStore
 
 MAX_PROMPT_CHARS = 2800
@@ -45,6 +45,26 @@ def _make_cache_key(messages: list[dict[str, str]], model: str, mode: str) -> st
     return f"llm:{model}:{mode}:{digest}"
 
 
+def _resolve_llm_provider(settings: Settings) -> str:
+    provider = (settings.llm_provider or "").lower()
+    if provider == "groq":
+        if settings.groq_api_key:
+            return "groq"
+        if settings.openai_api_key:
+            return "openai"
+    if provider == "openai":
+        if settings.openai_api_key:
+            return "openai"
+        if settings.groq_api_key:
+            return "groq"
+
+    if settings.openai_api_key:
+        return "openai"
+    if settings.groq_api_key:
+        return "groq"
+    return provider or "groq"
+
+
 def generate_response(prompt: str, system_prompt: str | None = None, mode: str = "analysis") -> str:
     settings = get_settings()
     sanitized = _sanitize_prompt(prompt)
@@ -66,7 +86,8 @@ def generate_response(prompt: str, system_prompt: str | None = None, mode: str =
         {"role": "user", "content": sanitized},
     ]
 
-    if settings.llm_provider.lower() == "openai":
+    provider = _resolve_llm_provider(settings)
+    if provider == "openai":
         if not settings.openai_api_key:
             raise RuntimeError(
                 "OPENAI_API_KEY is not configured. Set it in the backend environment or switch LLM_PROVIDER to groq."
@@ -98,7 +119,6 @@ def generate_response(prompt: str, system_prompt: str | None = None, mode: str =
         except Exception as exc:
             raise RuntimeError(f"OpenAI API error: {exc}") from exc
 
-    provider = settings.llm_provider.lower()
     if provider != "groq":
         raise RuntimeError(
             f"LLM_PROVIDER={provider} is not supported. Use groq or openai."
