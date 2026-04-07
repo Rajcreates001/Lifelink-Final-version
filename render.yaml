@@ -4,7 +4,7 @@ services:
     env: python
     rootDir: backend
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: bash start.sh
     autoDeploy: true
     envVars:
       - key: APP_ENV
@@ -21,6 +21,10 @@ services:
         value: https://api.groq.com
       - key: GROQ_MODEL
         value: llama3-8b-8192
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
       - key: REDIS_URL
         sync: false
       - key: CELERY_BROKER_URL

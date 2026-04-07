@@ -250,6 +250,15 @@ redis-server
 Frontend: http://localhost:5000
 Backend: http://localhost:3010
 
+### Local backend startup
+
+Use the backend helper to bootstrap schema and seed data automatically before running the FastAPI server:
+
+```bash
+cd backend
+bash start.sh
+```
+
 ### Run with Docker Compose
 
 ```bash
@@ -308,6 +317,7 @@ python backend/scripts/import_hospital_locations.py --input "D:\path\to\hospital
 ### Backend on Render (single service)
 
 - Render service definition is included in [render.yaml](render.yaml).
+- The backend now uses `backend/start.sh` to bootstrap SQL schema and demo data automatically before starting the FastAPI server.
 - The service runs FastAPI on the Render-provided `PORT` and uses a single PostgreSQL database.
 - Configure the environment variables in Render (values are defined in the render.yaml template):
 	- `POSTGRES_URL`

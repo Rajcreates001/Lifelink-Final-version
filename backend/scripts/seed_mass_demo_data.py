@@ -15,6 +15,7 @@ ROOT = os.path.dirname(os.path.dirname(__file__))
 sys.path.append(ROOT)
 
 from app.core.config import get_settings  # noqa: E402
+from app.db.mongo import connect_to_mongo, close_mongo_connection  # noqa: E402
 from app.db.models import (  # noqa: E402
     Document,
     GovAmbulance,
@@ -879,6 +880,7 @@ async def seed():
     global DEMO_PASSWORD_HASH
     if DEMO_PASSWORD_HASH is None:
         DEMO_PASSWORD_HASH = _hash_password(DEMO_PASSWORD)
+    await connect_to_mongo()
     settings = get_settings()
     engine = create_async_engine(settings.postgres_url, pool_pre_ping=True)
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
@@ -1218,6 +1220,7 @@ async def seed():
             )
 
     await engine.dispose()
+    await close_mongo_connection()
     print("Seed complete. Credentials saved to", credentials_path)
 
 

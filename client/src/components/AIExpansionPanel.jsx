@@ -549,14 +549,14 @@ const AIExpansionPanel = ({ role, moduleKey, subRole, title, description, entity
                 </div>
             ) : null}
             {data?.narrative ? (
-                <div className="mb-4 border border-slate-200 rounded-lg bg-white/70 p-3">
+                <div className="mb-4 border border-slate-200 rounded-lg bg-white/70 p-3 min-w-0 max-w-full overflow-hidden break-words">
                     <p className="text-xs text-gray-500">AI summary</p>
-                    <h4 className="font-semibold text-gray-900 mt-1">{data.narrative.headline}</h4>
-                    <p className="text-sm text-gray-700 mt-2">{data.narrative.summary}</p>
+                    <h4 className="font-semibold text-gray-900 mt-1 break-words">{data.narrative.headline}</h4>
+                    <p className="text-sm text-gray-700 mt-2 break-words whitespace-normal leading-relaxed">{data.narrative.summary}</p>
                     {Array.isArray(data.narrative.next_steps) && data.narrative.next_steps.length > 0 ? (
                         <div className="flex flex-wrap gap-2 mt-3">
                             {data.narrative.next_steps.map((step, index) => (
-                                <span key={`${step}-${index}`} className="text-[11px] bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full">
+                                <span key={`${step}-${index}`} className="text-[11px] bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full break-words whitespace-normal max-w-full">
                                     {step}
                                 </span>
                             ))}
@@ -573,15 +573,15 @@ const AIExpansionPanel = ({ role, moduleKey, subRole, title, description, entity
                     <p className="text-xs text-gray-500 mb-2">AI playbook</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {data.cards.map((card, index) => (
-                            <div key={`${card.title}-${index}`} className="border rounded-lg p-3 bg-white/70">
-                                <div className="flex items-center justify-between">
-                                    <h4 className="font-semibold text-gray-800">{card.title}</h4>
-                                    <span className="text-xs text-gray-400">{Math.round((card.confidence || 0.7) * 100)}%</span>
+                            <div key={`${card.title}-${index}`} className="border rounded-lg p-3 bg-white/70 min-w-0 max-w-full overflow-hidden break-words">
+                                <div className="flex items-start justify-between gap-3">
+                                    <h4 className="font-semibold text-gray-800 text-sm leading-snug break-words">{card.title}</h4>
+                                    <span className="text-[10px] text-gray-400 whitespace-nowrap">{Math.round((card.confidence || 0.7) * 100)}%</span>
                                 </div>
-                                <p className="text-xs text-gray-600 mt-1">{card.summary}</p>
+                                <p className="text-xs text-gray-600 mt-1 break-words whitespace-normal leading-relaxed">{card.summary}</p>
                                 <div className="flex flex-wrap gap-2 mt-2">
                                     {(card.outputs || []).slice(0, 3).map((item) => (
-                                        <span key={item} className="text-[11px] bg-blue-50 text-blue-700 px-2 py-1 rounded-full">
+                                        <span key={item} className="text-[11px] bg-blue-50 text-blue-700 px-2 py-1 rounded-full break-words whitespace-normal max-w-full">
                                             {item}
                                         </span>
                                     ))}
