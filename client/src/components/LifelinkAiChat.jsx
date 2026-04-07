@@ -932,7 +932,8 @@ const LifelinkAiChat = ({ variant = 'panel', onClose, location, moduleKey = 'gen
                 type="button"
                 onClick={handleSend}
                 disabled={loading}
-                className="absolute bottom-2 right-2 inline-flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-tr from-sky-600 to-indigo-600 text-white"
+                aria-label="Send message"
+                className="absolute bottom-2 right-2 z-20 inline-flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-tr from-sky-600 to-indigo-600 text-white shadow-lg shadow-sky-500/20"
               >
                 <i className={`fas ${loading ? 'fa-spinner fa-spin' : 'fa-arrow-up'}`}></i>
               </button>
