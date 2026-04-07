@@ -5,6 +5,7 @@ from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.db.models import AiChatMessage, AiChatSession
@@ -118,18 +119,56 @@ class AiChatService:
     ) -> dict[str, Any]:
         now = _now()
         session_id = session_id or uuid4().hex
-        record = AiChatSession(
-            id=session_id,
-            user_id=user_id,
-            title=title,
-            module=module,
-            mode=mode,
-            created_at=now,
-            updated_at=now,
-        )
+
         async with self._session_factory() as session:
+            if session_id:
+                existing = await session.get(AiChatSession, session_id)
+                if existing:
+                    if existing.user_id == user_id:
+                        if title and existing.title == "New chat":
+                            existing.title = title
+                            existing.updated_at = now
+                            await session.commit()
+                        return {
+                            "id": existing.id,
+                            "title": existing.title,
+                            "module": existing.module,
+                            "mode": existing.mode,
+                            "createdAt": _as_iso(existing.created_at),
+                            "updatedAt": _as_iso(existing.updated_at),
+                        }
+                    # Requested session_id belongs to another user; generate a new one.
+                    session_id = uuid4().hex
+
+            record = AiChatSession(
+                id=session_id,
+                user_id=user_id,
+                title=title,
+                module=module,
+                mode=mode,
+                created_at=now,
+                updated_at=now,
+            )
             session.add(record)
-            await session.commit()
+            try:
+                await session.commit()
+            except IntegrityError:
+                await session.rollback()
+                existing = await session.get(AiChatSession, session_id)
+                if existing and existing.user_id == user_id:
+                    return {
+                        "id": existing.id,
+                        "title": existing.title,
+                        "module": existing.module,
+                        "mode": existing.mode,
+                        "createdAt": _as_iso(existing.created_at),
+                        "updatedAt": _as_iso(existing.updated_at),
+                    }
+                session_id = uuid4().hex
+                record.id = session_id
+                session.add(record)
+                await session.commit()
+
         return {
             "id": record.id,
             "title": record.title,
