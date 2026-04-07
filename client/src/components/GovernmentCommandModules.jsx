@@ -1632,6 +1632,7 @@ export const GovernmentDisasterCenter = () => {
                                         nodesDraggable={false}
                                         nodesConnectable={false}
                                         zoomOnScroll={false}
+                                        style={{ width: '100%', height: '100%' }}
                                     >
                                         <Background color="#e2e8f0" gap={16} />
                                         <Controls showInteractive={false} />
@@ -2002,6 +2003,7 @@ export const GovernmentSimulationCenter = () => {
                                 nodesDraggable={false}
                                 nodesConnectable={false}
                                 zoomOnScroll={false}
+                                style={{ width: '100%', height: '100%' }}
                             >
                                 <Background color="#e2e8f0" gap={18} />
                                 <Controls showInteractive={false} />

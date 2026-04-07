@@ -11,7 +11,7 @@ from app.services.cache_store import CacheStore
 
 MAX_PROMPT_CHARS = 2800
 CACHE_TTL_SECONDS = 90
-DEFAULT_MODEL = "llama3-8b-8192"
+DEFAULT_MODEL = "groq/compound"
 DEFAULT_TEMPERATURE = 0.5
 DEFAULT_TOP_P = 0.9
 DEFAULT_MAX_TOKENS = 512
@@ -155,6 +155,26 @@ def generate_response(prompt: str, system_prompt: str | None = None, mode: str =
         cache.set(cache_key, {"text": text}, ttl=CACHE_TTL_SECONDS)
         return text
     except GroqError as exc:
+        error_text = str(exc).lower()
+        if "model_decommissioned" in error_text or "decommissioned" in error_text or "model_not_found" in error_text:
+            fallback_model = "groq/compound"
+            if (settings.groq_model or DEFAULT_MODEL) != fallback_model:
+                try:
+                    completion = client.chat.completions.create(
+                        model=fallback_model,
+                        messages=messages,
+                        temperature=temperature,
+                        top_p=DEFAULT_TOP_P,
+                        max_tokens=max_tokens,
+                    )
+                    choice = completion.choices[0] if completion.choices else None
+                    text = choice.message.content.strip() if choice and choice.message.content else ""
+                    if not text:
+                        raise RuntimeError("Groq returned an empty response")
+                    cache.set(cache_key, {"text": text}, ttl=CACHE_TTL_SECONDS)
+                    return text
+                except Exception as exc2:
+                    raise RuntimeError(f"Groq API error after model fallback: {exc2}") from exc2
         raise RuntimeError(f"Groq API error: {exc}") from exc
     except Exception as exc:
         raise RuntimeError(f"Failed to generate response from Groq: {exc}") from exc

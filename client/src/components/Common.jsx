@@ -117,7 +117,7 @@ export const ExplainabilityPanel = ({ meta }) => {
   const references = Array.isArray(meta.references) ? meta.references : [];
 
   return (
-    <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+    <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 break-words">
       <div className="flex flex-wrap gap-2 mb-2">
         {confidence !== null && (
           <span className="px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 font-semibold">
@@ -135,9 +135,9 @@ export const ExplainabilityPanel = ({ meta }) => {
           <p className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold">Reasoning</p>
           <ul className="mt-1 space-y-1">
             {reasoning.map((item) => (
-              <li key={item} className="flex gap-2">
+              <li key={item} className="flex gap-2 break-words">
                 <span>•</span>
-                <span>{item}</span>
+                <span className="whitespace-pre-wrap break-words">{item}</span>
               </li>
             ))}
           </ul>
@@ -148,7 +148,7 @@ export const ExplainabilityPanel = ({ meta }) => {
           <p className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold">References</p>
           <ul className="mt-1 space-y-1">
             {references.map((ref, idx) => (
-              <li key={`${ref.title || 'ref'}-${idx}`}>
+              <li key={`${ref.title || 'ref'}-${idx}`} className="break-words whitespace-pre-wrap">
                 <span className="font-semibold text-slate-700">{ref.title || 'Source'}:</span> {ref.detail || ref.url || ''}
               </li>
             ))}
