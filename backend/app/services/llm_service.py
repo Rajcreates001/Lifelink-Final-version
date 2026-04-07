@@ -47,11 +47,6 @@ def _make_cache_key(messages: list[dict[str, str]], model: str, mode: str) -> st
 
 def generate_response(prompt: str, system_prompt: str | None = None, mode: str = "analysis") -> str:
     settings = get_settings()
-    if not settings.groq_api_key:
-        raise RuntimeError(
-            "GROQ_API_KEY is not configured. Set it in the backend environment and do not hardcode it in source."
-        )
-
     sanitized = _sanitize_prompt(prompt)
     effective_mode = (mode or "analysis").lower()
     if effective_mode == "emergency":
@@ -70,6 +65,49 @@ def generate_response(prompt: str, system_prompt: str | None = None, mode: str =
         {"role": "system", "content": effective_prompt},
         {"role": "user", "content": sanitized},
     ]
+
+    if settings.llm_provider.lower() == "openai":
+        if not settings.openai_api_key:
+            raise RuntimeError(
+                "OPENAI_API_KEY is not configured. Set it in the backend environment or switch LLM_PROVIDER to groq."
+            )
+        model = settings.openai_model or "gpt-4o-mini"
+        cache_key = _make_cache_key(messages, model, effective_mode)
+        cache = CacheStore(settings.redis_url, namespace="llm")
+        cached = cache.get(cache_key)
+        if cached and isinstance(cached.get("text"), str):
+            return cached["text"]
+
+        try:
+            import openai
+
+            openai.api_key = settings.openai_api_key
+            completion = openai.ChatCompletion.create(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                top_p=DEFAULT_TOP_P,
+            )
+            choice = completion.choices[0] if completion.choices else None
+            text = choice.message.content.strip() if choice and choice.message.content else ""
+            if not text:
+                raise RuntimeError("OpenAI returned an empty response")
+            cache.set(cache_key, {"text": text}, ttl=CACHE_TTL_SECONDS)
+            return text
+        except Exception as exc:
+            raise RuntimeError(f"OpenAI API error: {exc}") from exc
+
+    provider = settings.llm_provider.lower()
+    if provider != "groq":
+        raise RuntimeError(
+            f"LLM_PROVIDER={provider} is not supported. Use groq or openai."
+        )
+
+    if not settings.groq_api_key:
+        raise RuntimeError(
+            "GROQ_API_KEY is not configured. Set it in the backend environment or switch LLM_PROVIDER to openai."
+        )
 
     cache = CacheStore(settings.redis_url, namespace="llm")
     cache_key = _make_cache_key(messages, settings.groq_model or DEFAULT_MODEL, effective_mode)

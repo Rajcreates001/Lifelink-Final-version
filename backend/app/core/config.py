@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     groq_base_url: str = "https://api.groq.com"
     groq_model: str = "llama3-8b-8192"
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4o-mini"
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
 
     rag_collection: str = "knowledge_chunks"

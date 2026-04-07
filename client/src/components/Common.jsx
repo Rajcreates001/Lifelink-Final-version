@@ -29,7 +29,7 @@ ChartJS.register(
 
 // --- Card Container ---
 export const DashboardCard = ({ children, className = "" }) => (
-  <Card className={className}>
+  <Card className={`min-w-0 ${className}`}>
     {children}
   </Card>
 );
