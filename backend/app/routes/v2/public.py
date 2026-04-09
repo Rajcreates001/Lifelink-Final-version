@@ -68,6 +68,13 @@ def _parse_float(value: float, label: str) -> float:
         raise HTTPException(status_code=400, detail=f"Invalid {label}") from exc
 
 
+def _as_object_id(value: str | None) -> ObjectId | None:
+    try:
+        return ObjectId(str(value)) if value else None
+    except Exception:
+        return None
+
+
 def _extract_coords(doc: dict[str, Any]) -> tuple[float, float] | None:
     for key_pair in (("lat", "lng"), ("latitude", "longitude")):
         if key_pair[0] in doc and key_pair[1] in doc:
@@ -322,6 +329,30 @@ async def create_sos(
     hospital_repo = MongoRepository(db, HOSPITALS)
     notification_repo = MongoRepository(db, NOTIFICATIONS)
     family_repo = MongoRepository(db, FAMILY_MEMBERS)
+    user_repo = MongoRepository(db, USERS)
+
+    async def _insert_role_notifications(role: str, title: str, message_text: str, metadata_base: dict[str, Any] | None = None, route: str | None = None, module_name: str | None = None):
+        users = await user_repo.find_many({"role": role}, limit=200)
+        for user in users:
+            user_oid = _as_object_id(user.get("_id"))
+            if not user_oid:
+                continue
+            await notification_repo.insert_one(
+                {
+                    "user": user_oid,
+                    "type": "sos_alert",
+                    "title": title,
+                    "message": message_text,
+                    "createdAt": datetime.utcnow(),
+                    "read": False,
+                    "metadata": {
+                        **(metadata_base or {}),
+                        "route": route,
+                        "actionLabel": "View route" if route else None,
+                        "module": module_name,
+                    },
+                }
+            )
 
     severity_result = _predict_sos_heuristic(payload.message)
     celery_app.send_task(
@@ -497,10 +528,11 @@ async def create_sos(
             {"$set": {"status": "Assigned", "currentAssignment": assignment_doc.get("_id")}},
         )
 
+    sos_user_id = _as_object_id(user_id) if user_id else None
     if user_id:
         await notification_repo.insert_one(
             {
-                "user": user_id,
+                "user": sos_user_id or user_id,
                 "type": "sos_update",
                 "title": "Ambulance Assigned" if selected_ambulance else "SOS Received",
                 "message": f"ETA {selected_hospital.get('eta_minutes')} mins" if selected_hospital else "We are locating help.",
@@ -515,11 +547,11 @@ async def create_sos(
             }
         )
 
-        family_members = await family_repo.find_many({"user": user_id}, limit=20)
+        family_members = await family_repo.find_many({"user": sos_user_id or user_id}, limit=20)
         for member in family_members:
             await notification_repo.insert_one(
                 {
-                    "user": member.get("_id") or member.get("id"),
+                    "user": _as_object_id(member.get("_id")) or member.get("id"),
                     "type": "family_alert",
                     "title": "Family SOS Triggered",
                     "message": payload.message,
@@ -528,6 +560,41 @@ async def create_sos(
                     "metadata": {"alert_id": created_alert.get("_id"), "relation": member.get("relation")},
                 }
             )
+
+    common_sos_metadata = {
+        "alert_id": created_alert.get("_id"),
+        "ambulance_id": selected_ambulance.get("_id") if selected_ambulance else None,
+        "hospital_id": selected_hospital.get("id") if selected_hospital else None,
+        "hospital_name": selected_hospital.get("name") if selected_hospital else None,
+        "ambulance_code": selected_ambulance.get("ambulanceId") if selected_ambulance else None,
+    }
+
+    await _insert_role_notifications(
+        "hospital",
+        "SOS Alert: Ambulance En Route",
+        f"Ambulance {selected_ambulance.get('ambulanceId') if selected_ambulance else 'assigned'} is en route to {selected_hospital.get('name') if selected_hospital else 'the hospital'}. Prepare emergency triage.",
+        metadata_base=common_sos_metadata,
+        route="/dashboard/hospital/ambulance-tracking",
+        module_name="hospital",
+    )
+
+    await _insert_role_notifications(
+        "ambulance",
+        "New SOS Dispatch",
+        "A new SOS assignment is available. Open live route tracking now.",
+        metadata_base=common_sos_metadata,
+        route="/dashboard/ambulance/live-tracking",
+        module_name="ambulance",
+    )
+
+    await _insert_role_notifications(
+        "government",
+        "District Emergency Alert",
+        "A new SOS incident has been reported. Monitor live ambulance status and hospital readiness.",
+        metadata_base=common_sos_metadata,
+        route="/dashboard/government/live-monitoring",
+        module_name="government",
+    )
 
     await MongoRepository(db, EMERGENCY_EVENTS).insert_one(
         {
