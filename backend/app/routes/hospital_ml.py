@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Body, HTTPException
 
 from app.core.celery_app import celery_app
+from app.services.ml_runner import run_ml_model
 from app.services.prediction_store import get_latest_prediction
 
 router = APIRouter(tags=["hospital-ml"])
@@ -18,6 +19,23 @@ async def _run(command: str, payload: dict):
                 "references": [{"title": "Task", "detail": f"system.generate_predictions::{command}"}],
             }
         return result
+
+    if command == "predict_inventory":
+        try:
+            result = await run_ml_model(command, payload, "ai_ml.py")
+            if isinstance(result, dict):
+                return result
+        except Exception as exc:
+            return {
+                "status": "queued",
+                "error": f"Inventory prediction fallback failed: {exc}",
+                "meta": {
+                    "confidence": 0.0,
+                    "reasoning": ["Prediction queued for background processing."],
+                    "references": [{"title": "Task", "detail": f"system.generate_predictions::{command}"}],
+                },
+            }
+
     return {
         "status": "queued",
         "meta": {

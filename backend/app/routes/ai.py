@@ -15,6 +15,7 @@ from app.services.collections import ANALYTICS_EVENTS, HEALTH_RECORDS, USERS
 from app.core.celery_app import celery_app
 from app.services.prediction_store import get_latest_prediction
 from app.services.repository import MongoRepository
+from app.services.ml_runner import run_ml_model
 
 router = APIRouter(tags=["ai"])
 
@@ -72,6 +73,29 @@ async def _run_prediction(command: str, payload: dict):
             [{"title": "Task", "detail": f"system.generate_predictions::{command}"}],
         )
         return result
+
+    try:
+        result = await run_ml_model(command, payload, "ai_ml.py")
+        if isinstance(result, dict):
+            result["meta"] = _ensure_meta(
+                result.get("meta"),
+                result.get("meta", {}).get("confidence", 0.65) if isinstance(result.get("meta"), dict) else 0.65,
+                ["Generated immediately from the ML model as no cached prediction was available."],
+                [{"title": "Model", "detail": f"ai_ml.py::{command}"}],
+            )
+            return result
+    except Exception as exc:
+        return {
+            "status": "queued",
+            "error": f"Prediction queued; direct model execution failed: {exc}",
+            "meta": _ensure_meta(
+                None,
+                0.0,
+                ["Prediction queued for background processing."],
+                [{"title": "Task", "detail": f"system.generate_predictions::{command}"}],
+            ),
+        }
+
     return {
         "status": "queued",
         "meta": _ensure_meta(

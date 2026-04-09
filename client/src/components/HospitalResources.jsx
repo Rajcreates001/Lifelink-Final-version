@@ -175,7 +175,7 @@ const HospitalResources = () => {
         setSelectedItemName(item.name);
 
         try {
-            const res = await apiFetch('/api/hospital/inventory/predict', {
+            const res = await apiFetch('/api/hospital/inventory', {
                 method: 'POST',
                 body: JSON.stringify({
                     name: item.name,
@@ -542,6 +542,15 @@ const HospitalResources = () => {
                 <p className="text-sm text-gray-500 bg-gray-50 p-3 rounded mt-2">{aiResult.error}</p>
                 <button onClick={closeAiModal} className="mt-6 w-full bg-slate-800 text-white py-3 rounded-xl font-bold">Close</button>
             </div>
+        ) : aiResult?.status === 'queued' ? (
+            <div className="p-10 text-center space-y-4">
+                <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto text-4xl shadow-xl mb-4 bg-yellow-100 text-yellow-700">
+                    <i className="fas fa-hourglass-half"></i>
+                </div>
+                <h3 className="text-xl font-bold text-slate-800">Prediction queued</h3>
+                <p className="text-sm text-slate-500 max-w-md mx-auto">Inventory prediction is being processed in the background. Try again after a few seconds or refresh the resource list once the task finishes.</p>
+                <button onClick={closeAiModal} className="mt-4 w-full bg-slate-900 hover:bg-black text-white py-3.5 rounded-xl font-bold shadow-lg transition">Close</button>
+            </div>
         ) : (
             <>
                 <div className="absolute top-4 right-4">
@@ -552,20 +561,20 @@ const HospitalResources = () => {
                     <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto text-4xl shadow-xl mb-6 border-4 border-white ring-4 ${aiResult?.status?.includes('Critical') || aiResult?.status?.includes('Low') ? 'bg-red-100 text-red-600 ring-red-50' : 'bg-emerald-100 text-emerald-600 ring-emerald-50'}`}>
                         <i className={`fas ${aiResult?.status?.includes('Critical') || aiResult?.status?.includes('Low') ? 'fa-exclamation-triangle' : 'fa-check-circle'}`}></i>
                     </div>
-                    <h2 className="text-2xl font-extrabold text-slate-800">{aiResult.item}</h2>
+                    <h2 className="text-2xl font-extrabold text-slate-800">{aiResult.item || aiResult.item_name || selectedItemName}</h2>
                     <p className={`font-bold mt-2 inline-block px-3 py-1 rounded-full text-xs uppercase tracking-wide ${aiResult?.status?.includes('Critical') || aiResult?.status?.includes('Low') ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                        Status: {aiResult.status}
+                        Status: {aiResult.status || 'Unknown'}
                     </p>
                 </div>
                 <div className="bg-slate-50 px-8 py-6 border-t border-b border-slate-100">
                     <div className="grid grid-cols-2 gap-6 mb-4">
                         <div className="text-center">
                             <p className="text-[10px] font-bold text-slate-400 uppercase">Stockout In</p>
-                            <p className="text-3xl font-extrabold text-indigo-600 mt-1">{aiResult.days_left > 900 ? '99+' : aiResult.days_left} <span className="text-sm text-slate-400">Days</span></p>
+                            <p className="text-3xl font-extrabold text-indigo-600 mt-1">{typeof aiResult.days_left === 'number' ? (aiResult.days_left > 900 ? '99+' : aiResult.days_left) : aiResult.days_left || 'N/A'} <span className="text-sm text-slate-400">Days</span></p>
                         </div>
                         <div className="text-center border-l border-slate-200">
                             <p className="text-[10px] font-bold text-slate-400 uppercase">Usage Rate</p>
-                            <p className="text-3xl font-extrabold text-indigo-600 mt-1">{aiResult.usage_rate_per_day}</p>
+                            <p className="text-3xl font-extrabold text-indigo-600 mt-1">{aiResult.usage_rate_per_day || 'N/A'}</p>
                             <p className="text-xs text-slate-500">Units / Day</p>
                         </div>
                     </div>
@@ -573,7 +582,7 @@ const HospitalResources = () => {
                         <i className="fas fa-lightbulb mt-1 text-lg"></i>
                         <div>
                             <span className="block text-xs opacity-70 uppercase mb-0.5">AI Recommendation</span>
-                            {aiResult.recommendation}
+                            {aiResult.recommendation || 'No recommendation available yet.'}
                         </div>
                     </div>
                 </div>
