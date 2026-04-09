@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { apiFetch } from '../config/api';
 
 const GovernmentProfileModal = ({ onClose, variant = 'modal' }) => {
     const { user } = useAuth();
@@ -43,13 +44,11 @@ const GovernmentProfileModal = ({ onClose, variant = 'modal' }) => {
             const payload = { ...formData };
             if (!payload.password) delete payload.password;
 
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/dashboard/profile/${user.id}`, {
+            const { ok, status, data } = await apiFetch(`/api/dashboard/profile/${user.id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.message);
+            if (!ok) throw new Error(data?.message || `Update failed (${status})`);
 
             // Update local storage
             localStorage.setItem('user', JSON.stringify({ ...user, ...data.user }));

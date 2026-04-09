@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { apiFetch } from '../config/api';
 
 const ProfileModal = ({ onClose, variant = 'modal' }) => {
     const { user } = useAuth(); 
@@ -27,8 +28,8 @@ const ProfileModal = ({ onClose, variant = 'modal' }) => {
         const fetchDetails = async () => {
             if (!user?.id) return;
             try {
-                const res = await fetch(`${import.meta.env.VITE_API_URL}/api/dashboard/public/${user.id}/full`);
-                const data = await res.json();
+                const { ok, data } = await apiFetch(`/api/dashboard/public/${user.id}/full`, { method: 'GET' });
+                if (!ok) throw new Error('Failed to load user profile details');
                 
                 setFormData({
                     name: user.name || '',
@@ -62,15 +63,12 @@ const ProfileModal = ({ onClose, variant = 'modal' }) => {
             if (!payload.password) delete payload.password;
 
             // 2. SEND DATA
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/dashboard/profile/${user.id}`, {
+            const { ok, status, data: result } = await apiFetch(`/api/dashboard/profile/${user.id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-            
-            const result = await res.json();
 
-            if (!res.ok) throw new Error(result.message);
+            if (!ok) throw new Error(result?.message || `Update failed (${status})`);
 
             // 3. UPDATE LOCAL STORAGE
             const updatedUser = { ...user, ...result.user };

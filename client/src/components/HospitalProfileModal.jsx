@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { apiFetch } from '../config/api';
 
 const HospitalProfileModal = ({ onClose, variant = 'modal' }) => {
     const { user } = useAuth(); 
@@ -28,8 +29,10 @@ const HospitalProfileModal = ({ onClose, variant = 'modal' }) => {
         const fetchDetails = async () => {
             try {
                 // We use the public endpoint to get current details
-                const res = await fetch(`${import.meta.env.VITE_API_URL}/api/dashboard/public/${user.id}/full`);
-                const data = await res.json();
+                const { ok, data } = await apiFetch(`/api/dashboard/public/${user.id}/full`, { method: 'GET' });
+                if (!ok) {
+                    throw new Error('Failed to load hospital profile');
+                }
                 
                 // Pre-fill form (Check if hospitalProfile exists, otherwise fallback to root user data)
                 const hp = data.hospitalProfile || {};
@@ -64,14 +67,11 @@ const HospitalProfileModal = ({ onClose, variant = 'modal' }) => {
             const payload = { ...formData };
             if (!payload.password) delete payload.password;
 
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/dashboard/profile/${user.id}`, {
+            const { ok, status, data: result } = await apiFetch(`/api/dashboard/profile/${user.id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-            
-            const result = await res.json();
-            if (!res.ok) throw new Error(result.message);
+            if (!ok) throw new Error(result?.message || `Profile update failed (${status})`);
 
             // Update Local Storage with new Name
             const updatedUser = { ...user, ...result.user };
