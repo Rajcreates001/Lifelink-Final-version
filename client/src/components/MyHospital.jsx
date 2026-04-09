@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { apiFetch } from '../config/api';
 import './MyHospital.css';
 
 const MyHospital = () => {
@@ -30,13 +31,10 @@ const MyHospital = () => {
         throw new Error('User not logged in');
       }
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/hospital-communication/my-hospital/${user.id}`);
-      
-      if (!response.ok) {
+      const { ok, data } = await apiFetch(`/api/hospital-communication/my-hospital/${user.id}`, { method: 'GET' });
+      if (!ok) {
         throw new Error('Failed to fetch hospital details');
       }
-
-      const data = await response.json();
       setHospital(data);
       setBeds(data.beds || { totalBeds: 0, occupiedBeds: 0, availableBeds: 0 });
       setDoctors(data.doctors || []);
@@ -115,21 +113,17 @@ const MyHospital = () => {
 
       console.log('[MyHospital] Payload:', payload);
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/hospital-communication/my-hospital/${user.id}`, {
+      const { ok, status, data: updated } = await apiFetch(`/api/hospital-communication/my-hospital/${user.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
-      console.log('[MyHospital] Response status:', response.status);
+      console.log('[MyHospital] Response status:', status);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('[MyHospital] Error response:', errorData);
-        throw new Error(errorData.message || errorData.error || 'Failed to save hospital details');
+      if (!ok) {
+        console.error('[MyHospital] Error response:', updated);
+        throw new Error(updated?.message || updated?.error || `Failed to save hospital details (${status})`);
       }
-
-      const updated = await response.json();
       console.log('[MyHospital] Hospital updated successfully:', updated);
       setHospital(updated);
       setEditMode(false);

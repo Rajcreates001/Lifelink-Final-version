@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API_BASE_URL } from '../config/api';
 
 const ApiTest = () => {
   const [results, setResults] = useState({
@@ -12,7 +13,7 @@ const ApiTest = () => {
   const testEndpoint = async (endpoint, name) => {
     try {
       setLoading(true);
-      const url = `${import.meta.env.VITE_API_URL}/api/hospital-communication${endpoint}`;
+      const url = `${API_BASE_URL}/api/hospital-communication${endpoint}`;
       console.log(`Testing ${name}: ${url}`);
       
       const response = await fetch(url);

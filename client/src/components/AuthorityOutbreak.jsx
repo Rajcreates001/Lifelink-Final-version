@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { apiFetch } from '../config/api';
 import { DashboardCard, Input } from './Common';
 
 const AuthorityOutbreak = () => {
@@ -10,12 +11,13 @@ const AuthorityOutbreak = () => {
         e.preventDefault();
         setLoading(true);
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/gov/predict_outbreak`, {
+            const { ok, data } = await apiFetch('/api/gov/predict_outbreak', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(params)
             });
-            const data = await res.json();
+            if (!ok) {
+                throw new Error(data?.message || 'Failed to fetch outbreak forecast');
+            }
             setResult(data);
         } catch (err) {
             console.error(err);

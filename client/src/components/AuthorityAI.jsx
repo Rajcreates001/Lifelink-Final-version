@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { apiFetch } from '../config/api';
 import { DashboardCard, ExplainabilityPanel, Input } from './Common';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, BarChart, Bar } from 'recharts';
 
@@ -25,18 +26,15 @@ const AuthorityAI = () => {
         setLoading(prev => ({ ...prev, [key]: true }));
 
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/gov/${endpoint}`, {
+            const { ok, status, data } = await apiFetch(`/api/gov/${endpoint}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
 
-            if (!res.ok) {
-                console.error(`API Error [${endpoint}]: Status ${res.status}`);
-                throw new Error(`API Error: ${res.status}`);
+            if (!ok) {
+                console.error(`API Error [${endpoint}]: Status ${status}`);
+                throw new Error(`API Error: ${status}`);
             }
-            
-            const data = await res.json();
             console.log(`API Success [${endpoint}]:`, data);
             
             if (data.error) {

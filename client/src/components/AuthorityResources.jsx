@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { apiFetch } from '../config/api';
 import { DashboardCard, Input, LoadingSpinner } from './Common';
 
 const AuthorityResources = () => {
@@ -16,9 +17,8 @@ const AuthorityResources = () => {
         e.preventDefault();
         setLoading(true);
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/gov/predict_availability`, {
+            const { ok, data } = await apiFetch('/api/gov/predict_availability', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     month: parseInt(formData.month),
                     donation_frequency: parseInt(formData.frequency),
@@ -27,8 +27,9 @@ const AuthorityResources = () => {
                     resource_type: formData.resourceType
                 })
             });
-            const data = await res.json();
-            if (data.error) {
+            if (!ok) {
+                setPrediction({ error: data?.message || 'Prediction request failed' });
+            } else if (data.error) {
                 setPrediction({ error: data.error });
             } else {
                 setPrediction({
