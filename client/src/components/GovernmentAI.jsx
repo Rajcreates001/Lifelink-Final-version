@@ -13,7 +13,12 @@ const mergeMeta = (meta, fallback) => {
 const readPreload = (key) => {
     try {
         const raw = sessionStorage.getItem(key);
-        return raw ? JSON.parse(raw) : null;
+        const parsed = raw ? JSON.parse(raw) : null;
+        if (parsed?.status === 'queued') {
+            sessionStorage.removeItem(key);
+            return null;
+        }
+        return parsed;
     } catch (error) {
         return null;
     }
@@ -21,6 +26,7 @@ const readPreload = (key) => {
 
 const savePreload = (key, data) => {
     try {
+        if (data?.status === 'queued') return;
         sessionStorage.setItem(key, JSON.stringify(data));
     } catch (error) {
         return;
