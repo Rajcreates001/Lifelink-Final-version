@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../config/api';
 
 const NotificationMenu = ({ onClose, onMarkRead, variant = 'popover' }) => {
+    const navigate = useNavigate();
     const { user } = useAuth();
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -16,46 +18,34 @@ const NotificationMenu = ({ onClose, onMarkRead, variant = 'popover' }) => {
                 return;
             }
             try {
-                const { data } = await apiFetch(`/api/dashboard/public/${user.id}/full`, { method: 'GET' });
+                const { data, ok } = await apiFetch(`/api/notifications/${user.id}`, { method: 'GET' });
+                const payload = ok && data?.notifications ? data.notifications : [];
                 const lastRead = localStorage.getItem(readKey);
                 const lastReadDate = lastRead ? new Date(lastRead) : new Date(0);
-                
-                const alertNotifs = (data.alerts || []).map(a => ({
-                    id: a._id,
-                    type: 'alert',
-                    title: 'SOS Alert Sent',
-                    msg: `Emergency: "${a.message}"`,
-                    time: a.createdAt,
-                    color: 'bg-red-100 text-red-700',
-                    severity: a.emergencyType || a.priority || 'Unknown',
-                    severity_score: a.severity_score ?? 'N/A',
-                    ambulance_type: a.ambulance_type || 'Standard'
-                }));
 
-                const reqNotifs = (data.resourceRequests || []).map(r => ({
-                    id: r._id, type: 'request', title: 'Resource Requested', msg: `Request: ${r.requestType}`, time: r.createdAt, color: 'bg-blue-100 text-blue-700'
-                }));
+                const merged = (payload || []).map((item) => ({
+                    id: item.id || item._id,
+                    type: item.type || item.source || 'notification',
+                    title: item.title || (item.type === 'sos_alert' ? 'SOS Alert' : 'Notification'),
+                    msg: item.message || item.msg || item.title || '',
+                    time: item.timestamp || item.createdAt || new Date().toISOString(),
+                    color: item.type === 'alert' || item.type === 'sos_alert' ? 'bg-red-100 text-red-700' : item.type === 'message' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-700',
+                    severity: item.severity || 'Info',
+                    severity_score: item.severity_score ?? item.metadata?.severity_score ?? 'N/A',
+                    ambulance_type: item.ambulance_type || item.metadata?.ambulance_type || 'Standard',
+                    route: item.metadata?.route,
+                    actionLabel: item.metadata?.actionLabel || (item.metadata?.route ? 'View route' : undefined),
+                    metadata: item.metadata || {},
+                    isRead: new Date(item.timestamp || item.createdAt || new Date().toISOString()) <= lastReadDate,
+                }))
+                .sort((a, b) => new Date(b.time) - new Date(a.time));
 
-                const msgNotifs = (data.hospitalMessages || []).map(m => ({
-                    id: m._id,
-                    type: 'message',
-                    title: `Request from ${m.fromHospital?.name || 'Hospital'}`,
-                    msg: m.subject,
-                    time: m.createdAt,
-                    color: 'bg-purple-100 text-purple-700',
-                    messageType: m.messageType,
-                    urgency: m.requestDetails?.urgencyLevel || 'medium',
-                    status: m.status
-                }));
-
-                const merged = [...alertNotifs, ...reqNotifs, ...msgNotifs]
-                    .sort((a, b) => new Date(b.time) - new Date(a.time))
-                    .map((item) => ({
-                        ...item,
-                        isRead: new Date(item.time) <= lastReadDate
-                    }));
                 setNotifications(merged);
-            } catch (err) { console.error(err); } finally { setLoading(false); }
+            } catch (err) {
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
         };
         fetchNotifications();
     }, [user?.id, readKey]);
@@ -82,6 +72,13 @@ const NotificationMenu = ({ onClose, onMarkRead, variant = 'popover' }) => {
             }
         } catch (err) {
             console.error("Delete failed", err);
+        }
+    };
+
+    const handleNotificationClick = (item) => {
+        if (item.route) {
+            navigate(item.route);
+            if (onClose) onClose();
         }
     };
 
@@ -143,6 +140,16 @@ const NotificationMenu = ({ onClose, onMarkRead, variant = 'popover' }) => {
                                     )}
                                 </div>
                             </div>
+
+                            {n.route && (
+                                <button
+                                    type="button"
+                                    onClick={() => handleNotificationClick(n)}
+                                    className="text-xs font-semibold bg-slate-900 text-white px-3 py-1 rounded-lg hover:bg-slate-800 transition"
+                                >
+                                    {n.actionLabel || 'View route'}
+                                </button>
+                            )}
 
                             <button 
                                 onClick={(e) => handleDelete(e, n.id, n.type)}

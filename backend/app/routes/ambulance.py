@@ -6,7 +6,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException
 
 from app.core.dependencies import get_realtime_service, get_routing_service
 from app.db.mongo import get_db
-from app.services.collections import ALERTS, AMBULANCE_ASSIGNMENTS, AMBULANCES
+from app.services.collections import ALERTS, AMBULANCE_ASSIGNMENTS, AMBULANCES, NOTIFICATIONS, USERS
 from app.services.repository import MongoRepository
 from app.services.routing_service import RoutingService
 
@@ -404,6 +404,34 @@ async def start_route(
             "payload": (updated or {}).get("activeRoute") or active_route,
         },
     )
+
+    db = get_db()
+    notification_repo = MongoRepository(db, NOTIFICATIONS)
+    user_repo = MongoRepository(db, USERS)
+    hospital_name = payload.get("destinationAddress") or (updated or {}).get("activeRoute", active_route).get("destinationLocation", {}).get("address") or "Hospital"
+    ambulance_code = (updated or {}).get("ambulanceId") or ambulance.get("ambulanceId")
+    hospital_users = await user_repo.find_many({"role": "hospital"}, limit=200)
+    for hospital_user in hospital_users:
+        user_oid = _as_object_id(hospital_user.get("_id"))
+        if not user_oid:
+            continue
+        await notification_repo.insert_one(
+            {
+                "user": user_oid,
+                "type": "ambulance_route",
+                "title": "Ambulance En Route",
+                "message": f"{ambulance_code} is en route to {hospital_name}. Open live tracking to monitor the route.",
+                "createdAt": datetime.utcnow(),
+                "read": False,
+                "metadata": {
+                    "ambulance_id": (updated or {}).get("_id") or ambulance.get("_id"),
+                    "ambulance_code": ambulance_code,
+                    "hospital_name": hospital_name,
+                    "route": "/dashboard/hospital/ambulance-tracking",
+                    "actionLabel": "View Live Route",
+                },
+            }
+        )
 
     return {
         "success": True,
