@@ -259,7 +259,7 @@ const DesktopGovernmentDashboard = () => {
                         body: JSON.stringify(item.body),
                     });
                     const data = await res.json().catch(() => null);
-                    if (res.ok && data) {
+                    if (res.ok && data && data.status !== 'queued') {
                         sessionStorage.setItem(item.key, JSON.stringify(data));
                     }
                 } catch (error) {
