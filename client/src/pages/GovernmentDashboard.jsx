@@ -151,6 +151,11 @@ const DesktopGovernmentDashboard = () => {
     useEffect(() => {
         if (user?.role !== 'government') return;
         if (mode !== 'real') return;
+        const token = getAuthToken();
+        if (!token) {
+            navigate('/login', { replace: true });
+            return;
+        }
         const preloadKey = `gov_preload_done_${mode}_${subRole || 'default'}`;
         if (sessionStorage.getItem(preloadKey)) return;
         sessionStorage.setItem(preloadKey, '1');
@@ -182,7 +187,6 @@ const DesktopGovernmentDashboard = () => {
             apiFetch('/v2/government/policy/actions?limit=36', { method: 'GET', ttlMs: 90000, staleWhileRevalidate: true }),
         ];
 
-        const token = getAuthToken();
         const headers = {
             'Content-Type': 'application/json',
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -413,6 +417,11 @@ const MobileGovernmentDashboard = () => {
     useEffect(() => {
         if (user?.role !== 'government') return;
         if (mode !== 'real') return;
+        const token = getAuthToken();
+        if (!token) {
+            navigate('/login', { replace: true });
+            return;
+        }
         const preloadKey = `gov_preload_done_${mode}_${subRole || 'default'}`;
         if (sessionStorage.getItem(preloadKey)) return;
         sessionStorage.setItem(preloadKey, '1');
@@ -444,7 +453,6 @@ const MobileGovernmentDashboard = () => {
             apiFetch('/v2/government/policy/actions?limit=36', { method: 'GET', ttlMs: 90000, staleWhileRevalidate: true }),
         ];
 
-        const token = getAuthToken();
         const headers = {
             'Content-Type': 'application/json',
             ...(token ? { Authorization: `Bearer ${token}` } : {}),

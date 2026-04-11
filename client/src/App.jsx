@@ -1,6 +1,7 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { getAuthToken } from './config/api';
 
 // Pages
 const Signup = lazy(() => import('./pages/Signup'));
@@ -39,7 +40,12 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
         return <Navigate to="/login" replace />;
     }
 
-    // 3. Check for role authorization (normalized to lowercase)
+    // 3. If there is no auth token, force login again
+    if (!getAuthToken()) {
+        return <Navigate to="/login" replace />;
+    }
+
+    // 4. Check for role authorization (normalized to lowercase)
     if (allowedRoles && !allowedRoles.includes(user.role.toLowerCase())) {
         return <Navigate to="/" replace />;
     }
