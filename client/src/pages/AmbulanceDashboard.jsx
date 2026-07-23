@@ -4,7 +4,7 @@ import DashboardLayout from '../layout/DashboardLayout';
 import { DashboardCard } from '../components/Common';
 import AmbulanceLiveTracking from '../components/AmbulanceLiveTracking';
 import AIExpansionPanel from '../components/AIExpansionPanel';
-import { useDataMode } from '../context/DataModeContext';
+
 import { useAuth } from '../context/AuthContext';
 import { apiFetch, getAuthToken } from '../config/api';
 import MobileCard from '../components/ui/MobileCard';
@@ -81,6 +81,17 @@ const toLatLng = (value) => {
     };
 };
 
+const getDistanceKm = (lat1, lon1, lat2, lon2) => {
+    const toRad = (val) => (val * Math.PI) / 180;
+    const R = 6371;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
 const hasCoords = (point) => Number.isFinite(point?.lat) && Number.isFinite(point?.lng);
 
 const BENGALURU_BOUNDS = {
@@ -128,7 +139,7 @@ const ambulanceModuleSet = [
 
 const DesktopAmbulanceDashboard = () => {
     const navigate = useNavigate();
-    const { mode } = useDataMode();
+
     const { module } = useParams();
     const [activeTab, setActiveTab] = useState('');
     const [refreshKeys, setRefreshKeys] = useState({});
@@ -155,7 +166,6 @@ const DesktopAmbulanceDashboard = () => {
     }, [module, moduleKey, allowedTabs, defaultTab, navigate]);
 
     useEffect(() => {
-        if (mode !== 'real') return;
         const preloadKey = 'ambulance_preload';
         if (sessionStorage.getItem(preloadKey)) return;
         sessionStorage.setItem(preloadKey, '1');
@@ -165,7 +175,7 @@ const DesktopAmbulanceDashboard = () => {
             apiFetch('/api/ambulance/history', { method: 'GET', ttlMs: 90000, staleWhileRevalidate: true }),
             apiFetch('/v2/ai/insights?role=ambulance&module_key=assignments', { method: 'GET', ttlMs: 60000, staleWhileRevalidate: true }),
         ]);
-    }, [mode]);
+    }, []);
 
     const handleSelect = (key) => {
         if (key === 'profile' || key === 'notifications') {
@@ -241,9 +251,9 @@ const DesktopAmbulanceDashboard = () => {
             onRefresh={handleRefresh}
             refreshLabel="Refresh module"
         >
-            <div className="min-h-[60vh] animate-fade-in space-y-6">
+            <div className="min-h-[60vh] animate-zoom-in space-y-6" style={{ animationDuration: '0.6s' }}>
                 {activeTab !== 'emergency' && (
-                    <DashboardCard>
+                    <DashboardCard className="hover:shadow-lg transition-shadow duration-300">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
                                 <p className="text-xs font-bold uppercase text-rose-500">Emergency alert</p>
@@ -251,7 +261,7 @@ const DesktopAmbulanceDashboard = () => {
                                 <p className="text-sm text-slate-600">{emergencyAlert.location} · Priority {emergencyAlert.priority} · ETA {emergencyAlert.eta}</p>
                             </div>
                             <button
-                                className="px-4 py-2 text-xs font-bold bg-rose-600 text-white rounded"
+                                className="px-4 py-2 text-xs font-bold bg-rose-600 text-white rounded hover:bg-rose-700 active:scale-95 transition-all duration-200"
                                 onClick={() => navigate('/dashboard/ambulance/emergency')}
                             >
                                 View emergency route
@@ -636,10 +646,10 @@ const MobileAmbulanceDashboard = () => {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-slate-50 animate-fade-in">
             <div className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-slate-200">
                 <div className="flex items-center justify-between px-4 py-3">
-                    <button type="button" onClick={() => setMenuOpen(true)} className="text-slate-600">
+                    <button type="button" onClick={() => setMenuOpen(true)} className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg p-2 transition-all duration-200">
                         <i className="fas fa-bars"></i>
                     </button>
                     <div className="flex items-center gap-2">

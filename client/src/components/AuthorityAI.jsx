@@ -270,7 +270,8 @@ const AuthorityAI = () => {
                                         <XAxis dataKey="day" style={{ fontSize: '10px' }} />
                                         <YAxis style={{ fontSize: '10px' }} />
                                         <Tooltip />
-                                        <Area type="monotone" dataKey="val" stroke="#f97316" fill="#ffedd5" strokeWidth={3} />
+                                        <Area type="monotone" dataKey="val" stroke="#f97316" fill="#ffedd5" strokeWidth={3}
+                                            isAnimationActive={true} animationDuration={1200} animationBegin={200} />
                                     </AreaChart>
                                 </ResponsiveContainer>
                             </div>

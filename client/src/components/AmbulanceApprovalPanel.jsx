@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Card from './ui/Card';
 import Button from './ui/Button';
 import { apiFetch } from '../config/api';
+import ExportButton from './ExportButton';
 
 const AmbulanceApprovalPanel = () => {
     const [pending, setPending] = useState([]);
@@ -33,7 +34,10 @@ const AmbulanceApprovalPanel = () => {
                     <h3 className="text-lg font-bold text-slate-900">Ambulance Approval Panel</h3>
                     <p className="text-sm text-slate-500">Verify ambulance teams before granting access.</p>
                 </div>
-                <span className="text-xs font-bold uppercase text-slate-500">{pending.length} pending</span>
+                <div className="flex items-center gap-2">
+                    <ExportButton data={pending} filename="ambulance_pending_approvals" label="Export" columns={['name','email','ambulanceProfile.base']} columnLabels={{ name: 'Name', email: 'Email', 'ambulanceProfile.base': 'Base' }} />
+                    <span className="text-xs font-bold uppercase text-slate-500">{pending.length} pending</span>
+                </div>
             </div>
 
             {loading ? (

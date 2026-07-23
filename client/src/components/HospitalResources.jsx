@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import { useAuth } from '../context/AuthContext';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid } from 'recharts';
 import { apiFetch } from '../config/api';
+import ExportButton from './ExportButton';
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6'];
 
 const buildQuery = (params) => {
@@ -232,14 +233,15 @@ const HospitalResources = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                     <h3 className="font-bold text-lg text-slate-800 mb-4">Inventory Overview (Log Scale)</h3>
-                    <div className="h-72">
+                    <div className="h-72 animate-chart-entrance chart-delay-1">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={getCategoryData()}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                 <XAxis dataKey="name" style={{fontSize: '12px', fontWeight:'bold'}} />
                                 <YAxis scale="sqrt" style={{fontSize: '12px'}} /> 
                                 <Tooltip cursor={{fill: '#f1f5f9'}} />
-                                <Bar dataKey="count" radius={[6, 6, 0, 0]} barSize={50} name="Total Units">
+                                <Bar dataKey="count" radius={[6, 6, 0, 0]} barSize={50} name="Total Units"
+                                    isAnimationActive={true} animationDuration={800} animationBegin={200}>
                                     {getCategoryData().map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                                 </Bar>
                             </BarChart>
@@ -254,7 +256,7 @@ const HospitalResources = () => {
                         </h3>
                         <span className="text-xs bg-red-50 text-red-600 px-2 py-1 rounded font-bold">{getLowStockData().length} Items Low</span>
                     </div>
-                    <div className="h-72 overflow-y-auto custom-scrollbar">
+                    <div className="h-72 overflow-y-auto custom-scrollbar animate-chart-entrance chart-delay-2">
                         {getLowStockData().length === 0 ? (
                             <div className="h-full flex flex-col items-center justify-center text-green-500 opacity-60">
                                 <i className="fas fa-check-circle text-5xl mb-3"></i>
@@ -356,10 +358,12 @@ const HospitalResources = () => {
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                    <h3 className="font-bold text-xl text-slate-800">Equipment Inventory</h3>
-                    <span className="text-xs text-gray-500">Staff available {staff.available}/{staff.total}</span>
-                </div>
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center">                        <h3 className="font-bold text-xl text-slate-800">Equipment Inventory</h3>
+                        <div className="flex items-center gap-2">
+                            <ExportButton data={equipmentRows} filename="equipment_inventory" label="Export" columns={['name','category','quantity','status']} columnLabels={{ name: 'Equipment', category: 'Category', quantity: 'Quantity', status: 'Status' }} />
+                            <span className="text-xs text-gray-500">Staff available {staff.available}/{staff.total}</span>
+                        </div>
+            </div>
                 <div className="px-6 pb-4">
                     <div className="flex flex-col md:flex-row gap-2">
                         <input
@@ -427,10 +431,13 @@ const HospitalResources = () => {
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className="p-6 border-b border-slate-100 flex justify-between items-center">
                     <h3 className="font-bold text-xl text-slate-800">Hospital Supply Chain</h3>
-                    <button onClick={() => setIsAddOpen(true)} className="bg-indigo-600 text-white px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-indigo-700 shadow flex items-center gap-2">
+                    <div className="flex items-center gap-2">
+                        <ExportButton data={resources} filename="hospital_supply_chain" label="Export" columns={['name','category','quantity','unit','minThreshold']} columnLabels={{ name: 'Item', category: 'Category', quantity: 'Stock', unit: 'Unit', minThreshold: 'Min Threshold' }} formatValue={(v, col) => col === 'minThreshold' ? `Min: ${v}` : undefined} />
+                        <button onClick={() => setIsAddOpen(true)} className="bg-indigo-600 text-white px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-indigo-700 shadow flex items-center gap-2">
                         <i className="fas fa-plus-circle"></i> Add Supplies
                     </button>
                 </div>
+            </div>
                 <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
                     <table className="min-w-full text-left text-sm">
                         <thead className="bg-slate-50 border-b">

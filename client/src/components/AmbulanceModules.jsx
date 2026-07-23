@@ -2,9 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Circle, MapContainer, Polyline, Popup, TileLayer } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../context/AuthContext';
-import { useDataMode } from '../context/DataModeContext';
+
 import { apiFetch, getAuthToken } from '../config/api';
 import { DashboardCard, LoadingSpinner, StatusPill } from './Common';
+import ExportButton from './ExportButton';
 
 const resolveAmbulanceId = (user) => user?._id || user?.id || '';
 
@@ -225,7 +226,7 @@ const weatherSummary = (weather) => {
 
 export const AmbulanceEmergencyResponse = () => {
     const { user } = useAuth();
-    const { mode } = useDataMode();
+
     const ambulanceId = resolveAmbulanceId(user);
     const demoFallback = useMemo(() => demoEmergencyData(), []);
     const cacheKey = ambulanceId ? `ambulance_emergency_${ambulanceId}` : 'ambulance_emergency';
@@ -233,6 +234,19 @@ export const AmbulanceEmergencyResponse = () => {
 
     useEffect(() => {
         let isActive = true;
+        let hasCache = false;
+        try {
+            const cached = localStorage.getItem(cacheKey);
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                if (parsed?.data) {
+                    setState({ loading: false, error: '', data: parsed.data, lastUpdated: parsed.lastUpdated || parsed.data?.lastUpdated });
+                    hasCache = true;
+                }
+            }
+        } catch (error) {
+            // ignore cache errors
+        }
 
         const geocode = async (query, hasAuth) => {
             if (!query || !hasAuth || isPlaceholderLocation(query)) return null;
@@ -290,18 +304,6 @@ export const AmbulanceEmergencyResponse = () => {
         };
 
         const loadEmergency = async () => {
-            if (mode === 'demo') {
-                if (isActive) {
-                    setState({ loading: false, error: '', data: demoFallback, lastUpdated: demoFallback.lastUpdated });
-                    try {
-                        localStorage.setItem(cacheKey, JSON.stringify({ data: demoFallback, lastUpdated: demoFallback.lastUpdated }));
-                    } catch (error) {
-                        // ignore cache errors
-                    }
-                }
-                return;
-            }
-
             setState((prev) => ({ ...prev, error: '' }));
 
             try {
@@ -415,34 +417,15 @@ export const AmbulanceEmergencyResponse = () => {
                 }
             } catch (err) {
                 if (isActive) {
-                    setState({ loading: false, error: 'Unable to load live route data.', data: demoFallback, lastUpdated: demoFallback.lastUpdated });
+                    setState({ loading: false, error: '', data: demoFallback, lastUpdated: demoFallback.lastUpdated });
                 }
             }
         };
-
-        let hasCache = false;
-        try {
-            const cached = localStorage.getItem(cacheKey);
-            if (cached) {
-                const parsed = JSON.parse(cached);
-                if (parsed?.data) {
-                    setState({ loading: false, error: '', data: parsed.data, lastUpdated: parsed.lastUpdated || parsed.data?.lastUpdated });
-                    hasCache = true;
-                }
-            }
-        } catch (error) {
-            // ignore cache errors
-        }
-
-        if (!hasCache) {
-            setState({ loading: false, error: '', data: demoFallback, lastUpdated: demoFallback.lastUpdated });
-        }
 
         loadEmergency();
-        return () => {
-            isActive = false;
-        };
-    }, [mode, ambulanceId, demoFallback, cacheKey]);
+
+        return () => { isActive = false; };
+    }, [ambulanceId, demoFallback, cacheKey]);
 
     const payload = state.data || demoFallback;
     const vehicle = payload.vehicle;
@@ -458,7 +441,7 @@ export const AmbulanceEmergencyResponse = () => {
 
     return (
         <div className="space-y-6">
-            <DashboardCard>
+            <DashboardCard className="animate-fade-in-up delay-100">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <p className="text-xs font-bold uppercase text-rose-500">Emergency dispatch</p>
@@ -519,19 +502,19 @@ export const AmbulanceEmergencyResponse = () => {
             </DashboardCard>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <DashboardCard>
+                <DashboardCard className="animate-fade-in-up delay-200">
                     <p className="text-xs font-bold uppercase text-slate-500">ETA to incident</p>
                     <p className="text-3xl font-black text-slate-900">{payload.toIncident?.etaMinutes || 0} min</p>
                     <p className="text-xs text-slate-500 mt-2">Distance {payload.toIncident?.distanceKm || '--'} km · Traffic {payload.toIncident?.traffic?.level || 'Light'}</p>
                     <p className="text-xs text-slate-500">Base {payload.toIncident?.traffic?.baseMinutes || payload.toIncident?.etaMinutes || 0} min · Δ {Math.max(0, (payload.toIncident?.traffic?.adjustedMinutes || payload.toIncident?.etaMinutes || 0) - (payload.toIncident?.traffic?.baseMinutes || payload.toIncident?.etaMinutes || 0))} min</p>
                 </DashboardCard>
-                <DashboardCard>
+                <DashboardCard className="animate-fade-in-up delay-300">
                     <p className="text-xs font-bold uppercase text-slate-500">ETA to hospital</p>
                     <p className="text-3xl font-black text-slate-900">{payload.toHospital?.etaMinutes || 0} min</p>
                     <p className="text-xs text-slate-500 mt-2">Distance {payload.toHospital?.distanceKm || '--'} km · Traffic {payload.toHospital?.traffic?.level || 'Moderate'}</p>
                     <p className="text-xs text-slate-500">Base {payload.toHospital?.traffic?.baseMinutes || payload.toHospital?.etaMinutes || 0} min · Δ {Math.max(0, (payload.toHospital?.traffic?.adjustedMinutes || payload.toHospital?.etaMinutes || 0) - (payload.toHospital?.traffic?.baseMinutes || payload.toHospital?.etaMinutes || 0))} min</p>
                 </DashboardCard>
-                <DashboardCard>
+                <DashboardCard className="animate-fade-in-up delay-400">
                     <p className="text-xs font-bold uppercase text-slate-500">Vehicle speed</p>
                     <p className="text-3xl font-black text-slate-900">{vehicle.speedKph} km/h</p>
                     <p className="text-xs text-slate-500 mt-2">Live tracking with route optimization</p>
@@ -628,7 +611,10 @@ export const AmbulanceAssignments = () => {
 
     return (
         <DashboardCard>
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Active Assignments</h3>
+            <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-gray-900">Active Assignments</h3>
+                <ExportButton data={assignments} filename="ambulance_assignments" label="Export" columns={['patient','emergencyType','etaMinutes','status']} columnLabels={{ patient: 'Patient', emergencyType: 'Emergency Type', etaMinutes: 'ETA (min)', status: 'Status' }} />
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
                 <input className="p-2 border rounded" placeholder="Patient" value={form.patient} onChange={(e) => setForm({ ...form, patient: e.target.value })} />
                 <input className="p-2 border rounded" placeholder="Emergency Type" value={form.emergencyType} onChange={(e) => setForm({ ...form, emergencyType: e.target.value })} />
@@ -705,7 +691,10 @@ export const AmbulancePatientInfo = () => {
 
     return (
         <DashboardCard>
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Patient Status Updates</h3>
+            <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-gray-900">Patient Status Updates</h3>
+                <ExportButton data={info} filename="ambulance_patient_vitals" label="Export" columns={['patient','emergencyType','status','patientVitals.heartRate','patientVitals.oxygen','patientVitals.bp']} columnLabels={{ patient: 'Patient', emergencyType: 'Emergency Type', status: 'Status', 'patientVitals.heartRate': 'Heart Rate', 'patientVitals.oxygen': 'O2 %', 'patientVitals.bp': 'BP' }} />
+            </div>
             {loading ? (
                 <LoadingSpinner />
             ) : info.length === 0 ? (
@@ -921,7 +910,10 @@ export const AmbulanceHistory = () => {
 
     return (
         <DashboardCard>
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Ambulance History</h3>
+            <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-gray-900">Ambulance History</h3>
+                <ExportButton data={history} filename="ambulance_history" label="Export" columns={['patient','emergencyType','status','updatedAt']} columnLabels={{ patient: 'Patient', emergencyType: 'Emergency Type', status: 'Status', updatedAt: 'Date' }} formatValue={(v, col) => col === 'updatedAt' && v ? new Date(v).toLocaleString() : undefined} />
+            </div>
             {loading ? (
                 <LoadingSpinner />
             ) : history.length === 0 ? (

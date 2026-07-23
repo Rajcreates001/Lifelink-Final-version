@@ -25,12 +25,13 @@ const AuthorityOverview = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <SimpleBarChart title="Emergency Distribution" data={barData} barColorClass="bg-sky-500" />
                 
-                <DashboardCard>
+                <DashboardCard className="animate-chart-entrance chart-delay-2">
                     <h3 className="font-bold text-lg mb-4">Regional Bed Capacity</h3>
                     <div className="h-64">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
-                                <Pie data={pieData} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                                <Pie data={pieData} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value"
+                                    isAnimationActive={true} animationDuration={1200} animationBegin={200}>
                                     {pieData.map((entry, index) => <Cell key={index} fill={COLORS[index % COLORS.length]} />)}
                                 </Pie>
                                 <Tooltip />

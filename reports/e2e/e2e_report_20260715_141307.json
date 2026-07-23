@@ -1,0 +1,1635 @@
+{
+  "generated_at": "2026-07-15T08:43:07.978088+00:00",
+  "base_url": "http://127.0.0.1:3010",
+  "total": 105,
+  "passed": 23,
+  "failed": 82,
+  "pass_rate_pct": 21.9,
+  "groups": {
+    "health": {
+      "total": 1,
+      "passed": 1,
+      "failed": 0
+    },
+    "v2": {
+      "total": 6,
+      "passed": 1,
+      "failed": 5
+    },
+    "auth": {
+      "total": 2,
+      "passed": 2,
+      "failed": 0
+    },
+    "public": {
+      "total": 9,
+      "passed": 6,
+      "failed": 3
+    },
+    "hosp": {
+      "total": 44,
+      "passed": 3,
+      "failed": 41
+    },
+    "gov": {
+      "total": 28,
+      "passed": 5,
+      "failed": 23
+    },
+    "ambulance": {
+      "total": 7,
+      "passed": 5,
+      "failed": 2
+    },
+    "ai": {
+      "total": 2,
+      "passed": 0,
+      "failed": 2
+    },
+    "report": {
+      "total": 6,
+      "passed": 0,
+      "failed": 6
+    }
+  },
+  "results": [
+    {
+      "name": "health",
+      "method": "GET",
+      "path": "/health",
+      "status": 200,
+      "ok": true,
+      "detail": null,
+      "response_time_ms": 2,
+      "expected_keys": [
+        "status"
+      ],
+      "missing_keys": []
+    },
+    {
+      "name": "v2_health",
+      "method": "GET",
+      "path": "/v2/health",
+      "status": 200,
+      "ok": true,
+      "detail": null,
+      "response_time_ms": 2,
+      "expected_keys": [
+        "status"
+      ],
+      "missing_keys": []
+    },
+    {
+      "name": "v2_info",
+      "method": "GET",
+      "path": "/v2/info",
+      "status": 200,
+      "ok": false,
+      "detail": null,
+      "response_time_ms": 3,
+      "expected_keys": [
+        "app_name",
+        "version"
+      ],
+      "missing_keys": [
+        "app_name",
+        "version"
+      ]
+    },
+    {
+      "name": "auth_portals",
+      "method": "GET",
+      "path": "/v2/auth/portals",
+      "status": 200,
+      "ok": true,
+      "detail": null,
+      "response_time_ms": 21,
+      "expected_keys": [],
+      "missing_keys": []
+    },
+    {
+      "name": "auth_signup",
+      "method": "POST",
+      "path": "/v2/auth/signup",
+      "status": 201,
+      "ok": true,
+      "detail": null,
+      "response_time_ms": 465,
+      "expected_keys": [],
+      "missing_keys": []
+    },
+    {
+      "name": "public_donors",
+      "method": "GET",
+      "path": "/api/donors",
+      "status": 200,
+      "ok": true,
+      "detail": null,
+      "response_time_ms": 17,
+      "expected_keys": [],
+      "missing_keys": []
+    },
+    {
+      "name": "public_donors_forecast",
+      "method": "GET",
+      "path": "/api/donors/forecast",
+      "status": 200,
+      "ok": true,
+      "detail": null,
+      "response_time_ms": 26,
+      "expected_keys": [],
+      "missing_keys": []
+    },
+    {
+      "name": "public_health",
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200,
+      "ok": true,
+      "detail": null,
+      "response_time_ms": 1,
+      "expected_keys": [
+        "status"
+      ],
+      "missing_keys": []
+    },
+    {
+      "name": "public_compatibility",
+      "method": "POST",
+      "path": "/api/check_compatibility",
+      "status": 400,
+      "ok": false,
+      "detail": "{\"error\": \"Invalid ID format\"}",
+      "response_time_ms": 3,
+      "expected_keys": [
+        "compatible",
+        "score"
+      ],
+      "missing_keys": [
+        "compatible",
+        "score"
+      ]
+    },
+    {
+      "name": "public_analyze_report",
+      "method": "POST",
+      "path": "/api/analyze_report",
+      "status": 200,
+      "ok": true,
+      "detail": null,
+      "response_time_ms": 21687,
+      "expected_keys": [
+        "summary",
+        "risk_score"
+      ],
+      "missing_keys": []
+    },
+    {
+      "name": "public_health_risk",
+      "method": "POST",
+      "path": "/api/predict_health_risk",
+      "status": 200,
+      "ok": false,
+      "detail": null,
+      "response_time_ms": 4928,
+      "expected_keys": [
+        "risk_score",
+        "risk_level",
+        "meta"
+      ],
+      "missing_keys": [
+        "risk_score",
+        "risk_level"
+      ]
+    },
+    {
+      "name": "public_user_forecast",
+      "method": "POST",
+      "path": "/api/predict_user_forecast",
+      "status": 200,
+      "ok": false,
+      "detail": null,
+      "response_time_ms": 5043,
+      "expected_keys": [
+        "forecast"
+      ],
+      "missing_keys": [
+        "forecast"
+      ]
+    },
+    {
+      "name": "public_sos",
+      "method": "POST",
+      "path": "/v2/public/sos",
+      "status": 200,
+      "ok": true,
+      "detail": null,
+      "response_time_ms": 3231,
+      "expected_keys": [
+        "sos_id",
+        "status"
+      ],
+      "missing_keys": []
+    },
+    {
+      "name": "public_health_summary",
+      "method": "GET",
+      "path": "/v2/public/health/summary",
+      "status": 200,
+      "ok": true,
+      "detail": null,
+      "response_time_ms": 45,
+      "expected_keys": [
+        "status"
+      ],
+      "missing_keys": []
+    },
+    {
+      "name": "hosp_predict_eta",
+      "method": "POST",
+      "path": "/api/hosp/predict_eta",
+      "status": 200,
+      "ok": false,
+      "detail": null,
+      "response_time_ms": 4,
+      "expected_keys": [
+        "eta_minutes",
+        "meta"
+      ],
+      "missing_keys": [
+        "eta_minutes"
+      ]
+    },
+    {
+      "name": "hosp_predict_bed_forecast",
+      "method": "POST",
+      "path": "/api/hosp/predict_bed_forecast",
+      "status": 200,
+      "ok": false,
+      "detail": null,
+      "response_time_ms": 4,
+      "expected_keys": [
+        "predicted_bed_demand",
+        "meta"
+      ],
+      "missing_keys": [
+        "predicted_bed_demand"
+      ]
+    },
+    {
+      "name": "hosp_predict_staff",
+      "method": "POST",
+      "path": "/api/hosp/predict_staff_allocation",
+      "status": 200,
+      "ok": false,
+      "detail": null,
+      "response_time_ms": 5,
+      "expected_keys": [
+        "allocation_decision",
+        "meta"
+      ],
+      "missing_keys": [
+        "allocation_decision"
+      ]
+    },
+    {
+      "name": "hosp_predict_disease",
+      "method": "POST",
+      "path": "/api/hosp/predict_disease_forecast",
+      "status": 200,
+      "ok": false,
+      "detail": null,
+      "response_time_ms": 4,
+      "expected_keys": [
+        "forecast",
+        "meta"
+      ],
+      "missing_keys": [
+        "forecast"
+      ]
+    },
+    {
+      "name": "hosp_ops_global_metrics",
+      "method": "GET",
+      "path": "/api/hospital-ops/ceo/global-metrics",
+      "status": 400,
+      "ok": false,
+      "detail": "{\"error\": \"Invalid hospitalId format\"}",
+      "response_time_ms": 2,
+      "expected_keys": [
+        "patients",
+        "beds",
+        "staff",
+        "revenue"
+      ],
+      "missing_keys": [
+        "patients",
+        "beds",
+        "staff",
+        "revenue"
+      ]
+    },
+    {
+      "name": "hosp_ops_ai_insights",
+      "method": "GET",
+      "path": "/api/hospital-ops/ceo/ai-insights",
+      "status": 400,
+      "ok": false,
+      "detail": "{\"error\": \"Invalid hospitalId format\"}",
+      "response_time_ms": 2,
+      "expected_keys": [
+        "predicted_inflow",
+        "meta"
+      ],
+      "missing_keys": [
+        "predicted_inflow",
+        "meta"
+      ]
+    },
+    {
+      "name": "hosp_ops_department_perf",
+      "method": "GET",
+      "path": "/api/hospital-ops/ceo/department-performance",
+      "status": 400,
+      "ok": false,
+      "detail": "{\"error\": \"Invalid hospitalId format\"}",
+      "response_time_ms": 2,
+      "expected_keys": [
+        "departments",
+        "bottlenecks"
+      ],
+      "missing_keys": [
+        "departments",
+        "bottlenecks"
+      ]
+    },
+    {
+      "name": "hosp_ops_resources",
+      "method": "GET",
+      "path": "/api/hospital-ops/ceo/resources",
+      "status": 400,
+      "ok": false,
+      "detail": "{\"error\": \"Invalid hospitalId format\"}",
+      "response_time_ms": 2,
+      "expected_keys": [
+        "beds",
+        "staff"
+      ],
+      "missing_keys": [
+        "beds",
+        "staff"
+      ]
+    },
+    {
+      "name": "hosp_ops_bed_forecast",
+      "method": "GET",
+      "path": "/api/hospital-ops/ceo/beds/forecast",
+      "status": 400,
+      "ok": false,
+      "detail": "{\"error\": \"Invalid hospitalId format\"}",
+      "response_time_ms": 2,
+      "expected_keys": [
+        "expectedDischarges24h",
+        "forecast"
+      ],
+      "missing_keys": [
+        "expectedDischarges24h",
+        "forecast"
+      ]
+    },
+    {
+      "name": "hosp_ops_ambulance_coord",
+      "method": "GET",
+      "path": "/api/hospital-ops/ceo/ambulance/coordination",
+      "status": 400,
+      "ok": false,
+      "detail": "{\"error\": \"Invalid hospitalId format\"}",
+      "response_time_ms": 1,
+      "expected_keys": [
+        "activeAssignments",
+        "guidance"
+      ],
+      "missing_keys": [
+        "activeAssignments",
+        "guidance"
+      ]
+    },
+    {
+      "name": "hosp_ops_emergency_feed",
+      "method": "GET",
+      "path": "/api/hospital-ops/emergency/feed",
+      "status": 400,
+      "ok": false,
+      "detail": "{\"error\": \"Invalid hospitalId format\"}",
+      "response_time_ms": 2,
+      "expected_keys": [
+        "data"
+      ],
+      "missing_keys": [
+        "data"
+      ]
+    },
+    {
+      "name": "hosp_ops_emergency_intake",
+      "method": "GET",
+      "path": "/api/hospital-ops/emergency/intake",
+      "status": 400,
+      "ok": false,
+      "detail": "{\"error\": \"Invalid hospitalId format\"}",
+      "response_time_ms": 1,
+      "expected_keys": [
+        "data"
+      ],
+      "missing_keys": [
+        "data"
+      ]
+    },
+    {
+      "name": "hosp_ops_staff",
+      "method": "GET",
+      "path": "/api/hospital-ops/staff",
+      "status": 400,
+      "ok": false,
+      "detail": "{\"error\": \"Invalid hospitalId format\"}",
+      "response_time_ms": 1,
+      "expected_keys": [
+        "data"
+      ],
+      "missing_keys": [
+        "data"
+      ]
+    },
+    {
+      "name": "hosp_ops_reports",
+      "method": "GET",
+      "path": "/api/hospital-ops/reports",
+      "status": 400,
+      "ok": false,
+      "detail": "{\"error\": \"Invalid hospitalId format\"}",
+      "response_time_ms": 1,
+      "expected_keys": [
+        "data"
+      ],
+      "missing_keys": [
+        "data"
+      ]
+    },
+    {
+      "name": "hosp_ops_finance_revenue",
+      "method": "GET",
+      "path": "/api/hospital-ops/finance/revenue",
+      "status": 400,
+      "ok": false,
+      "detail": "{\"error\": \"Invalid hospitalId format\"}",
+      "response_time_ms": 2,
+      "expected_keys": [
+        "totalRevenue",
+        "monthlySeries"
+      ],
+      "missing_keys": [
+        "totalRevenue",
+        "monthlySeries"
+      ]
+    },
+    {
+      "name": "hosp_ops_finance_invoices",
+      "method": "GET",
+      "path": "/api/hospital-ops/finance/invoices",
+      "status": 400,
+      "ok": false,
+      "detail": "{\"error\": \"Invalid hospitalId format\"}",
+      "response_time_ms": 1,
+      "expected_keys": [
+        "data"
+      ],
+      "missing_keys": [
+        "data"
+      ]
+    },
+    {
+      "name": "hosp_ops_finance_claims",
+      "method": "GET",
+      "path": "/api/hospital-ops/finance/claims",
+      "status": 400,
+      "ok": false,
+      "detail": "{\"error\": \"Invalid hospitalId format\"}",
+      "response_time_ms": 1,
+      "expected_keys": [
+        "data"
+      ],
+      "missing_keys": [
+        "data"
+      ]
+    },
+    {
+      "name": "hosp_ops_opd_appointments",
+      "method": "GET",
+      "path": "/api/hospital-ops/opd/appointments",
+      "status": 400,
+      "ok": false,
+      "detail": "{\"error\": \"Invalid hospitalId format\"}",
+      "response_time_ms": 1,
+      "expected_keys": [
+        "data"
+      ],
+      "missing_keys": [
+        "data"
+      ]
+    },
+    {
+      "name": "hosp_ops_opd_insights",
+      "method": "GET",
+      "path": "/api/hospital-ops/opd/appointments/insights",
+      "status": 400,
+      "ok": false,
+      "detail": "{\"error\": \"Invalid hospitalId format\"}",
+      "response_time_ms": 1,
+      "expected_keys": [
+        "next7Days",
+        "demandScore"
+      ],
+      "missing_keys": [
+        "next7Days",
+        "demandScore"
+      ]
+    },
+    {
+      "name": "hosp_ops_opd_doctors",
+      "method": "GET",
+      "path": "/api/hospital-ops/opd/doctors",
+      "status": 400,
+      "ok": false,
+      "detail": "{\"error\": \"Invalid hospitalId format\"}",
+      "response_time_ms": 2,
+      "expected_keys": [
+        "data"
+      ],
+      "missing_keys": [
+        "data"
+      ]
+    },
+    {
+      "name": "hosp_ops_opd_doctors_coverage",
+      "method": "GET",
+      "path": "/api/hospital-ops/opd/doctors/coverage",
+      "status": 400,
+      "ok": false,
+      "detail": "{\"error\": \"Invalid hospitalId format\"}",
+      "response_time_ms": 1,
+      "expected_keys": [
+        "availabilityRate",
+        "coverageGaps"
+      ],
+      "missing_keys": [
+        "availabilityRate",
+        "coverageGaps"
+      ]
+    },
+    {
+      "name": "hosp_ops_opd_consultations",
+      "method": "GET",
+      "path": "/api/hospital-ops/opd/consultations",
+      "status": 400,
+      "ok": false,
+      "detail": "{\"error\": \"Invalid hospitalId format\"}",
+      "response_time_ms": 1,
+      "expected_keys": [
+        "data"
+      ],
+      "missing_keys": [
+        "data"
+      ]
+    },
+    {
+      "name": "hosp_ops_opd_queue",
+      "method": "GET",
+      "path": "/api/hospital-ops/opd/queue",
+      "status": 400,
+      "ok": false,
+      "detail": "{\"error\": \"Invalid hospitalId format\"}",
+      "response_time_ms": 2,
+      "expected_keys": [
+        "data"
+      ],
+      "missing_keys": [
+        "data"
+      ]
+    },
+    {
+      "name": "hosp_ops_icu_patients",
+      "method": "GET",
+      "path": "/api/hospital-ops/icu/patients",
+      "status": 400,
+      "ok": false,
+      "detail": "{\"error\": \"Invalid hospitalId format\"}",
+      "response_time_ms": 2,
+      "expected_keys": [
+        "data"
+      ],
+      "missing_keys": [
+        "data"
+      ]
+    },
+    {
+      "name": "hosp_ops_icu_alerts",
+      "method": "GET",
+      "path": "/api/hospital-ops/icu/alerts",
+      "status": 400,
+      "ok": false,
+      "detail": "{\"error\": \"Invalid hospitalId format\"}",
+      "response_time_ms": 2,
+      "expected_keys": [
+        "data"
+      ],
+      "missing_keys": [
+        "data"
+      ]
+    },
+    {
+      "name": "hosp_ops_icu_vitals",
+      "method": "GET",
+      "path": "/api/hospital-ops/icu/vitals",
+      "status": 400,
+      "ok": false,
+      "detail": "{\"error\": \"Invalid hospitalId format\"}",
+      "response_time_ms": 2,
+      "expected_keys": [
+        "average_oxygen",
+        "critical_patients"
+      ],
+      "missing_keys": [
+        "average_oxygen",
+        "critical_patients"
+      ]
+    },
+    {
+      "name": "hosp_ops_radiology_requests",
+      "method": "GET",
+      "path": "/api/hospital-ops/radiology/requests",
+      "status": 400,
+      "ok": false,
+      "detail": "{\"error\": \"Invalid hospitalId format\"}",
+      "response_time_ms": 7,
+      "expected_keys": [
+        "data"
+      ],
+      "missing_keys": [
+        "data"
+      ]
+    },
+    {
+      "name": "hosp_ops_radiology_reports",
+      "method": "GET",
+      "path": "/api/hospital-ops/radiology/reports",
+      "status": 400,
+      "ok": false,
+      "detail": "{\"error\": \"Invalid hospitalId format\"}",
+      "response_time_ms": 2,
+      "expected_keys": [
+        "data"
+      ],
+      "missing_keys": [
+        "data"
+      ]
+    },
+    {
+      "name": "hosp_ops_ot_surgeries",
+      "method": "GET",
+      "path": "/api/hospital-ops/ot/surgeries",
+      "status": 400,
+      "ok": false,
+      "detail": "{\"error\": \"Invalid hospitalId format\"}",
+      "response_time_ms": 2,
+      "expected_keys": [
+        "data"
+      ],
+      "missing_keys": [
+        "data"
+      ]
+    },
+    {
+      "name": "hosp_ops_ot_allocations",
+      "method": "GET",
+      "path": "/api/hospital-ops/ot/allocations",
+      "status": 400,
+      "ok": false,
+      "detail": "{\"error\": \"Invalid hospitalId format\"}",
+      "response_time_ms": 1,
+      "expected_keys": [
+        "data"
+      ],
+      "missing_keys": [
+        "data"
+      ]
+    },
+    {
+      "name": "hosp_ops_alerts",
+      "method": "GET",
+      "path": "/api/hospital-ops/alerts",
+      "status": 404,
+      "ok": false,
+      "detail": "{\"detail\": \"Not Found\"}",
+      "response_time_ms": 2,
+      "expected_keys": [
+        "data"
+      ],
+      "missing_keys": [
+        "data"
+      ]
+    },
+    {
+      "name": "hosp_ops_analytics",
+      "method": "GET",
+      "path": "/api/hospital-ops/analytics",
+      "status": 404,
+      "ok": false,
+      "detail": "{\"detail\": \"Not Found\"}",
+      "response_time_ms": 2,
+      "expected_keys": [
+        "data"
+      ],
+      "missing_keys": [
+        "data"
+      ]
+    },
+    {
+      "name": "hosp_ops_predictions",
+      "method": "GET",
+      "path": "/api/hospital-ops/predictions",
+      "status": 404,
+      "ok": false,
+      "detail": "{\"detail\": \"Not Found\"}",
+      "response_time_ms": 2,
+      "expected_keys": [
+        "data"
+      ],
+      "missing_keys": [
+        "data"
+      ]
+    },
+    {
+      "name": "hosp_ops_messages",
+      "method": "GET",
+      "path": "/api/hospital-ops/messages",
+      "status": 404,
+      "ok": false,
+      "detail": "{\"detail\": \"Not Found\"}",
+      "response_time_ms": 2,
+      "expected_keys": [
+        "data"
+      ],
+      "missing_keys": [
+        "data"
+      ]
+    },
+    {
+      "name": "hosp_ops_network_agreements",
+      "method": "GET",
+      "path": "/api/hospital-ops/network/agreements",
+      "status": 404,
+      "ok": false,
+      "detail": "{\"detail\": \"Not Found\"}",
+      "response_time_ms": 3,
+      "expected_keys": [
+        "data"
+      ],
+      "missing_keys": [
+        "data"
+      ]
+    },
+    {
+      "name": "hosp_comm_health",
+      "method": "GET",
+      "path": "/api/hospital-communication/health",
+      "status": 200,
+      "ok": true,
+      "detail": null,
+      "response_time_ms": 2,
+      "expected_keys": [
+        "status"
+      ],
+      "missing_keys": []
+    },
+    {
+      "name": "hosp_comm_my_hospital",
+      "method": "GET",
+      "path": "/api/hospital-communication/my-hospital/HOSP-1001",
+      "status": 404,
+      "ok": false,
+      "detail": "{\"error\": \"No user found with ID: HOSP-1001\"}",
+      "response_time_ms": 6,
+      "expected_keys": [
+        "beds"
+      ],
+      "missing_keys": [
+        "beds"
+      ]
+    },
+    {
+      "name": "hosp_comm_mutual_aid",
+      "method": "POST",
+      "path": "/api/hospital-communication/mutual-aid/recommendations",
+      "status": 422,
+      "ok": false,
+      "detail": "{\"error\": \"Validation failed\", \"details\": [{\"type\": \"missing\", \"loc\": [\"body\", \"hospitalId\"], \"msg\": \"Field required\", \"input\": {\"hospital_id\": \"HOSP-1001\"}}, {\"type\": \"missing\", \"loc\": [\"body\", \"resourceType\"], \"msg\": \"Field required\", \"input\": {\"hospital_id\": \"HOSP-1001\"}}, {\"type\": \"missing\", \"loc\": [\"body\", \"requiredUnits\"], \"msg\": \"Field required\", \"input\": {\"hospital_id\": \"HOSP-1001\"}}]}",
+      "response_time_ms": 4,
+      "expected_keys": [
+        "data"
+      ],
+      "missing_keys": [
+        "data"
+      ]
+    },
+    {
+      "name": "hosp_ml_triage",
+      "method": "POST",
+      "path": "/api/hospital/triage",
+      "status": 200,
+      "ok": false,
+      "detail": null,
+      "response_time_ms": 4,
+      "expected_keys": [
+        "predicted_severity",
+        "meta"
+      ],
+      "missing_keys": [
+        "predicted_severity"
+      ]
+    },
+    {
+      "name": "hosp_ml_eta",
+      "method": "POST",
+      "path": "/api/hospital/eta",
+      "status": 200,
+      "ok": false,
+      "detail": null,
+      "response_time_ms": 3,
+      "expected_keys": [
+        "eta_minutes",
+        "meta"
+      ],
+      "missing_keys": [
+        "eta_minutes"
+      ]
+    },
+    {
+      "name": "hosp_ml_bed_forecast",
+      "method": "POST",
+      "path": "/api/hospital/bed_forecast",
+      "status": 200,
+      "ok": false,
+      "detail": null,
+      "response_time_ms": 3,
+      "expected_keys": [
+        "predicted_bed_demand",
+        "meta"
+      ],
+      "missing_keys": [
+        "predicted_bed_demand"
+      ]
+    },
+    {
+      "name": "hosp_ml_inventory",
+      "method": "POST",
+      "path": "/api/hospital/inventory/predict",
+      "status": 200,
+      "ok": true,
+      "detail": null,
+      "response_time_ms": 5266,
+      "expected_keys": [
+        "status",
+        "recommendation",
+        "days_left"
+      ],
+      "missing_keys": []
+    },
+    {
+      "name": "hosp_ml_recovery",
+      "method": "POST",
+      "path": "/api/hospital/patient/recovery",
+      "status": 200,
+      "ok": false,
+      "detail": null,
+      "response_time_ms": 5213,
+      "expected_keys": [
+        "recovery_days",
+        "meta"
+      ],
+      "missing_keys": [
+        "recovery_days"
+      ]
+    },
+    {
+      "name": "hosp_ml_stay",
+      "method": "POST",
+      "path": "/api/hospital/patient/stay",
+      "status": 200,
+      "ok": true,
+      "detail": null,
+      "response_time_ms": 5183,
+      "expected_keys": [
+        "predicted_stay_days",
+        "meta"
+      ],
+      "missing_keys": []
+    },
+    {
+      "name": "gov_predict_outbreak",
+      "method": "POST",
+      "path": "/api/gov/predict_outbreak",
+      "status": 200,
+      "ok": false,
+      "detail": null,
+      "response_time_ms": 5354,
+      "expected_keys": [
+        "forecast",
+        "meta"
+      ],
+      "missing_keys": [
+        "forecast"
+      ]
+    },
+    {
+      "name": "gov_predict_allocation",
+      "method": "POST",
+      "path": "/api/gov/predict_allocation",
+      "status": 200,
+      "ok": true,
+      "detail": null,
+      "response_time_ms": 5150,
+      "expected_keys": [
+        "optimal_action",
+        "meta"
+      ],
+      "missing_keys": []
+    },
+    {
+      "name": "gov_predict_policy_segment",
+      "method": "POST",
+      "path": "/api/gov/predict_policy_segment",
+      "status": 200,
+      "ok": true,
+      "detail": null,
+      "response_time_ms": 4988,
+      "expected_keys": [
+        "segment_label",
+        "meta"
+      ],
+      "missing_keys": []
+    },
+    {
+      "name": "gov_predict_performance",
+      "method": "POST",
+      "path": "/api/gov/predict_performance_score",
+      "status": 200,
+      "ok": true,
+      "detail": null,
+      "response_time_ms": 5572,
+      "expected_keys": [
+        "predicted_performance_score",
+        "meta"
+      ],
+      "missing_keys": []
+    },
+    {
+      "name": "gov_predict_availability",
+      "method": "POST",
+      "path": "/api/gov/predict_availability",
+      "status": 200,
+      "ok": true,
+      "detail": null,
+      "response_time_ms": 5307,
+      "expected_keys": [
+        "predicted_availability_score",
+        "meta"
+      ],
+      "missing_keys": []
+    },
+    {
+      "name": "gov_emergency_hotspots",
+      "method": "GET",
+      "path": "/api/gov/emergency_hotspots",
+      "status": 200,
+      "ok": true,
+      "detail": null,
+      "response_time_ms": 5372,
+      "expected_keys": [],
+      "missing_keys": []
+    },
+    {
+      "name": "gov_v2_overview",
+      "method": "GET",
+      "path": "/v2/government/overview",
+      "status": 401,
+      "ok": false,
+      "detail": "401 (demo fallback - UI will use mock data)",
+      "response_time_ms": 3,
+      "expected_keys": [
+        "message",
+        "authorityId"
+      ],
+      "missing_keys": [
+        "message",
+        "authorityId"
+      ]
+    },
+    {
+      "name": "gov_v2_command_overview",
+      "method": "GET",
+      "path": "/v2/government/command/overview",
+      "status": 401,
+      "ok": false,
+      "detail": "401 (demo fallback - UI will use mock data)",
+      "response_time_ms": 2,
+      "expected_keys": [
+        "hospitals",
+        "ambulances",
+        "emergencies"
+      ],
+      "missing_keys": [
+        "hospitals",
+        "ambulances",
+        "emergencies"
+      ]
+    },
+    {
+      "name": "gov_v2_decision_engine",
+      "method": "POST",
+      "path": "/v2/government/decision/engine",
+      "status": 401,
+      "ok": false,
+      "detail": "401 (demo fallback - UI will use mock data)",
+      "response_time_ms": 2,
+      "expected_keys": [
+        "status",
+        "decisions"
+      ],
+      "missing_keys": [
+        "status",
+        "decisions"
+      ]
+    },
+    {
+      "name": "gov_v2_monitoring_summary",
+      "method": "GET",
+      "path": "/v2/government/monitoring/summary",
+      "status": 401,
+      "ok": false,
+      "detail": "401 (demo fallback - UI will use mock data)",
+      "response_time_ms": 1,
+      "expected_keys": [
+        "active_emergencies",
+        "avg_response_minutes",
+        "resource_utilization"
+      ],
+      "missing_keys": [
+        "active_emergencies",
+        "avg_response_minutes",
+        "resource_utilization"
+      ]
+    },
+    {
+      "name": "gov_v2_monitoring_feed",
+      "method": "GET",
+      "path": "/v2/government/monitoring/feed",
+      "status": 401,
+      "ok": false,
+      "detail": "401 (demo fallback - UI will use mock data)",
+      "response_time_ms": 2,
+      "expected_keys": [
+        "data"
+      ],
+      "missing_keys": [
+        "data"
+      ]
+    },
+    {
+      "name": "gov_v2_resources_hospitals",
+      "method": "GET",
+      "path": "/v2/government/resources/hospitals",
+      "status": 401,
+      "ok": false,
+      "detail": "401 (demo fallback - UI will use mock data)",
+      "response_time_ms": 1,
+      "expected_keys": [
+        "data"
+      ],
+      "missing_keys": [
+        "data"
+      ]
+    },
+    {
+      "name": "gov_v2_resources_ambulances",
+      "method": "GET",
+      "path": "/v2/government/resources/ambulances",
+      "status": 401,
+      "ok": false,
+      "detail": "401 (demo fallback - UI will use mock data)",
+      "response_time_ms": 1,
+      "expected_keys": [
+        "data"
+      ],
+      "missing_keys": [
+        "data"
+      ]
+    },
+    {
+      "name": "gov_v2_predictions_anomaly",
+      "method": "GET",
+      "path": "/v2/government/predictions/anomaly",
+      "status": 401,
+      "ok": false,
+      "detail": "401 (demo fallback - UI will use mock data)",
+      "response_time_ms": 1,
+      "expected_keys": [
+        "status",
+        "prediction"
+      ],
+      "missing_keys": [
+        "status",
+        "prediction"
+      ]
+    },
+    {
+      "name": "gov_v2_disaster_recent",
+      "method": "GET",
+      "path": "/v2/government/disaster/recent",
+      "status": 401,
+      "ok": false,
+      "detail": "401 (demo fallback - UI will use mock data)",
+      "response_time_ms": 2,
+      "expected_keys": [
+        "data"
+      ],
+      "missing_keys": [
+        "data"
+      ]
+    },
+    {
+      "name": "gov_v2_disaster_detect",
+      "method": "POST",
+      "path": "/v2/government/disaster/detect",
+      "status": 401,
+      "ok": false,
+      "detail": "401 (demo fallback - UI will use mock data)",
+      "response_time_ms": 2,
+      "expected_keys": [
+        "status"
+      ],
+      "missing_keys": [
+        "status"
+      ]
+    },
+    {
+      "name": "gov_v2_disaster_trigger",
+      "method": "POST",
+      "path": "/v2/government/disaster/trigger",
+      "status": 401,
+      "ok": false,
+      "detail": "401 (demo fallback - UI will use mock data)",
+      "response_time_ms": 2,
+      "expected_keys": [
+        "status"
+      ],
+      "missing_keys": [
+        "status"
+      ]
+    },
+    {
+      "name": "gov_v2_disaster_broadcast",
+      "method": "POST",
+      "path": "/v2/government/disaster/broadcast",
+      "status": 401,
+      "ok": false,
+      "detail": "401 (demo fallback - UI will use mock data)",
+      "response_time_ms": 2,
+      "expected_keys": [
+        "status"
+      ],
+      "missing_keys": [
+        "status"
+      ]
+    },
+    {
+      "name": "gov_v2_policy_actions",
+      "method": "GET",
+      "path": "/v2/government/policy/actions",
+      "status": 401,
+      "ok": false,
+      "detail": "401 (demo fallback - UI will use mock data)",
+      "response_time_ms": 2,
+      "expected_keys": [
+        "data"
+      ],
+      "missing_keys": [
+        "data"
+      ]
+    },
+    {
+      "name": "gov_v2_ai_ask",
+      "method": "POST",
+      "path": "/v2/government/ai/ask",
+      "status": 401,
+      "ok": false,
+      "detail": "401 (demo fallback - UI will use mock data)",
+      "response_time_ms": 2,
+      "expected_keys": [
+        "query",
+        "decision"
+      ],
+      "missing_keys": [
+        "query",
+        "decision"
+      ]
+    },
+    {
+      "name": "gov_v2_simulation_start",
+      "method": "POST",
+      "path": "/v2/government/simulation/start",
+      "status": 401,
+      "ok": false,
+      "detail": "401 (demo fallback - UI will use mock data)",
+      "response_time_ms": 3,
+      "expected_keys": [
+        "status",
+        "session_id"
+      ],
+      "missing_keys": [
+        "status",
+        "session_id"
+      ]
+    },
+    {
+      "name": "gov_v2_simulation_step",
+      "method": "POST",
+      "path": "/v2/government/simulation/step",
+      "status": 401,
+      "ok": false,
+      "detail": "401 (demo fallback - UI will use mock data)",
+      "response_time_ms": 2,
+      "expected_keys": [
+        "status"
+      ],
+      "missing_keys": [
+        "status"
+      ]
+    },
+    {
+      "name": "gov_v2_verification_pending",
+      "method": "GET",
+      "path": "/v2/government/verification/pending",
+      "status": 401,
+      "ok": false,
+      "detail": "401 (demo fallback - UI will use mock data)",
+      "response_time_ms": 1,
+      "expected_keys": [
+        "data"
+      ],
+      "missing_keys": [
+        "data"
+      ]
+    },
+    {
+      "name": "gov_legacy_hospitals",
+      "method": "GET",
+      "path": "/api/government-ops/hospitals",
+      "status": 200,
+      "ok": false,
+      "detail": null,
+      "response_time_ms": 66,
+      "expected_keys": [
+        "hospitals"
+      ],
+      "missing_keys": [
+        "hospitals"
+      ]
+    },
+    {
+      "name": "gov_legacy_emergencies",
+      "method": "GET",
+      "path": "/api/government-ops/emergencies",
+      "status": 200,
+      "ok": false,
+      "detail": null,
+      "response_time_ms": 293,
+      "expected_keys": [
+        "emergencies"
+      ],
+      "missing_keys": [
+        "emergencies"
+      ]
+    },
+    {
+      "name": "gov_legacy_reports",
+      "method": "GET",
+      "path": "/api/government-ops/reports",
+      "status": 200,
+      "ok": false,
+      "detail": null,
+      "response_time_ms": 4221,
+      "expected_keys": [
+        "reports"
+      ],
+      "missing_keys": [
+        "reports"
+      ]
+    },
+    {
+      "name": "gov_legacy_compliance",
+      "method": "GET",
+      "path": "/api/government-ops/compliance",
+      "status": 200,
+      "ok": false,
+      "detail": null,
+      "response_time_ms": 871,
+      "expected_keys": [
+        "compliance"
+      ],
+      "missing_keys": [
+        "compliance"
+      ]
+    },
+    {
+      "name": "gov_v2_modules",
+      "method": "GET",
+      "path": "/v2/government/modules",
+      "status": 401,
+      "ok": false,
+      "detail": "401 (demo fallback - UI will use mock data)",
+      "response_time_ms": 7,
+      "expected_keys": [
+        "command-center",
+        "live-monitoring"
+      ],
+      "missing_keys": [
+        "command-center",
+        "live-monitoring"
+      ]
+    },
+    {
+      "name": "ambulance_list",
+      "method": "GET",
+      "path": "/api/ambulance/",
+      "status": 200,
+      "ok": true,
+      "detail": null,
+      "response_time_ms": 84,
+      "expected_keys": [
+        "success",
+        "data"
+      ],
+      "missing_keys": []
+    },
+    {
+      "name": "ambulance_assignments",
+      "method": "GET",
+      "path": "/api/ambulance/assignments",
+      "status": 200,
+      "ok": true,
+      "detail": null,
+      "response_time_ms": 36,
+      "expected_keys": [
+        "data"
+      ],
+      "missing_keys": []
+    },
+    {
+      "name": "ambulance_patient_info",
+      "method": "GET",
+      "path": "/api/ambulance/patient-info",
+      "status": 200,
+      "ok": true,
+      "detail": null,
+      "response_time_ms": 28,
+      "expected_keys": [
+        "data"
+      ],
+      "missing_keys": []
+    },
+    {
+      "name": "ambulance_emergency_status",
+      "method": "GET",
+      "path": "/api/ambulance/emergency-status",
+      "status": 200,
+      "ok": true,
+      "detail": null,
+      "response_time_ms": 29,
+      "expected_keys": [
+        "count",
+        "severityCounts"
+      ],
+      "missing_keys": []
+    },
+    {
+      "name": "ambulance_history",
+      "method": "GET",
+      "path": "/api/ambulance/history",
+      "status": 200,
+      "ok": true,
+      "detail": null,
+      "response_time_ms": 29,
+      "expected_keys": [
+        "data"
+      ],
+      "missing_keys": []
+    },
+    {
+      "name": "ambulance_v2_status",
+      "method": "GET",
+      "path": "/v2/ambulance/status",
+      "status": 401,
+      "ok": false,
+      "detail": "401 (demo fallback - UI will use mock data)",
+      "response_time_ms": 2,
+      "expected_keys": [
+        "status"
+      ],
+      "missing_keys": [
+        "status"
+      ]
+    },
+    {
+      "name": "ambulance_v2_modules",
+      "method": "GET",
+      "path": "/v2/ambulance/modules",
+      "status": 401,
+      "ok": false,
+      "detail": "401 (demo fallback - UI will use mock data)",
+      "response_time_ms": 2,
+      "expected_keys": [
+        "dispatch",
+        "navigation",
+        "patient-info"
+      ],
+      "missing_keys": [
+        "dispatch",
+        "navigation",
+        "patient-info"
+      ]
+    },
+    {
+      "name": "ai_insights_gov",
+      "method": "GET",
+      "path": "/v2/ai/insights",
+      "status": 401,
+      "ok": false,
+      "detail": "401 (demo fallback - UI will use mock data)",
+      "response_time_ms": 3,
+      "expected_keys": [
+        "data_summary",
+        "cards"
+      ],
+      "missing_keys": [
+        "data_summary",
+        "cards"
+      ]
+    },
+    {
+      "name": "ai_insights_hosp",
+      "method": "GET",
+      "path": "/v2/ai/insights",
+      "status": 401,
+      "ok": false,
+      "detail": "401 (demo fallback - UI will use mock data)",
+      "response_time_ms": 2,
+      "expected_keys": [
+        "data_summary",
+        "cards"
+      ],
+      "missing_keys": [
+        "data_summary",
+        "cards"
+      ]
+    },
+    {
+      "name": "v2_search",
+      "method": "GET",
+      "path": "/v2/search?q=hospital",
+      "status": 405,
+      "ok": false,
+      "detail": "{\"detail\": \"Method Not Allowed\"}",
+      "response_time_ms": 3,
+      "expected_keys": [
+        "results",
+        "query"
+      ],
+      "missing_keys": [
+        "results",
+        "query"
+      ]
+    },
+    {
+      "name": "v2_agents_ask",
+      "method": "POST",
+      "path": "/v2/agents/ask",
+      "status": 500,
+      "ok": false,
+      "detail": "{\"error\": \"Internal server error\"}",
+      "response_time_ms": 21778,
+      "expected_keys": [
+        "answer",
+        "confidence"
+      ],
+      "missing_keys": [
+        "answer",
+        "confidence"
+      ]
+    },
+    {
+      "name": "report_hospital_daily_ops",
+      "method": "POST",
+      "path": "/api/reports/hospital/daily-ops",
+      "status": null,
+      "ok": false,
+      "detail": "request_failed: [WinError 10054] An existing connection was forcibly closed by the remote host",
+      "response_time_ms": 92,
+      "expected_keys": [],
+      "missing_keys": []
+    },
+    {
+      "name": "report_hospital_financial",
+      "method": "POST",
+      "path": "/api/reports/hospital/financial",
+      "status": 404,
+      "ok": false,
+      "detail": "{\"detail\": \"Not Found\"}",
+      "response_time_ms": 22,
+      "expected_keys": [],
+      "missing_keys": []
+    },
+    {
+      "name": "report_hospital_compliance",
+      "method": "POST",
+      "path": "/api/reports/hospital/compliance",
+      "status": 404,
+      "ok": false,
+      "detail": "{\"detail\": \"Not Found\"}",
+      "response_time_ms": 5,
+      "expected_keys": [],
+      "missing_keys": []
+    },
+    {
+      "name": "report_government_incident",
+      "method": "POST",
+      "path": "/api/reports/government/incident",
+      "status": 404,
+      "ok": false,
+      "detail": "{\"detail\": \"Not Found\"}",
+      "response_time_ms": 3,
+      "expected_keys": [],
+      "missing_keys": []
+    },
+    {
+      "name": "report_government_resource",
+      "method": "POST",
+      "path": "/api/reports/government/resource",
+      "status": 404,
+      "ok": false,
+      "detail": "{\"detail\": \"Not Found\"}",
+      "response_time_ms": 2,
+      "expected_keys": [],
+      "missing_keys": []
+    },
+    {
+      "name": "report_simulation_after_action",
+      "method": "POST",
+      "path": "/api/reports/simulation/after-action",
+      "status": 404,
+      "ok": false,
+      "detail": "{\"detail\": \"Not Found\"}",
+      "response_time_ms": 3,
+      "expected_keys": [],
+      "missing_keys": []
+    },
+    {
+      "name": "v2_ml_health_risk",
+      "method": "POST",
+      "path": "/v2/ml/health-risk",
+      "status": 401,
+      "ok": false,
+      "detail": "401 (demo fallback - UI will use mock data)",
+      "response_time_ms": 2,
+      "expected_keys": [
+        "risk_score",
+        "status",
+        "meta"
+      ],
+      "missing_keys": [
+        "risk_score",
+        "status",
+        "meta"
+      ]
+    },
+    {
+      "name": "v2_system_simulation_status",
+      "method": "GET",
+      "path": "/v2/system/simulation/status",
+      "status": 404,
+      "ok": false,
+      "detail": "{\"detail\": \"Not Found\"}",
+      "response_time_ms": 3,
+      "expected_keys": [],
+      "missing_keys": []
+    }
+  ]
+}

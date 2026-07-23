@@ -20,9 +20,9 @@ const MobileDrawer = ({ open, onClose, children }) => {
         type="button"
         aria-label="Close menu"
         onClick={onClose}
-        className="absolute inset-0 bg-slate-900/40"
+        className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm animate-fade-in"
       />
-      <div className="absolute inset-y-0 left-0 w-72 max-w-[85vw] bg-white shadow-2xl border-r border-slate-200">
+      <div className="absolute inset-y-0 left-0 w-72 max-w-[85vw] bg-white shadow-2xl border-r border-[#E5E7EB] animate-slide-in-left">
         {children}
       </div>
     </div>

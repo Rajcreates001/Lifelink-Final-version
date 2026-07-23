@@ -1,0 +1,71 @@
+"""LifeLink Alembic migration environment.
+
+Handles both async (alembic) and sync (schema.sql) migrations.
+"""
+
+import asyncio
+import os
+import sys
+from logging.config import fileConfig
+
+from alembic import context
+from sqlalchemy.ext.asyncio import create_async_engine
+
+# Add backend to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from app.core.config import get_settings
+from app.db.models import Base
+
+# Alembic Config object
+config = context.config
+
+# Set up logging
+if config.config_file_name is not None:
+    fileConfig(config.config_file_name)
+
+# Set target metadata for autogenerate
+target_metadata = Base.metadata
+
+
+def run_migrations_offline() -> None:
+    """Run migrations in 'offline' mode (emit SQL without connecting)."""
+    settings = get_settings()
+    context.configure(
+        url=settings.postgres_url,
+        target_metadata=target_metadata,
+        literal_binds=True,
+        dialect_opts={"paramstyle": "named"},
+    )
+
+    with context.begin_transaction():
+        context.run_migrations()
+
+
+def do_run_migrations(connection):
+    """Helper to run migrations with a connection."""
+    context.configure(connection=connection, target_metadata=target_metadata)
+    with context.begin_transaction():
+        context.run_migrations()
+
+
+async def run_async_migrations() -> None:
+    """Run migrations in 'online' mode with async engine."""
+    settings = get_settings()
+    connectable = create_async_engine(settings.postgres_url)
+
+    async with connectable.connect() as connection:
+        await connection.run_sync(do_run_migrations)
+
+    await connectable.dispose()
+
+
+def run_migrations_online() -> None:
+    """Run migrations in 'online' mode."""
+    asyncio.run(run_async_migrations())
+
+
+if context.is_offline_mode():
+    run_migrations_offline()
+else:
+    run_migrations_online()

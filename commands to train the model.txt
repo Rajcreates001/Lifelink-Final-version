@@ -1,0 +1,71 @@
+#train the models
+
+# Emergency Alert Classifier (NLP)
+>> python ai_ml.py train                                             
+>> 
+>> # Donor-Receiver Compatibility
+>> python ai_ml.py train_compat
+>>
+>> # Hospital Recommendation System
+>> python ai_ml.py train_recommend
+>>
+>> # Personal Health Risk Prediction
+>> python ai_ml.py train_risk
+>>
+>> # User Activity Clustering
+>> python ai_ml.py train_cluster
+>>
+>> # Donation Behavior Forecasting
+>> python ai_ml.py train_forecast
+>>
+>> # Emergency Hotspot Clustering
+>> python ai_ml.py train_hotspot
+>>
+>> # Regional Disease Outbreak Forecast (Prophet)
+>> python ai_ml.py train_forecast_outbreak
+>>
+>> # Emergency Severity Prediction (Gov View)
+>> python ai_ml.py train_severity
+>>
+>> # Donor Availability Forecast
+>> python ai_ml.py train_availability
+>>
+>> # Resource Allocation Optimization (Q-Learning)
+>> python ai_ml.py train_allocation
+>>
+>> # Policy Segmentation
+>> python ai_ml.py train_policy_seg
+>>
+>> # Healthcare Performance Score
+>> python ai_ml.py train_perf_score
+>>
+>> # Anomaly Detection (Fraud/Crisis)
+>> python ai_ml.py train_anomaly
+>>
+>> # Patient Severity Prediction (Triage)
+>> python ai_ml.py train_hosp_severity
+>>
+>> # Ambulance ETA & Route Optimization
+>> python ai_ml.py train_eta
+>>
+>> # Bed & Resource Demand Forecast
+>> python ai_ml.py train_bed_forecast
+>>
+>> # Staff Allocation Optimization
+>> python ai_ml.py train_staff_alloc
+>>
+>> # Hospital Performance Clustering
+>> python ai_ml.py train_hosp_perf
+>>
+>> # Patient Recovery Probability
+>> python ai_ml.py train_recovery
+>>
+>> # Patient Stay Duration Prediction
+>> python ai_ml.py train_stay
+>>
+>> # Hospital-Level Disease Case Forecast
+>> python ai_ml.py train_hosp_disease
+
+
+
+

@@ -1,0 +1,13 @@
+LifeLink Database Migrations
+=============================
+
+This directory contains Alembic database migrations for LifeLink.
+
+Creating a new migration:
+    alembic revision --autogenerate -m "description"
+
+Applying migrations:
+    alembic upgrade head
+
+Rolling back:
+    alembic downgrade -1

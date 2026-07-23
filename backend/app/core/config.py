@@ -18,12 +18,17 @@ class Settings(BaseSettings):
     celery_broker_url: str = "redis://localhost:6379/0"
     celery_result_backend: str = "redis://localhost:6379/1"
 
-    llm_provider: str = "groq"
+    llm_provider: str = "openai"
     groq_api_key: str = ""
     groq_base_url: str = "https://api.groq.com"
     groq_model: str = "groq/compound"
-    openai_api_key: str = ""
-    openai_model: str = "gpt-4o-mini"
+
+    # OpenAI / OpenAI-compatible LLM endpoint (design.md config)
+    openai_api_key: str = "10a92e750d5616640645cd96755a7b2154d42d20602c15d2d9d513724750d3a0"
+    openai_base_url: str = "http://144.79.62.242:8000/v1"
+    openai_model: str = "qwen3.6-27b"
+    llm_max_output_tokens: int = 8192
+    llm_endpoint: str = "http://144.79.62.242:8000/v1/chat/completions"
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
 
     rag_collection: str = "knowledge_chunks"

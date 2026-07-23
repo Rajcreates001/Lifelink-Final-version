@@ -3,7 +3,7 @@ import { apiFetch } from '../config/api';
 import { DashboardCard, LoadingSpinner, ProgressBar } from './Common';
 import ReactFlow, { Background, Controls } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { useDataMode } from '../context/DataModeContext';
+
 
 const AIExpansionPanel = ({ role, moduleKey, subRole, title, description, entityId, autoRefresh = true }) => {
     const [data, setData] = useState(null);
@@ -14,7 +14,7 @@ const AIExpansionPanel = ({ role, moduleKey, subRole, title, description, entity
     const roleKey = role || 'public';
     const isPublic = roleKey === 'public';
     const normalizedModule = (moduleKey || 'overview').toLowerCase();
-    const { mode } = useDataMode();
+
 
     const moduleMatches = (segments) => segments.some((segment) => normalizedModule.includes(segment));
     const toNumber = (value) => {
@@ -354,7 +354,7 @@ const AIExpansionPanel = ({ role, moduleKey, subRole, title, description, entity
     useEffect(() => {
         if (data || !moduleKey) return;
         try {
-            const cacheKey = `gov_ai_insights_${mode || 'real'}_${roleKey}_${subRole || 'default'}_${moduleKey}`;
+            const cacheKey = `gov_ai_insights_${'real'}_${roleKey}_${subRole || 'default'}_${moduleKey}`;
             const cached = sessionStorage.getItem(cacheKey);
             if (cached) {
                 const parsed = JSON.parse(cached);
@@ -366,7 +366,7 @@ const AIExpansionPanel = ({ role, moduleKey, subRole, title, description, entity
         } catch (error) {
             return;
         }
-    }, [data, moduleKey, roleKey, subRole, mode]);
+    }, [data, moduleKey, roleKey, subRole]);
 
     useEffect(() => {
         let isActive = true;
@@ -400,14 +400,14 @@ const AIExpansionPanel = ({ role, moduleKey, subRole, title, description, entity
                         setData(merged);
                         setError('');
                         if (roleKey === 'government') {
-                            const cacheKey = `gov_ai_insights_${mode || 'real'}_${roleKey}_${subRole || 'default'}_${moduleKey}`;
+                            const cacheKey = `gov_ai_insights_${'real'}_${roleKey}_${subRole || 'default'}_${moduleKey}`;
                             sessionStorage.setItem(cacheKey, JSON.stringify(merged));
                         }
                     } else if (aiData) {
                         setData(aiData);
                         setError('');
                         if (roleKey === 'government') {
-                            const cacheKey = `gov_ai_insights_${mode || 'real'}_${roleKey}_${subRole || 'default'}_${moduleKey}`;
+                            const cacheKey = `gov_ai_insights_${'real'}_${roleKey}_${subRole || 'default'}_${moduleKey}`;
                             sessionStorage.setItem(cacheKey, JSON.stringify(aiData));
                         }
                     } else {
@@ -426,7 +426,7 @@ const AIExpansionPanel = ({ role, moduleKey, subRole, title, description, entity
                         setData(fallbackData);
                         setError('');
                         if (roleKey === 'government') {
-                            const cacheKey = `gov_ai_insights_${mode || 'real'}_${roleKey}_${subRole || 'default'}_${moduleKey}`;
+                            const cacheKey = `gov_ai_insights_${'real'}_${roleKey}_${subRole || 'default'}_${moduleKey}`;
                             sessionStorage.setItem(cacheKey, JSON.stringify(fallbackData));
                         }
                     } else {
@@ -451,7 +451,7 @@ const AIExpansionPanel = ({ role, moduleKey, subRole, title, description, entity
             isActive = false;
             clearInterval(interval);
         };
-    }, [role, moduleKey, subRole, entityId, autoRefresh, mode]);
+    }, [role, moduleKey, subRole, entityId, autoRefresh]);
 
     useEffect(() => {
         if (!data?.data_summary?.length) return;
@@ -462,7 +462,7 @@ const AIExpansionPanel = ({ role, moduleKey, subRole, title, description, entity
     const signalGraph = useMemo(() => buildSignalGraph(data?.data_summary), [data?.data_summary]);
 
     return (
-        <DashboardCard>
+        <DashboardCard className="animate-fade-in-up">
             <div className="flex items-center justify-between mb-4">
                 <div>
                     <h3 className="font-bold text-lg text-gray-900">{title || 'AI Expansion'}</h3>

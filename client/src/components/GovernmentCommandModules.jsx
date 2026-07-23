@@ -7,7 +7,12 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import ReactFlow, { Background, Controls } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { useDataMode } from '../context/DataModeContext';
+
+import ReportDownloadButton from './ReportDownloadButton';
+import { useEmergencyFeed } from '../hooks/useWebSocket';
+import HeatMapView from './HeatMapView';
+import ExportButton from './ExportButton';
+import EmergencyHotspotMap from './EmergencyHotspotMap';
 
 const severityColor = (value) => {
     const key = String(value || '').toLowerCase();
@@ -312,17 +317,17 @@ export const GovernmentCommandCenter = () => {
 
     return (
         <div className="space-y-6">
-            <DashboardCard>
+            <DashboardCard className="animate-fade-in-up delay-100">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <p className="text-xs font-bold uppercase text-slate-500">Command Overview</p>
                         <p className="text-lg font-bold text-slate-800">System snapshot with AI decisions</p>
                     </div>
                     <div className="flex gap-2">
-                        <button className="px-3 py-2 text-xs font-bold bg-slate-900 text-white rounded" onClick={() => load(true)}>
+                        <button className="px-3 py-2 text-xs font-bold bg-slate-900 text-white rounded transition-all duration-200 hover:-translate-y-0.5 active:scale-95" onClick={() => load(true)}>
                             Refresh
                         </button>
-                        <button className="px-3 py-2 text-xs font-bold bg-indigo-600 text-white rounded" onClick={handleSeed} disabled={seeding}>
+                        <button className="px-3 py-2 text-xs font-bold bg-indigo-600 text-white rounded transition-all duration-200 hover:-translate-y-0.5 active:scale-95 disabled:opacity-60" onClick={handleSeed} disabled={seeding}>
                             {seeding ? 'Seeding...' : 'Seed Data'}
                         </button>
                     </div>
@@ -333,15 +338,15 @@ export const GovernmentCommandCenter = () => {
                 <LoadingSpinner />
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                    <DashboardCard>
+                    <DashboardCard className="animate-fade-in-up delay-200">
                         <p className="text-xs font-bold uppercase text-slate-500">Hospitals</p>
                         <p className="text-3xl font-black text-slate-900">{formatNumber(overview.hospitals)}</p>
                     </DashboardCard>
-                    <DashboardCard>
+                    <DashboardCard className="animate-fade-in-up delay-300">
                         <p className="text-xs font-bold uppercase text-slate-500">Ambulances</p>
                         <p className="text-3xl font-black text-slate-900">{formatNumber(overview.ambulances)}</p>
                     </DashboardCard>
-                    <DashboardCard>
+                    <DashboardCard className="animate-fade-in-up delay-400">
                         <p className="text-xs font-bold uppercase text-slate-500">Active Emergencies</p>
                         <p className="text-3xl font-black text-slate-900">{formatNumber(overview.emergencies)}</p>
                     </DashboardCard>
@@ -349,8 +354,11 @@ export const GovernmentCommandCenter = () => {
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <DashboardCard>
-                    <h3 className="text-lg font-bold text-slate-900 mb-3">Decision Engine</h3>
+                <DashboardCard className="animate-chart-entrance chart-delay-2">
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-lg font-bold text-slate-900">Decision Engine</h3>
+                        <ExportButton data={decisions} filename="gov_decisions" label="Export" columns={['event','location','reason','suggested_action','impact']} columnLabels={{ event: 'Event', location: 'Location', reason: 'Reason', suggested_action: 'Action', impact: 'Impact' }} />
+                    </div>
                     {decisions.length === 0 ? (
                         <p className="text-sm text-slate-500">No decisions generated yet.</p>
                     ) : (
@@ -370,7 +378,7 @@ export const GovernmentCommandCenter = () => {
                         </div>
                     )}
                 </DashboardCard>
-                <DashboardCard>
+                <DashboardCard className="animate-chart-entrance chart-delay-3">
                     <h3 className="text-lg font-bold text-slate-900 mb-3">Anomaly Intelligence</h3>
                     {!anomaly ? (
                         <p className="text-sm text-slate-500">No anomalies detected in the last 24 hours.</p>
@@ -388,6 +396,54 @@ export const GovernmentCommandCenter = () => {
                     )}
                 </DashboardCard>
             </div>
+
+            {/* Reports Section */}
+            <DashboardCard>
+                <div className="flex items-center justify-between mb-3">
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-900">Download Reports</h3>
+                        <p className="text-sm text-slate-500">Generate and download PDF reports.</p>
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <ReportDownloadButton
+                        endpoint="/api/reports/government/incident"
+                        data={{ region: "National", report_date: new Date().toISOString().split("T")[0] }}
+                        filename="gov_incident_report.pdf"
+                        label="Incident Report"
+                        variant="primary"
+                        size="sm"
+                        icon="fa-file-alt"
+                    />
+                    <ReportDownloadButton
+                        endpoint="/api/reports/government/resource"
+                        data={{ region: "National", report_date: new Date().toISOString().split("T")[0] }}
+                        filename="gov_resource_report.pdf"
+                        label="Resource Report"
+                        variant="secondary"
+                        size="sm"
+                        icon="fa-boxes"
+                    />
+                    <ReportDownloadButton
+                        endpoint="/api/reports/simulation/after-action"
+                        data={{ summary: { total: 0 }, recommendations: [] }}
+                        filename="gov_simulation_report.pdf"
+                        label="Simulation Report"
+                        variant="secondary"
+                        size="sm"
+                        icon="fa-atom"
+                    />
+                    <ReportDownloadButton
+                        endpoint="/api/reports/hospital/daily-ops"
+                        data={{ hospital_id: "national", report_date: new Date().toISOString().split("T")[0] }}
+                        filename="gov_daily_ops_report.pdf"
+                        label="Daily Ops"
+                        variant="ghost"
+                        size="sm"
+                        icon="fa-calendar-day"
+                    />
+                </div>
+            </DashboardCard>
         </div>
     );
 };
@@ -401,6 +457,34 @@ export const GovernmentLiveMonitoring = () => {
     const mountedRef = useRef(false);
     const cacheKey = 'gov_live_cache';
     const disableLiveRefresh = true;
+
+    // Real-time emergency feed via WebSocket
+    const {
+        feed: realtimeFeed,
+        isConnected: wsConnected,
+    } = useEmergencyFeed();
+
+    // Merge WebSocket feed items into the polling feed
+    useEffect(() => {
+        if (realtimeFeed.length === 0) return;
+        setFeed((prev) => {
+            const existingIds = new Set(prev.map((a) => a.id || a._id));
+            const newItems = realtimeFeed.filter(
+                (item) => !existingIds.has(item.id || item._id || item.alertId)
+            )
+            .map((item) => ({
+                ...item,
+                id: item.id || item._id || `ws-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                lat: Number(item.lat ?? item.latitude) || 12.9716,
+                lng: Number(item.lng ?? item.longitude) || 77.5946,
+                occurred_at: item.occurred_at || new Date().toISOString(),
+                type: item.message || item.type || 'Emergency alert',
+                severity: item.severity || 'High',
+            }));
+            if (newItems.length === 0) return prev;
+            return [...newItems, ...prev].slice(0, FEED_LIMIT);
+        });
+    }, [realtimeFeed]);
 
     const hospitalLoadData = useMemo(() => (
         hospitals.slice(0, 6).map((item) => ({
@@ -500,19 +584,28 @@ export const GovernmentLiveMonitoring = () => {
 
     return (
         <div className="space-y-6">
-            <DashboardCard>
+            <DashboardCard className="animate-fade-in-up delay-100">
                 <div className="flex items-center justify-between">
-                    <div>
-                        <p className="text-xs font-bold uppercase text-slate-500">Live Monitoring</p>
-                        <p className="text-lg font-bold text-slate-800">Operational feed and system health</p>
+                    <div className="flex items-center gap-3">
+                        <div>
+                            <p className="text-xs font-bold uppercase text-slate-500">Live Monitoring</p>
+                            <p className="text-lg font-bold text-slate-800">Operational feed and system health</p>
+                        </div>
+                        <span
+                            className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-0.5 rounded-full ${
+                                wsConnected
+                                    ? 'bg-emerald-100 text-emerald-700'
+                                    : 'bg-slate-100 text-slate-500'
+                            }`}
+                        >
+                            <span
+                                className={`inline-block h-2 w-2 rounded-full ${
+                                    wsConnected ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
+                                }`}
+                            />
+                            {wsConnected ? 'Live' : 'Offline'}
+                        </span>
                     </div>
-                    <button
-                        className="px-3 py-2 text-xs font-bold bg-slate-300 text-slate-600 rounded cursor-not-allowed"
-                        disabled
-                        title="Live refresh paused"
-                    >
-                        Refresh paused
-                    </button>
                 </div>
             </DashboardCard>
 
@@ -520,15 +613,15 @@ export const GovernmentLiveMonitoring = () => {
                 <LoadingSpinner />
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                    <DashboardCard>
+                    <DashboardCard className="animate-fade-in-up delay-400">
                         <p className="text-xs font-bold uppercase text-slate-500">Active Emergencies</p>
                         <p className="text-3xl font-black text-slate-900">{formatNumber(summary?.active_emergencies)}</p>
                     </DashboardCard>
-                    <DashboardCard>
+                    <DashboardCard className="animate-fade-in-up delay-300">
                         <p className="text-xs font-bold uppercase text-slate-500">Avg Response</p>
                         <p className="text-3xl font-black text-slate-900">{formatNumber(summary?.avg_response_minutes)}m</p>
                     </DashboardCard>
-                    <DashboardCard>
+                    <DashboardCard className="animate-fade-in-up delay-400">
                         <p className="text-xs font-bold uppercase text-slate-500">Resource Utilization</p>
                         <p className="text-3xl font-black text-slate-900">{formatNumber(summary?.resource_utilization)}%</p>
                     </DashboardCard>
@@ -558,7 +651,7 @@ export const GovernmentLiveMonitoring = () => {
             </DashboardCard>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <SimpleBarChart title="Severity Distribution" data={severityData} barColorClass="bg-red-500" />
+                <SimpleBarChart title="Severity Distribution" data={severityData} barColorClass="bg-red-500" className={wsConnected ? 'animate-border-glow' : ''} />
                 <DashboardCard className="p-0 overflow-hidden">
                     <div className="h-[380px] w-full">
                         <MapContainer center={feedCenter} zoom={10} scrollWheelZoom={false} style={{ height: '100%', width: '100%' }}>
@@ -595,7 +688,61 @@ export const GovernmentLiveMonitoring = () => {
                 </div>
             </DashboardCard>
 
-            <SimpleBarChart title="Top Hospital Load" data={hospitalLoadData} barColorClass="bg-sky-500" />
+            <SimpleBarChart title="Top Hospital Load" data={hospitalLoadData} barColorClass="bg-sky-500" className={wsConnected ? 'animate-border-glow' : ''} />
+
+            {/* Reports Section */}
+            <DashboardCard>
+                <div className="flex items-center justify-between mb-3">
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-900">Download Reports</h3>
+                        <p className="text-sm text-slate-500">Export monitoring snapshot as PDF.</p>
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <ReportDownloadButton
+                        endpoint="/api/reports/government/incident"
+                        data={{ region: "National", report_date: new Date().toISOString().split("T")[0] }}
+                        filename="monitoring_incident_report.pdf"
+                        label="Incident Snapshot"
+                        variant="primary"
+                        size="sm"
+                        icon="fa-file-alt"
+                    />
+                    <ReportDownloadButton
+                        endpoint="/api/reports/government/resource"
+                        data={{ region: "National", report_date: new Date().toISOString().split("T")[0] }}
+                        filename="monitoring_resource_report.pdf"
+                        label="Resource Snapshot"
+                        variant="secondary"
+                        size="sm"
+                        icon="fa-boxes"
+                    />
+                </div>
+            </DashboardCard>
+
+            {/* Heat Map — Emergency Density */}
+            <DashboardCard>
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-bold text-slate-900">Emergency Heat Map</h3>
+                        {wsConnected && (
+                            <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full animate-fade-in">
+                                <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                Live
+                            </span>
+                        )}
+                    </div>
+                </div>
+                <HeatMapView
+                    incidents={realtimeFeed.length > 0 ? realtimeFeed.slice(0, 50) : feed.slice(0, 50)}
+                    center={[12.9716, 77.5946]}
+                    zoom={11}
+                    height="420px"
+                />
+            </DashboardCard>
+
+            {/* Emergency Hotspots */}
+            <EmergencyHotspotMap />
         </div>
     );
 };
@@ -832,7 +979,7 @@ export const GovernmentPolicyWorkflow = () => {
                         <p className="text-xs font-bold uppercase text-slate-500">Policy Workflow</p>
                         <p className="text-lg font-bold text-slate-800">Translate AI insights into governance actions.</p>
                     </div>
-                    <button className="px-3 py-2 text-xs font-bold bg-slate-900 text-white rounded" onClick={() => load(true)}>
+                    <button className="px-3 py-2 text-xs font-bold bg-slate-900 text-white rounded transition-all duration-200 hover:-translate-y-0.5 active:scale-95" onClick={() => load(true)}>
                         Refresh
                     </button>
                 </div>
@@ -843,7 +990,10 @@ export const GovernmentPolicyWorkflow = () => {
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <DashboardCard>
-                        <h3 className="text-lg font-bold text-slate-900 mb-3">Decision-to-Policy</h3>
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-lg font-bold text-slate-900">Decision-to-Policy</h3>
+                            <ExportButton data={decisions} filename="gov_decision_to_policy" label="Export" columns={['event','reason','suggested_action','impact']} columnLabels={{ event: 'Event', reason: 'Reason', suggested_action: 'Action', impact: 'Impact' }} />
+                        </div>
                         {decisions.length === 0 ? (
                             <p className="text-sm text-slate-500">No decisions generated yet.</p>
                         ) : (
@@ -888,7 +1038,10 @@ export const GovernmentPolicyWorkflow = () => {
                 </div>
             )}
             <DashboardCard>
-                <h3 className="text-lg font-bold text-slate-900 mb-3">Policy Workflow Board</h3>
+                <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-lg font-bold text-slate-900">Policy Workflow Board</h3>
+                    <ExportButton data={policyActions} filename="gov_policy_workflow" label="Export" columns={['title','action','impact','status']} columnLabels={{ title: 'Title', action: 'Action', impact: 'Impact', status: 'Status' }} />
+                </div>
                     {policyActions.length === 0 ? (
                     <p className="text-sm text-slate-500">No policy actions created yet.</p>
                 ) : (
@@ -1059,7 +1212,7 @@ export const GovernmentVerificationCenter = ({ subRole }) => {
                         <h3 className="text-lg font-bold text-slate-900">Verification Center</h3>
                         <p className="text-xs text-slate-500">Track pending requests and verified assets.</p>
                     </div>
-                    <button className="px-3 py-2 text-xs font-bold bg-slate-900 text-white rounded" onClick={() => loadAll(true)}>
+                    <button className="px-3 py-2 text-xs font-bold bg-slate-900 text-white rounded transition-all duration-200 hover:-translate-y-0.5 active:scale-95" onClick={() => loadAll(true)}>
                         Refresh
                     </button>
                 </div>
@@ -1069,6 +1222,7 @@ export const GovernmentVerificationCenter = ({ subRole }) => {
                 <DashboardCard>
                     <div className="flex items-center justify-between mb-3">
                         <h3 className="text-lg font-bold text-slate-900">Pending Approvals</h3>
+                        <ExportButton data={pending} filename="gov_pending_approvals" label="Export" columns={['entity_id','entity_type','notes','createdAt']} columnLabels={{ entity_id: 'Entity ID', entity_type: 'Type', notes: 'Notes', createdAt: 'Created' }} formatValue={(v, col) => col === 'createdAt' && v ? new Date(v).toLocaleString() : undefined} />
                     </div>
                     {loading ? (
                         <LoadingSpinner />
@@ -1119,7 +1273,10 @@ export const GovernmentVerificationCenter = ({ subRole }) => {
             )}
 
             <DashboardCard>
-                <h3 className="text-lg font-bold text-slate-900 mb-3">Verified Hospitals</h3>
+                <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-lg font-bold text-slate-900">Verified Hospitals</h3>
+                    <ExportButton data={verifiedHospitals} filename="gov_verified_hospitals" label="Export" columns={['name','city','state','beds_available','beds_total','load_score']} columnLabels={{ name: 'Name', city: 'City', state: 'State', beds_available: 'Beds Available', beds_total: 'Total Beds', load_score: 'Load Score' }} formatValue={(v, col) => col === 'load_score' && v ? `${Math.round(v * 100)}%` : undefined} />
+                </div>
                 {loading ? (
                     <LoadingSpinner />
                 ) : verifiedHospitals.length === 0 ? (
@@ -1157,7 +1314,10 @@ export const GovernmentVerificationCenter = ({ subRole }) => {
             </DashboardCard>
 
             <DashboardCard>
-                <h3 className="text-lg font-bold text-slate-900 mb-3">Hospitals Waiting for Verification</h3>
+                <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-lg font-bold text-slate-900">Hospitals Waiting for Verification</h3>
+                    <ExportButton data={waitingHospitals} filename="gov_hospitals_waiting" label="Export" columns={['name','city','state','beds_available','beds_total']} columnLabels={{ name: 'Name', city: 'City', state: 'State', beds_available: 'Beds Available', beds_total: 'Total Beds' }} />
+                </div>
                 {loading ? (
                     <LoadingSpinner />
                 ) : waitingHospitals.length === 0 ? (
@@ -1198,7 +1358,10 @@ export const GovernmentVerificationCenter = ({ subRole }) => {
             </DashboardCard>
 
             <DashboardCard>
-                <h3 className="text-lg font-bold text-slate-900 mb-3">Verified Ambulances</h3>
+                <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-lg font-bold text-slate-900">Verified Ambulances</h3>
+                    <ExportButton data={verifiedAmbulances} filename="gov_verified_ambulances" label="Export" columns={['code','status','lat','lng']} columnLabels={{ code: 'Code', status: 'Status', lat: 'Latitude', lng: 'Longitude' }} formatValue={(v, col) => (col === 'lat' || col === 'lng') && v ? v.toFixed(3) : undefined} />
+                </div>
                 {loading ? (
                     <LoadingSpinner />
                 ) : verifiedAmbulances.length === 0 ? (
@@ -1236,7 +1399,10 @@ export const GovernmentVerificationCenter = ({ subRole }) => {
             </DashboardCard>
 
             <DashboardCard>
-                <h3 className="text-lg font-bold text-slate-900 mb-3">Ambulances Waiting for Verification</h3>
+                <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-lg font-bold text-slate-900">Ambulances Waiting for Verification</h3>
+                    <ExportButton data={waitingAmbulances} filename="gov_ambulances_waiting" label="Export" columns={['code','status','lat','lng']} columnLabels={{ code: 'Code', status: 'Status', lat: 'Latitude', lng: 'Longitude' }} formatValue={(v, col) => (col === 'lat' || col === 'lng') && v ? v.toFixed(3) : undefined} />
+                </div>
                 {loading ? (
                     <LoadingSpinner />
                 ) : waitingAmbulances.length === 0 ? (
@@ -1535,7 +1701,7 @@ export const GovernmentDisasterCenter = () => {
                 <DashboardCard>
                     <h3 className="text-lg font-bold text-slate-900 mb-3">Cluster Detection</h3>
                     <p className="text-sm text-slate-500 mb-3">Run detection on active emergencies to identify disaster zones.</p>
-                    <button className="px-3 py-2 text-xs font-bold bg-rose-600 text-white rounded" onClick={detectCluster}>
+                    <button className="px-3 py-2 text-xs font-bold bg-rose-600 text-white rounded transition-all duration-200 hover:-translate-y-0.5 active:scale-95" onClick={detectCluster}>
                         Detect Disaster Cluster
                     </button>
                 </DashboardCard>
@@ -1571,7 +1737,7 @@ export const GovernmentDisasterCenter = () => {
                             value={form.reason}
                             onChange={(event) => setForm({ ...form, reason: event.target.value })}
                         />
-                        <button className="px-3 py-2 text-xs font-bold bg-indigo-600 text-white rounded" onClick={triggerManual}>
+                        <button className="px-3 py-2 text-xs font-bold bg-indigo-600 text-white rounded transition-all duration-200 hover:-translate-y-0.5 active:scale-95" onClick={triggerManual}>
                             Trigger Disaster
                         </button>
                     </div>
@@ -1587,7 +1753,7 @@ export const GovernmentDisasterCenter = () => {
                                 value={broadcastMessage}
                                 onChange={(event) => setBroadcastMessage(event.target.value)}
                             />
-                            <button className="px-3 py-2 text-xs font-bold bg-slate-900 text-white rounded" onClick={broadcast}>
+                            <button className="px-3 py-2 text-xs font-bold bg-slate-900 text-white rounded transition-all duration-200 hover:-translate-y-0.5 active:scale-95" onClick={broadcast}>
                                 Broadcast Message
                             </button>
                         </div>
@@ -1689,7 +1855,7 @@ export const GovernmentSimulationCenter = () => {
     const [afterAction, setAfterAction] = useState(null);
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('control');
-    const { mode } = useDataMode();
+
     const [history, setHistory] = useState(() => {
         const cached = localStorage.getItem('gov_simulation_history');
         if (cached) {
@@ -1710,8 +1876,8 @@ export const GovernmentSimulationCenter = () => {
         { name: 'Recovery', intensity: 'medium', count: 40, duration: 22 },
     ]), []);
     const activePhases = useMemo(() => (
-        (mode === 'demo' && phases.length === 0) ? demoPhases : phases
-    ), [mode, phases, demoPhases]);
+        phases.length > 0 ? phases : demoPhases
+    ), [phases, demoPhases]);
     const phaseSeries = useMemo(() => (
         activePhases.map((phase, index) => ({
             label: phase.name || `Phase ${index + 1}`,
@@ -1735,18 +1901,6 @@ export const GovernmentSimulationCenter = () => {
     };
 
     const startSession = async () => {
-        if (mode === 'demo') {
-            const demoId = `demo-sim-${Date.now()}`;
-            setSessionId(demoId);
-            pushHistory({
-                id: `sim-${Date.now()}`,
-                action: 'Session started',
-                detail: `Session ${demoId}`,
-                status: 'running',
-                time: new Date().toLocaleString(),
-            });
-            return;
-        }
         const res = await apiFetch('/v2/government/simulation/start', { method: 'POST', body: JSON.stringify({ intensity: 'medium' }) });
         if (res.ok) {
             setSessionId(res.data?.session_id || '');
@@ -1763,17 +1917,7 @@ export const GovernmentSimulationCenter = () => {
     const runMultiPhase = async () => {
         setLoading(true);
         try {
-            if (mode === 'demo') {
-                pushHistory({
-                    id: `sim-${Date.now()}`,
-                    action: 'Multi-phase run',
-                    detail: `${activePhases.length} phases · ${activePhases.reduce((sum, phase) => sum + (Number(phase.count) || 0), 0)} incidents`,
-                    status: 'complete',
-                    time: new Date().toLocaleString(),
-                });
-                setLoading(false);
-                return;
-            }
+
             let id = sessionId;
             if (!id) {
                 const res = await apiFetch('/v2/government/simulation/start', { method: 'POST', body: JSON.stringify({ intensity: 'medium' }) });
@@ -1799,16 +1943,6 @@ export const GovernmentSimulationCenter = () => {
 
     const stopSession = async () => {
         if (!sessionId) return;
-        if (mode === 'demo') {
-            pushHistory({
-                id: `sim-${Date.now()}`,
-                action: 'Session stopped',
-                detail: `Session ${sessionId}`,
-                status: 'stopped',
-                time: new Date().toLocaleString(),
-            });
-            return;
-        }
         await apiFetch(`/v2/government/simulation/stop/${sessionId}`, { method: 'POST' });
         pushHistory({
             id: `sim-${Date.now()}`,
@@ -1821,22 +1955,6 @@ export const GovernmentSimulationCenter = () => {
 
     const generateReport = async () => {
         if (!sessionId) return;
-        if (mode === 'demo') {
-            const report = {
-                summary: { total: 118, critical: 16, response_gap_minutes: 11 },
-                recommendations: ['Deploy surge ICU teams', 'Activate mobile triage unit', 'Increase standby ambulances'],
-            };
-            setAfterAction(report);
-            localStorage.setItem('gov_simulation_report', JSON.stringify(report));
-            pushHistory({
-                id: `sim-${Date.now()}`,
-                action: 'After-action report',
-                detail: `Critical ${report.summary.critical} · Gap ${report.summary.response_gap_minutes}m`,
-                status: 'report',
-                time: new Date().toLocaleString(),
-            });
-            return;
-        }
         const res = await apiFetch(`/v2/government/simulation/after-action/${sessionId}`, { method: 'POST' });
         if (res.ok) {
             setAfterAction(res.data?.report || null);
@@ -1886,10 +2004,10 @@ export const GovernmentSimulationCenter = () => {
                         >
                             History
                         </button>
-                        <button className="px-3 py-2 text-xs font-bold bg-slate-900 text-white rounded" onClick={startSession}>
+                        <button className="px-3 py-2 text-xs font-bold bg-slate-900 text-white rounded transition-all duration-200 hover:-translate-y-0.5 active:scale-95" onClick={startSession}>
                             Start Session
                         </button>
-                        <button className="px-3 py-2 text-xs font-bold bg-rose-600 text-white rounded" onClick={stopSession}>
+                        <button className="px-3 py-2 text-xs font-bold bg-rose-600 text-white rounded transition-all duration-200 hover:-translate-y-0.5 active:scale-95" onClick={stopSession}>
                             Stop
                         </button>
                     </div>
@@ -1961,7 +2079,7 @@ export const GovernmentSimulationCenter = () => {
                         onChange={(event) => setPhaseForm({ ...phaseForm, duration: Number(event.target.value) })}
                     />
                 </div>
-                <button className="px-3 py-2 text-xs font-bold bg-indigo-600 text-white rounded" onClick={addPhase}>
+                <button className="px-3 py-2 text-xs font-bold bg-indigo-600 text-white rounded transition-all duration-200 hover:-translate-y-0.5 active:scale-95" onClick={addPhase}>
                     Add Phase
                 </button>
                 {activePhases.length > 0 && (
@@ -2020,7 +2138,18 @@ export const GovernmentSimulationCenter = () => {
 
             {afterAction && (
                 <DashboardCard>
-                    <h3 className="text-lg font-bold text-slate-900 mb-3">After-Action Report</h3>
+                    <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-lg font-bold text-slate-900 mb-0">After-Action Report</h3>
+                        <ReportDownloadButton
+                            endpoint="/api/reports/simulation/after-action"
+                            data={{ summary: afterAction.summary, recommendations: afterAction.recommendations }}
+                            filename="simulation_after_action_report.pdf"
+                            label="Download PDF"
+                            variant="danger"
+                            size="sm"
+                            icon="fa-file-pdf"
+                        />
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <p className="text-xs text-slate-500">Total Incidents</p>
