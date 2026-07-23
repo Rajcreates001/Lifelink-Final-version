@@ -8,7 +8,7 @@ import Card from '../components/ui/Card';
 import SearchBar from '../components/ui/SearchBar';
 import { apiFetch } from '../config/api';
 import LifelinkAiChat from '../components/LifelinkAiChat';
-import DataModeToggle from '../components/ui/DataModeToggle';
+
 
 import ProfileModal from '../components/ProfileModal';
 import HospitalProfileModal from '../components/HospitalProfileModal';
@@ -96,13 +96,6 @@ const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, on
     const handleSwitchRole = () => {
         const role = user?.role?.toLowerCase();
         if (!role) return;
-        const isDemo = localStorage.getItem('lifelink_data_mode') === 'demo';
-
-        if (isDemo) {
-            navigate(`/demo/role/${role}`);
-            return;
-        }
-
         if (role === 'hospital') {
             navigate('/dashboard/hospital/roles?switch=1', { replace: true });
             return;
@@ -223,14 +216,14 @@ const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, on
         return (
             <Card className="mb-6">
                 <div className="flex items-center justify-between mb-3">
-                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                    <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
                         Database Results
                     </p>
                     {searchResult?.offline && (
                         <span className="text-[10px] text-amber-600 font-semibold uppercase">Offline cache</span>
                     )}
                     <button
-                        className="text-xs text-slate-400 hover:text-slate-600"
+                        className="text-xs text-gray-400 hover:text-gray-600 transition-colors duration-200"
                         onClick={() => {
                             setSearchResult(null);
                             setSearchError('');
@@ -240,15 +233,15 @@ const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, on
                     </button>
                 </div>
                 {searchError && (
-                    <p className="text-sm text-red-600">{searchError}</p>
+                    <p className="text-sm text-[#DC2626]">{searchError}</p>
                 )}
                 {searchResult?.mode === 'ai' && (
                     <div>
-                        <p className="text-sm text-slate-700 whitespace-pre-line">{searchResult.data.answer}</p>
+                        <p className="text-sm text-gray-700 whitespace-pre-line">{searchResult.data.answer}</p>
                         {searchResult.data.contextUsed?.length > 0 && (
                             <div className="mt-4 space-y-2">
                                 {searchResult.data.contextUsed.map((item, idx) => (
-                                    <div key={idx} className="p-3 bg-slate-50 rounded-xl text-xs text-slate-600">
+                                    <div key={idx} className="p-3 bg-gray-50 rounded-xl text-xs text-gray-600">
                                         {item.content}
                                     </div>
                                 ))}
@@ -260,12 +253,12 @@ const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, on
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                         {Object.entries(searchResult.data.results || {}).map(([key, items]) => (
                             <div key={key}>
-                                <p className="font-semibold text-slate-700 mb-2 capitalize">{key}</p>
+                                <p className="font-semibold text-gray-700 mb-2 capitalize">{key}</p>
                                 {items?.length ? (
                                     items.map((item) => (
-                                        <div key={item._id} className="p-2 bg-slate-50 rounded-lg mb-2">
-                                            <p className="text-slate-700 font-medium">{item.name || item.message || item.ambulanceId || 'Record'}</p>
-                                            <p className="text-xs text-slate-500">
+                                        <div key={item._id} className="p-2 bg-gray-50 rounded-lg mb-2">
+                                            <p className="text-gray-700 font-medium">{item.name || item.message || item.ambulanceId || 'Record'}</p>
+                                            <p className="text-xs text-gray-500">
                                                 {item.email
                                                     || (typeof item.location === 'string'
                                                         ? item.location
@@ -276,7 +269,7 @@ const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, on
                                         </div>
                                     ))
                                 ) : (
-                                    <p className="text-xs text-slate-400">No matches</p>
+                                    <p className="text-xs text-gray-400">No matches</p>
                                 )}
                             </div>
                         ))}
@@ -312,7 +305,7 @@ const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, on
                     hasUnread={hasUnread}
                 />
                 <div className="relative flex-1 min-w-0">
-                    <main className={`flex-1 min-w-0 flex flex-col lg:h-screen transition-all duration-300 ${isAiPanelOpen ? 'lg:mr-[360px]' : ''}`}>
+                    <main className={`flex-1 min-w-0 flex flex-col lg:h-screen transition-all duration-500 ease-out ${isAiPanelOpen ? 'lg:mr-[360px]' : ''}`}>
                         <ResponsiveNavbar
                             title="LifeLink"
                             subtitle={subtitle}
@@ -323,7 +316,7 @@ const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, on
                         />
 
                         {isMobileSearchOpen && (
-                            <div className="lg:hidden bg-white/95 backdrop-blur border-b border-slate-200 px-4 pb-3">
+                            <div className="lg:hidden bg-white/90 backdrop-blur-lg border-b border-[#E5E7EB] px-4 pb-3">
                                 <div className="flex items-center gap-3">
                                     <div className="flex-1 min-w-0">
                                         <SearchBar
@@ -335,23 +328,23 @@ const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, on
                                             loading={searchLoading}
                                         />
                                     </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsAiPanelOpen((prev) => !prev)}
-                                        className="text-xs font-semibold bg-white text-slate-700 border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-50 shrink-0 flex items-center gap-2"
-                                    >
-                                        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-tr from-sky-600 to-indigo-600 text-white text-[10px]">
-                                            <i className="fas fa-heartbeat"></i>
-                                        </span>
-                                        LifeLink AI
-                                    </button>
-                                    <DataModeToggle size="sm" />
+                                <button
+                                    type="button"
+                                    onClick={() => setIsAiPanelOpen((prev) => !prev)}
+                                    className="group text-xs font-semibold text-gray-700 border border-[#E5E7EB] px-3 py-2 rounded-lg shrink-0 flex items-center gap-2 transition-all duration-200 hover:-translate-y-0.5 active:scale-95 shadow-[0_0_0_1px_rgba(0,0,0,0.02)] hover:shadow-[0_4px_12px_rgba(99,102,241,0.15)] hover:border-[#7C3AED]/20 bg-white/80 backdrop-blur-sm"
+                                >
+                                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-tr from-[#2563EB] to-[#7C3AED] text-white text-[10px] group-hover:animate-ai-sparkle">
+                                        <i className="fas fa-heartbeat"></i>
+                                    </span>
+                                    <span className="bg-gradient-to-r from-[#2563EB] to-[#7C3AED] bg-clip-text text-transparent font-semibold">LifeLink AI</span>
+                                </button>
                                     {onRefresh && (
                                         <button
                                             type="button"
                                             onClick={onRefresh}
-                                            className="text-xs font-semibold bg-slate-900 text-white px-3 py-2 rounded-lg hover:bg-slate-800 shrink-0"
+                                            className="text-xs font-semibold bg-gradient-to-r from-[#2563EB] to-[#7C3AED] text-white px-3 py-2 rounded-lg hover:shadow-lg hover:from-[#1D4ED8] hover:to-[#6D28D9] shrink-0 transition-all duration-200 active:scale-95 shadow-md hover:-translate-y-0.5"
                                         >
+                                            <i className="fas fa-rotate mr-1.5 transition-transform duration-500 hover:rotate-180"></i>
                                             {refreshLabel}
                                         </button>
                                     )}
@@ -359,7 +352,7 @@ const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, on
                             </div>
                         )}
 
-                        <div className="hidden lg:block sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-slate-200 shrink-0">
+                        <div className="hidden lg:block sticky top-0 z-30 bg-white/90 backdrop-blur-lg border-b border-[#E5E7EB] shrink-0">
                             <div className="px-6 sm:px-8 py-4">
                                 <div className="flex items-center gap-3">
                                     <div className="flex-1 min-w-0">
@@ -372,48 +365,52 @@ const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, on
                                             loading={searchLoading}
                                         />
                                     </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsAiPanelOpen((prev) => !prev)}
-                                        className="text-xs font-semibold bg-white text-slate-700 border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-50 shrink-0 flex items-center gap-2"
-                                    >
-                                        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-tr from-sky-600 to-indigo-600 text-white text-[10px]">
-                                            <i className="fas fa-heartbeat"></i>
-                                        </span>
-                                        LifeLink AI
-                                    </button>
-                                    <DataModeToggle size="sm" />
+                                <button
+                                    type="button"
+                                    onClick={() => setIsAiPanelOpen((prev) => !prev)}
+                                    className="group text-xs font-semibold text-gray-700 border border-[#E5E7EB] px-3 py-2 rounded-lg shrink-0 flex items-center gap-2 transition-all duration-200 hover:-translate-y-0.5 active:scale-95 animate-breathing-glow shadow-[0_0_0_1px_rgba(0,0,0,0.02)] hover:shadow-[0_4px_12px_rgba(99,102,241,0.15)] hover:border-[#7C3AED]/20 bg-white/80 backdrop-blur-sm"
+                                >
+                                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-tr from-[#2563EB] to-[#7C3AED] text-white text-[10px] group-hover:animate-ai-sparkle">
+                                        <i className="fas fa-heartbeat"></i>
+                                    </span>
+                                    <span className="bg-gradient-to-r from-[#2563EB] to-[#7C3AED] bg-clip-text text-transparent font-semibold">LifeLink AI</span>
+                                </button>
                                     {onRefresh && (
                                         <button
                                             type="button"
                                             onClick={onRefresh}
-                                            className="text-xs font-semibold bg-slate-900 text-white px-3 py-2 rounded-lg hover:bg-slate-800 shrink-0"
+                                            className="text-xs font-semibold bg-gradient-to-r from-[#2563EB] to-[#7C3AED] text-white px-3 py-2 rounded-lg hover:shadow-lg hover:from-[#1D4ED8] hover:to-[#6D28D9] shrink-0 transition-all duration-200 active:scale-95 shadow-md hover:-translate-y-0.5"
                                         >
+                                            <i className="fas fa-rotate mr-1.5 transition-transform duration-500 hover:rotate-180"></i>
                                             {refreshLabel}
                                         </button>
                                     )}
                                 </div>
                             </div>
                         </div>
-                        <div className="flex-1 px-4 sm:px-6 lg:px-8 py-6 lg:py-8 lg:overflow-y-auto">
+                        <div className="flex-1 px-4 sm:px-6 lg:px-8 py-6 lg:py-8 lg:overflow-y-auto" key={activeItem || 'default'}>
+                            <div className="animate-page-enter">
                             {isNotificationsTab ? (
-                                <div className="w-full">
+                                <div className="w-full animate-fade-in-up">
                                     <NotificationMenu variant="panel" onMarkRead={() => setHasUnread(false)} />
                                 </div>
                             ) : isProfileTab ? (
-                                <div className="w-full">
+                                <div className="w-full animate-fade-in-up">
                                     {renderProfilePanel()}
                                 </div>
                             ) : (
                                 <>
                                     {renderSearchResults()}
-                                    {children}
+                                    <div className="animate-fade-in-up">
+                                        {children}
+                                    </div>
                                 </>
                             )}
+                            </div>
                         </div>
                     </main>
                     <aside
-                        className={`hidden lg:flex flex-col absolute right-0 top-0 h-full w-[360px] bg-white/95 backdrop-blur border-l border-slate-200 shadow-xl transition-transform duration-300 ${isAiPanelOpen ? 'translate-x-0' : 'translate-x-full'}`}
+                        className={`hidden lg:flex flex-col absolute right-0 top-0 h-full w-[360px] bg-white/95 backdrop-blur-lg border-l border-[#E5E7EB] shadow-2xl transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${isAiPanelOpen ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}
                     >
                         <div className="p-4 h-full">
                             <LifelinkAiChat
@@ -427,8 +424,8 @@ const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, on
                 </div>
             </div>
             {isAiPanelOpen && (
-                <div className="lg:hidden fixed inset-0 z-50 bg-slate-900/30">
-                    <div className="absolute right-0 top-0 h-full w-full sm:max-w-md bg-white shadow-2xl p-4">
+                <div className="lg:hidden fixed inset-0 z-50 bg-gray-900/30 backdrop-blur-sm animate-fade-in">
+                    <div className="absolute right-0 top-0 h-full w-full sm:max-w-md bg-white shadow-2xl p-4 animate-slide-in-right">
                         <LifelinkAiChat
                             variant="panel"
                             onClose={() => setIsAiPanelOpen(false)}

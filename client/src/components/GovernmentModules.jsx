@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { apiFetch } from '../config/api';
 import { DashboardCard, LoadingSpinner, StatusPill } from './Common';
+import ExportButton from './ExportButton';
 
 export const GovernmentReports = () => {
     const [reports, setReports] = useState([]);
@@ -53,7 +54,10 @@ export const GovernmentReports = () => {
 
     return (
         <DashboardCard>
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Reports Center</h3>
+            <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-gray-900">Reports Center</h3>
+                <ExportButton data={reports} filename="government_reports" label="Export" columns={['title','scope','status','summary']} columnLabels={{ title: 'Title', scope: 'Scope', status: 'Status', summary: 'Summary' }} />
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
                 <input className="p-2 border rounded" placeholder="Report Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
                 <select className="p-2 border rounded" value={form.scope} onChange={(e) => setForm({ ...form, scope: e.target.value })}>
@@ -176,7 +180,10 @@ export const GovernmentComplianceMonitoring = () => {
 
     return (
         <DashboardCard>
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Compliance Monitoring</h3>
+            <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-gray-900">Compliance Monitoring</h3>
+                <ExportButton data={items} filename="government_compliance" label="Export" columns={['hospitalId','status','findings','owner']} columnLabels={{ hospitalId: 'Hospital ID', status: 'Status', findings: 'Findings', owner: 'Owner' }} />
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
                 <input className="p-2 border rounded" placeholder="Hospital ID" value={form.hospitalId} onChange={(e) => setForm({ ...form, hospitalId: e.target.value })} />
                 <input className="p-2 border rounded" placeholder="Owner" value={form.owner} onChange={(e) => setForm({ ...form, owner: e.target.value })} />
@@ -262,7 +269,10 @@ export const GovernmentHospitalMonitoring = () => {
 
     return (
         <DashboardCard>
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Hospital Monitoring</h3>
+            <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-gray-900">Hospital Monitoring</h3>
+                <ExportButton data={hospitals} filename="government_hospital_monitoring" label="Export" columns={['name','location','beds.totalBeds','beds.availableBeds']} columnLabels={{ name: 'Name', location: 'Location', 'beds.totalBeds': 'Total Beds', 'beds.availableBeds': 'Available Beds' }} />
+            </div>
             <div className="flex flex-col md:flex-row md:items-center gap-2 mb-4">
                 <input className="p-2 border rounded flex-1" placeholder="Search hospitals" value={search} onChange={(e) => setSearch(e.target.value)} />
                 <select className="p-2 border rounded" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
@@ -334,7 +344,10 @@ export const GovernmentDistrictEmergencies = () => {
 
     return (
         <DashboardCard>
-            <h3 className="text-lg font-bold text-gray-900 mb-4">District Emergencies</h3>
+            <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-gray-900">District Emergencies</h3>
+                <ExportButton data={alerts} filename="government_district_emergencies" label="Export" columns={['message','emergencyType','locationDetails']} columnLabels={{ message: 'Alert', emergencyType: 'Severity', locationDetails: 'Location' }} />
+            </div>
             <div className="flex flex-col md:flex-row md:items-center gap-2 mb-4">
                 <input className="p-2 border rounded flex-1" placeholder="Search emergencies" value={search} onChange={(e) => setSearch(e.target.value)} />
                 <select className="p-2 border rounded" value={severityFilter} onChange={(e) => setSeverityFilter(e.target.value)}>

@@ -3,6 +3,9 @@ import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL, apiFetch, getAuthToken } from '../config/api';
 import { DashboardCard, ExplainabilityPanel, LoadingSpinner, ProgressBar, StatusPill } from './Common';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import ReportDownloadButton from './ReportDownloadButton';
+import { useEmergencyFeed } from '../hooks/useWebSocket';
+import ExportButton from './ExportButton';
 
 const _toInt = (value, fallback = 0) => {
     const parsed = Number.parseInt(value, 10);
@@ -88,8 +91,8 @@ export const HospitalDepartmentAnalytics = () => {
     }, [stats]);
 
     return (
-        <div className="space-y-6">
-            <DashboardCard>
+        <div className="space-y-6 animate-fade-in">
+            <DashboardCard className="animate-fade-in-up delay-100">
                 <h4 className="font-bold text-gray-800 mb-3">Capture Department Log</h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <select
@@ -141,7 +144,7 @@ export const HospitalDepartmentAnalytics = () => {
                             onChange={(e) => setLogForm({ ...logForm, queueLength: e.target.value })}
                         />
                         <button
-                            className="bg-slate-900 text-white rounded px-3"
+                            className="bg-slate-900 text-white rounded px-3 transition-all duration-200 hover:-translate-y-0.5 active:scale-95"
                             type="button"
                             onClick={handleAddLog}
                         >
@@ -151,7 +154,7 @@ export const HospitalDepartmentAnalytics = () => {
                 </div>
             </DashboardCard>
 
-            <DashboardCard>
+            <DashboardCard className="animate-fade-in-up delay-200">
                 <div className="flex justify-between items-center mb-4">
                     <div>
                         <h3 className="text-lg font-bold text-gray-900">Department Analytics</h3>
@@ -164,21 +167,22 @@ export const HospitalDepartmentAnalytics = () => {
                 ) : departmentData.length === 0 ? (
                     <div className="text-sm text-gray-500">No department performance data yet.</div>
                 ) : (
-                    <div className="h-72">
+                    <div className="h-72 animate-chart-entrance chart-delay-1">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={departmentData}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                 <XAxis dataKey="name" />
                                 <YAxis allowDecimals={false} />
                                 <Tooltip />
-                                <Bar dataKey="value" fill="#2563eb" radius={[6, 6, 0, 0]} />
+                                <Bar dataKey="value" fill="#2563eb" radius={[6, 6, 0, 0]}
+                                    isAnimationActive={true} animationDuration={800} animationBegin={200} />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
                 )}
             </DashboardCard>
             {stats?.departments?.length ? (
-                <DashboardCard>
+                <DashboardCard className="animate-fade-in-up delay-300">
                     <h4 className="font-bold text-gray-800 mb-3">Performance Ranking</h4>
                     {stats?.bottlenecks?.length ? (
                         <div className="mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2">
@@ -274,32 +278,32 @@ export const HospitalFinanceOverview = () => {
         : 0;
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-fade-in">
             {loading ? (
                 <LoadingSpinner />
             ) : (
                 <>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <DashboardCard>
+                        <DashboardCard className="animate-fade-in-up delay-100">
                             <p className="text-xs text-gray-500">Monthly Revenue</p>
                             <p className="text-2xl font-bold text-gray-900">₹{latestMonth?.value || 0}</p>
                             <p className={`text-xs ${monthDelta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                 {monthDelta >= 0 ? '+' : ''}{monthDelta.toFixed(1)}% vs last month
                             </p>
                         </DashboardCard>
-                        <DashboardCard>
+                        <DashboardCard className="animate-fade-in-up delay-200">
                             <p className="text-xs text-gray-500">Claims Pending</p>
                             <p className="text-2xl font-bold text-gray-900">{pendingClaims.length}</p>
                             <p className="text-xs text-amber-600">Open claims in review</p>
                         </DashboardCard>
-                        <DashboardCard>
+                        <DashboardCard className="animate-fade-in-up delay-300">
                             <p className="text-xs text-gray-500">Operating Cost</p>
                             <p className="text-2xl font-bold text-gray-900">₹{summary?.totalExpenses || 0}</p>
                             <p className="text-xs text-indigo-600">Utilization {utilization}%</p>
                         </DashboardCard>
                     </div>
 
-                    <DashboardCard>
+                    <DashboardCard className="animate-chart-entrance chart-delay-2">
                         <h3 className="text-lg font-bold text-gray-900 mb-4">Revenue vs Claims</h3>
                         {chartData.length === 0 ? (
                             <div className="text-sm text-gray-500">No finance activity yet.</div>
@@ -311,8 +315,10 @@ export const HospitalFinanceOverview = () => {
                                         <XAxis dataKey="month" />
                                         <YAxis />
                                         <Tooltip />
-                                        <Bar dataKey="revenue" fill="#16a34a" radius={[6, 6, 0, 0]} />
-                                        <Bar dataKey="claims" fill="#f97316" radius={[6, 6, 0, 0]} />
+                                        <Bar dataKey="revenue" fill="#16a34a" radius={[6, 6, 0, 0]}
+                                            isAnimationActive={true} animationDuration={800} animationBegin={200} />
+                                        <Bar dataKey="claims" fill="#f97316" radius={[6, 6, 0, 0]}
+                                            isAnimationActive={true} animationDuration={800} animationBegin={400} />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>
@@ -464,9 +470,12 @@ export const HospitalStaffManagement = () => {
     };
 
     return (
-        <div className="space-y-6">
-            <DashboardCard>
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Staff Management</h3>
+        <div className="space-y-6 animate-fade-in">
+            <DashboardCard className="animate-fade-in-up delay-100">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-bold text-gray-900">Staff Management</h3>
+                    <ExportButton data={staff} filename="hospital_staff" label="Export" columns={['name','department','role','availability']} columnLabels={{ name: 'Name', department: 'Department', role: 'Role', availability: 'Available' }} formatValue={(v, col) => col === 'availability' ? (v ? 'Yes' : 'No') : undefined} />
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                     <input
                         className="p-2 border rounded"
@@ -505,12 +514,12 @@ export const HospitalStaffManagement = () => {
                 </div>
             </DashboardCard>
 
-            <DashboardCard>
+            <DashboardCard className="animate-fade-in-up delay-200">
                 <div className="flex items-center justify-between mb-4">
                     <h4 className="font-bold text-gray-800">Active Staff</h4>
                     <button
                         type="button"
-                        className="text-xs bg-slate-900 text-white px-3 py-2 rounded"
+                        className="text-xs bg-slate-900 text-white px-3 py-2 rounded transition-all duration-200 hover:-translate-y-0.5 active:scale-95"
                         onClick={handleSave}
                         disabled={saving}
                     >
@@ -559,8 +568,8 @@ export const HospitalStaffManagement = () => {
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <StatusPill text={item.availability ? 'Available' : 'Off Duty'} color={item.availability ? 'green' : 'gray'} />
-                                        <button className="text-xs text-indigo-600" onClick={() => handleToggle(item.id)}>Toggle</button>
-                                        <button className="text-xs text-red-500" onClick={() => handleRemove(item.id)}>Remove</button>
+                                        <button className="text-xs text-indigo-600 hover:text-indigo-800 transition-colors duration-150" onClick={() => handleToggle(item.id)}>Toggle</button>
+                                        <button className="text-xs text-red-500 hover:text-red-700 transition-colors duration-150" onClick={() => handleRemove(item.id)}>Remove</button>
                                     </div>
                                 </div>
                             ))
@@ -570,7 +579,7 @@ export const HospitalStaffManagement = () => {
             </DashboardCard>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <DashboardCard>
+                <DashboardCard className="animate-fade-in-up delay-300">
                     <h4 className="font-bold text-gray-800 mb-3">Skill Mix Summary</h4>
                     {!skillSummary ? (
                         <div className="text-sm text-gray-500">No skill tags recorded yet.</div>
@@ -595,7 +604,7 @@ export const HospitalStaffManagement = () => {
                     )}
                 </DashboardCard>
 
-                <DashboardCard>
+                <DashboardCard className="animate-fade-in-up delay-400">
                     <h4 className="font-bold text-gray-800 mb-3">Staff Optimizer</h4>
                     {!optimizer ? (
                         <div className="text-sm text-gray-500">No optimizer insights yet.</div>
@@ -714,8 +723,65 @@ export const HospitalReports = () => {
     };
 
     return (
-        <div className="space-y-6">
-            <DashboardCard>
+        <div className="space-y-6 animate-fade-in">
+            {/* PDF Report Generation */}
+            <DashboardCard className="animate-fade-in-up delay-100">
+                <div className="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 className="text-lg font-bold text-gray-900">PDF Reports</h3>
+                        <p className="text-sm text-gray-500">Generate professional PDF reports with full formatting.</p>
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <ReportDownloadButton
+                        endpoint="/api/reports/hospital/daily-ops"
+                        data={{ hospital_id: hospitalId, report_date: new Date().toISOString().split('T')[0] }}
+                        filename={`daily_ops_${hospitalId}.pdf`}
+                        label="Daily Operations"
+                        variant="primary"
+                        size="sm"
+                        icon="fa-calendar-day"
+                    />
+                    <ReportDownloadButton
+                        endpoint="/api/reports/hospital/financial"
+                        data={{ hospital_id: hospitalId, report_date: new Date().toISOString().split('T')[0] }}
+                        filename={`financial_report_${hospitalId}.pdf`}
+                        label="Financial Report"
+                        variant="secondary"
+                        size="sm"
+                        icon="fa-chart-line"
+                    />
+                    <ReportDownloadButton
+                        endpoint="/api/reports/hospital/compliance"
+                        data={{ hospital_id: hospitalId, report_date: new Date().toISOString().split('T')[0] }}
+                        filename={`compliance_${hospitalId}.pdf`}
+                        label="Compliance"
+                        variant="secondary"
+                        size="sm"
+                        icon="fa-shield-alt"
+                    />
+                    <ReportDownloadButton
+                        endpoint="/api/reports/hospital/incident"
+                        data={{ hospital_id: hospitalId, report_date: new Date().toISOString().split('T')[0] }}
+                        filename={`incident_report_${hospitalId}.pdf`}
+                        label="Incident Report"
+                        variant="danger"
+                        size="sm"
+                        icon="fa-exclamation-triangle"
+                    />
+                    <ReportDownloadButton
+                        endpoint="/api/reports/hospital/resource"
+                        data={{ hospital_id: hospitalId, report_date: new Date().toISOString().split('T')[0] }}
+                        filename={`resource_report_${hospitalId}.pdf`}
+                        label="Resource Usage"
+                        variant="secondary"
+                        size="sm"
+                        icon="fa-boxes"
+                    />
+                </div>
+            </DashboardCard>
+
+            <DashboardCard className="animate-fade-in-up delay-200">
                 <h3 className="text-lg font-bold text-gray-900 mb-4">Reports Center</h3>
                 {loading ? (
                     <LoadingSpinner />
@@ -733,9 +799,7 @@ export const HospitalReports = () => {
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <StatusPill text={report.status || 'Draft'} color={report.status === 'Ready' ? 'green' : 'yellow'} />
-                                    <button
-                                        className="text-xs text-indigo-600"
-                                        onClick={() => handleGenerate(report.reportKey)}
+                                    <button className="text-xs text-indigo-600 hover:text-indigo-800 transition-colors duration-150" onClick={() => handleGenerate(report.reportKey)}
                                         disabled={workingKey === report.reportKey}
                                     >
                                         {workingKey === report.reportKey ? 'Generating...' : 'Generate'}
@@ -754,7 +818,7 @@ export const HospitalReports = () => {
                 )}
             </DashboardCard>
 
-            <DashboardCard>
+            <DashboardCard className="animate-fade-in-up delay-300">
                 <h3 className="text-lg font-bold text-gray-900 mb-3">Ingest External Report</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                     <input
@@ -770,7 +834,7 @@ export const HospitalReports = () => {
                         onChange={(e) => setIngestForm({ ...ingestForm, category: e.target.value })}
                     />
                     <button
-                        className="bg-indigo-600 text-white rounded"
+                        className="bg-indigo-600 text-white rounded transition-all duration-200 hover:-translate-y-0.5 active:scale-95"
                         onClick={handleIngest}
                         disabled={ingesting}
                     >
@@ -786,7 +850,7 @@ export const HospitalReports = () => {
                 />
             </DashboardCard>
 
-            <DashboardCard>
+            <DashboardCard className="animate-fade-in-up delay-400">
                 <h3 className="text-lg font-bold text-gray-900 mb-3">Ingested Reports</h3>
                 <div className="flex flex-col md:flex-row gap-2 mb-3">
                     <input
@@ -896,8 +960,11 @@ export const HospitalBillingSystem = () => {
     };
 
     return (
-        <DashboardCard>
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Billing System</h3>
+        <DashboardCard className="animate-fade-in-up delay-100">
+            <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-gray-900">Billing System</h3>
+                <ExportButton data={invoices} filename="hospital_invoices" label="Export" columns={['patientName','department','amount','status','createdAt']} columnLabels={{ patientName: 'Patient', department: 'Department', amount: 'Amount', status: 'Status', createdAt: 'Date' }} formatValue={(v, col) => col === 'createdAt' && v ? new Date(v).toLocaleDateString() : col === 'amount' && v ? `₹${v}` : undefined} />
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
                 <input className="p-2 border rounded" placeholder="Patient name" value={form.patientName} onChange={(e) => setForm({ ...form, patientName: e.target.value })} />
                 <select className="p-2 border rounded" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })}>
@@ -908,7 +975,7 @@ export const HospitalBillingSystem = () => {
                     <option>Radiology</option>
                 </select>
                 <input className="p-2 border rounded" type="number" placeholder="Amount" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
-                <button className="bg-indigo-600 text-white rounded" onClick={handleCreate}>Generate Invoice</button>
+                <button className="bg-indigo-600 text-white rounded transition-all duration-200 hover:-translate-y-0.5 active:scale-95" onClick={handleCreate}>Generate Invoice</button>
             </div>
             <div className="flex flex-col md:flex-row gap-2 mb-4">
                 <input
@@ -951,8 +1018,8 @@ export const HospitalBillingSystem = () => {
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <StatusPill text={inv.status || 'Unpaid'} color={inv.status === 'Paid' ? 'green' : 'yellow'} />
-                                    <button className="text-xs text-green-600" onClick={() => updateInvoice(inv._id || inv.id, 'Paid')}>Mark Paid</button>
-                                    <button className="text-xs text-red-600" onClick={() => updateInvoice(inv._id || inv.id, 'Refunded')}>Refund</button>
+                                    <button className="text-xs text-green-600 hover:text-green-800 transition-colors duration-150" onClick={() => updateInvoice(inv._id || inv.id, 'Paid')}>Mark Paid</button>
+                                    <button className="text-xs text-red-600 hover:text-red-800 transition-colors duration-150" onClick={() => updateInvoice(inv._id || inv.id, 'Refunded')}>Refund</button>
                                 </div>
                             </div>
                         ))
@@ -1004,7 +1071,7 @@ export const HospitalRevenueAnalytics = () => {
     };
 
     return (
-        <DashboardCard>
+        <DashboardCard className="animate-fade-in-up delay-100">
             <h3 className="text-lg font-bold text-gray-900 mb-4">Revenue Analytics</h3>
             {loading ? (
                 <LoadingSpinner />
@@ -1036,25 +1103,27 @@ export const HospitalRevenueAnalytics = () => {
                         </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="h-48 overflow-hidden">
+                        <div className="h-48 overflow-hidden animate-chart-entrance chart-delay-1">
                             <ResponsiveContainer width="100%" height="100%">
                                 <LineChart data={summary?.dailySeries || []}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                     <XAxis dataKey="label" />
                                     <YAxis />
                                     <Tooltip />
-                                    <Line type="monotone" dataKey="value" stroke="#2563eb" strokeWidth={2} />
+                                    <Line type="monotone" dataKey="value" stroke="#2563eb" strokeWidth={2}
+                                        isAnimationActive={true} animationDuration={1200} animationBegin={200} />
                                 </LineChart>
                             </ResponsiveContainer>
                         </div>
-                        <div className="h-48 overflow-hidden">
+                        <div className="h-48 overflow-hidden animate-chart-entrance chart-delay-3">
                             <ResponsiveContainer width="100%" height="100%">
                                 <LineChart data={summary?.monthlySeries || []}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                     <XAxis dataKey="label" />
                                     <YAxis />
                                     <Tooltip />
-                                    <Line type="monotone" dataKey="value" stroke="#16a34a" strokeWidth={2} />
+                                    <Line type="monotone" dataKey="value" stroke="#16a34a" strokeWidth={2}
+                                        isAnimationActive={true} animationDuration={1200} animationBegin={500} />
                                 </LineChart>
                             </ResponsiveContainer>
                         </div>
@@ -1064,7 +1133,7 @@ export const HospitalRevenueAnalytics = () => {
             <div className="mt-4 border-t pt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
                 <input className="p-2 border rounded" placeholder="Expense category" value={expense.category} onChange={(e) => setExpense({ ...expense, category: e.target.value })} />
                 <input className="p-2 border rounded" type="number" placeholder="Amount" value={expense.amount} onChange={(e) => setExpense({ ...expense, amount: e.target.value })} />
-                <button className="bg-slate-900 text-white rounded" onClick={addExpense}>Add Expense</button>
+                <button className="bg-slate-900 text-white rounded transition-all duration-200 hover:-translate-y-0.5 active:scale-95" onClick={addExpense}>Add Expense</button>
             </div>
         </DashboardCard>
     );
@@ -1122,13 +1191,16 @@ export const HospitalInsuranceClaims = () => {
     };
 
     return (
-        <DashboardCard>
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Insurance Claims</h3>
+        <DashboardCard className="animate-fade-in-up delay-100">
+            <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-gray-900">Insurance Claims</h3>
+                <ExportButton data={claims} filename="hospital_insurance_claims" label="Export" columns={['insurer','invoiceId','amount','status','createdAt']} columnLabels={{ insurer: 'Insurer', invoiceId: 'Invoice', amount: 'Amount', status: 'Status', createdAt: 'Date' }} formatValue={(v, col) => col === 'createdAt' && v ? new Date(v).toLocaleDateString() : col === 'amount' && v ? `₹${v}` : undefined} />
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
                 <input className="p-2 border rounded" placeholder="Invoice ID" value={form.invoiceId} onChange={(e) => setForm({ ...form, invoiceId: e.target.value })} />
                 <input className="p-2 border rounded" placeholder="Insurer" value={form.insurer} onChange={(e) => setForm({ ...form, insurer: e.target.value })} />
                 <input className="p-2 border rounded" type="number" placeholder="Amount" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
-                <button className="bg-indigo-600 text-white rounded" onClick={createClaim}>Create Claim</button>
+                <button className="bg-indigo-600 text-white rounded transition-all duration-200 hover:-translate-y-0.5 active:scale-95" onClick={createClaim}>Create Claim</button>
             </div>
             <div className="flex flex-col md:flex-row gap-2 mb-4">
                 <input
@@ -1171,8 +1243,8 @@ export const HospitalInsuranceClaims = () => {
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <StatusPill text={claim.status || 'Submitted'} color={claim.status === 'Approved' ? 'green' : 'yellow'} />
-                                    <button className="text-xs text-green-600" onClick={() => updateClaim(claim._id || claim.id, 'Approved')}>Approve</button>
-                                    <button className="text-xs text-red-600" onClick={() => updateClaim(claim._id || claim.id, 'Rejected')}>Reject</button>
+                                    <button className="text-xs text-green-600 hover:text-green-800 transition-colors duration-150" onClick={() => updateClaim(claim._id || claim.id, 'Approved')}>Approve</button>
+                                    <button className="text-xs text-red-600 hover:text-red-800 transition-colors duration-150" onClick={() => updateClaim(claim._id || claim.id, 'Rejected')}>Reject</button>
                                 </div>
                             </div>
                         ))
@@ -1192,6 +1264,26 @@ export const HospitalLiveEmergencyFeed = () => {
     const [triageResults, setTriageResults] = useState({});
     const [triageLoading, setTriageLoading] = useState({});
     const [imagingForms, setImagingForms] = useState({});
+
+    // Real-time emergency feed via WebSocket
+    const {
+        feed: realtimeFeed,
+        isConnected: wsConnected,
+    } = useEmergencyFeed();
+
+    // Merge WebSocket feed items into alerts
+    useEffect(() => {
+        if (realtimeFeed.length === 0) return;
+        setAlerts((prev) => {
+            const existingIds = new Set(prev.map((a) => a._id || a.id));
+            const newItems = realtimeFeed.filter(
+                (item) => !existingIds.has(item._id || item.id || item.alertId)
+            );
+            if (newItems.length === 0) return prev;
+            return [...newItems, ...prev].slice(0, 50);
+        });
+    }, [realtimeFeed]);
+
     const [dispatchForms, setDispatchForms] = useState({});
     const [dispatchStatus, setDispatchStatus] = useState('');
     const [feedSearch, setFeedSearch] = useState('');
@@ -1306,10 +1398,26 @@ export const HospitalLiveEmergencyFeed = () => {
     };
 
     return (
-        <DashboardCard>
+        <DashboardCard className="animate-fade-in-up delay-100">
             <div className="flex justify-between items-center mb-4">
                 <div>
-                    <h3 className="text-lg font-bold text-gray-900">Live Emergency Feed</h3>
+                    <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-bold text-gray-900">Live Emergency Feed</h3>
+                        <span
+                            className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-0.5 rounded-full ${
+                                wsConnected
+                                    ? 'bg-emerald-100 text-emerald-700'
+                                    : 'bg-slate-100 text-slate-500'
+                            }`}
+                        >
+                            <span
+                                className={`inline-block h-2 w-2 rounded-full ${
+                                    wsConnected ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
+                                }`}
+                            />
+                            {wsConnected ? 'Live' : 'Offline'}
+                        </span>
+                    </div>
                     <p className="text-sm text-gray-500">Incoming SOS and triage updates.</p>
                 </div>
                 <span className="text-xs text-gray-400">Updated {_nowLabel()}</span>
@@ -1379,7 +1487,7 @@ export const HospitalLiveEmergencyFeed = () => {
                                     <div className="flex items-center gap-2">
                                         <StatusPill text={alert.severity || 'High'} color={alert.severity === 'Critical' ? 'red' : 'yellow'} />
                                         <StatusPill text={alert.status || 'Pending'} color={alert.status === 'Resolved' ? 'green' : 'blue'} />
-                                        <button className="text-xs text-indigo-600" onClick={() => updateStatus(alert._id || alert.id, 'Resolved')}>Resolve</button>
+                                        <button className="text-xs text-indigo-600 hover:text-indigo-800 transition-colors duration-150" onClick={() => updateStatus(alert._id || alert.id, 'Resolved')}>Resolve</button>
                                     </div>
                                 </div>
                                 <div className="mt-3 grid grid-cols-1 lg:grid-cols-3 gap-3 text-sm">
@@ -1586,8 +1694,8 @@ export const HospitalOPDScheduling = () => {
     const seasonCoverage = insights?.seasonCoverage || [];
 
     return (
-        <div className="space-y-6">
-            <DashboardCard>
+        <div className="space-y-6 animate-fade-in">
+            <DashboardCard className="animate-fade-in-up delay-100">
                 <div className="flex items-center justify-between mb-4">
                     <div>
                         <h3 className="text-lg font-bold text-gray-900">OPD Demand Monitor</h3>
@@ -1890,8 +1998,8 @@ export const HospitalDoctorManagement = () => {
         refreshCoverage();
     };
     return (
-        <div className="space-y-6">
-            <DashboardCard>
+        <div className="space-y-6 animate-fade-in">
+            <DashboardCard className="animate-fade-in-up delay-100">
                 <div className="flex items-center justify-between mb-4">
                     <div>
                         <h3 className="text-lg font-bold text-gray-900">Specialty Coverage</h3>
@@ -1964,7 +2072,7 @@ export const HospitalDoctorManagement = () => {
                         <option>Afternoon</option>
                         <option>Night</option>
                     </select>
-                    <button className="bg-indigo-600 text-white rounded" onClick={handleAdd} disabled={submitting}>
+                    <button className="bg-indigo-600 text-white rounded transition-all duration-200 hover:-translate-y-0.5 active:scale-95" onClick={handleAdd} disabled={submitting}>
                         {submitting ? 'Saving...' : 'Add Doctor'}
                     </button>
                 </div>
@@ -2094,8 +2202,8 @@ export const HospitalConsultationRecords = () => {
     const coverage = insights?.summaryCoverage || 0;
 
     return (
-        <div className="space-y-6">
-            <DashboardCard>
+        <div className="space-y-6 animate-fade-in">
+            <DashboardCard className="animate-fade-in-up delay-100">
                 <div className="flex items-center justify-between mb-4">
                     <div>
                         <h3 className="text-lg font-bold text-gray-900">Consultation Insights</h3>
@@ -2349,8 +2457,8 @@ export const HospitalOPDQueue = () => {
     };
 
     return (
-        <div className="space-y-6">
-            <DashboardCard>
+        <div className="space-y-6 animate-fade-in">
+            <DashboardCard className="animate-fade-in-up delay-100">
                 <div className="flex items-center justify-between mb-4">
                     <div>
                         <h3 className="text-lg font-bold text-gray-900">OPD Queue Live Monitor</h3>
@@ -2370,7 +2478,7 @@ export const HospitalOPDQueue = () => {
                         <option>High</option>
                         <option>Critical</option>
                     </select>
-                    <button className="bg-indigo-600 text-white rounded" onClick={handleAdd}>Add</button>
+                    <button className="bg-indigo-600 text-white rounded transition-all duration-200 hover:-translate-y-0.5 active:scale-95" onClick={handleAdd}>Add</button>
                 </div>
                 <div className="flex flex-col md:flex-row gap-2 mb-4">
                     <input
@@ -2520,7 +2628,7 @@ export const HospitalICULiveMonitoring = () => {
     };
 
     return (
-        <DashboardCard>
+        <DashboardCard className="animate-fade-in-up delay-100">
             <h3 className="text-lg font-bold text-gray-900 mb-4">ICU Live Monitoring</h3>
             <div className="flex flex-col md:flex-row gap-2 mb-4">
                 <input
@@ -2648,7 +2756,7 @@ export const HospitalICUAlerts = () => {
     };
 
     return (
-        <DashboardCard>
+        <DashboardCard className="animate-fade-in-up delay-100">
             <h3 className="text-lg font-bold text-gray-900 mb-4">ICU Critical Alerts</h3>
             <div className="flex flex-col md:flex-row gap-2 mb-4">
                 <input
@@ -2746,18 +2854,18 @@ export const HospitalICUVitals = () => {
     };
 
     return (
-        <DashboardCard>
+        <DashboardCard className="animate-fade-in-up delay-100">
             <h3 className="text-lg font-bold text-gray-900 mb-4">ICU Vitals Dashboard</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <DashboardCard>
+                <DashboardCard className="animate-fade-in-up delay-200">
                     <p className="text-xs text-gray-500">Average O2</p>
                     <p className="text-2xl font-bold text-gray-900">{safeStats.average_oxygen}%</p>
                 </DashboardCard>
-                <DashboardCard>
+                <DashboardCard className="animate-fade-in-up delay-300">
                     <p className="text-xs text-gray-500">Avg Heart Rate</p>
                     <p className="text-2xl font-bold text-gray-900">{safeStats.average_heart_rate} bpm</p>
                 </DashboardCard>
-                <DashboardCard>
+                <DashboardCard className="animate-fade-in-up delay-400">
                     <p className="text-xs text-gray-500">Critical Patients</p>
                     <p className="text-2xl font-bold text-red-600">{safeStats.critical_patients}</p>
                 </DashboardCard>
@@ -2806,7 +2914,7 @@ export const HospitalICURiskPanel = () => {
     }, [hospitalId]);
 
     return (
-        <DashboardCard>
+        <DashboardCard className="animate-fade-in-up delay-100">
             <h3 className="text-lg font-bold text-gray-900 mb-4">AI ICU Risk Prediction</h3>
             {loading ? (
                 <LoadingSpinner />
@@ -2909,12 +3017,12 @@ export const HospitalRadiologyRequests = () => {
     };
 
     return (
-        <DashboardCard>
+        <DashboardCard className="animate-fade-in-up delay-100">
             <h3 className="text-lg font-bold text-gray-900 mb-4">Scan Requests</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
                 <input className="p-2 border rounded" placeholder="Patient" value={form.patient} onChange={(e) => setForm({ ...form, patient: e.target.value })} />
                 <input className="p-2 border rounded" placeholder="Scan Type" value={form.scan} onChange={(e) => setForm({ ...form, scan: e.target.value })} />
-                <button className="bg-indigo-600 text-white rounded" onClick={handleAdd} disabled={submitting}>
+                <button className="bg-indigo-600 text-white rounded transition-all duration-200 hover:-translate-y-0.5 active:scale-95" onClick={handleAdd} disabled={submitting}>
                     {submitting ? 'Adding...' : 'Add Request'}
                 </button>
             </div>
@@ -3040,13 +3148,13 @@ export const HospitalRadiologyReportUpload = () => {
     };
 
     return (
-        <DashboardCard>
+        <DashboardCard className="animate-fade-in-up delay-100">
             <h3 className="text-lg font-bold text-gray-900 mb-4">Report Upload</h3>
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 <input className="p-2 border rounded" placeholder="Patient" value={form.patient} onChange={(e) => setForm({ ...form, patient: e.target.value })} />
                 <input className="p-2 border rounded" placeholder="Scan Type" value={form.scan} onChange={(e) => setForm({ ...form, scan: e.target.value })} />
                 <input className="p-2 border rounded" type="file" onChange={(e) => setForm({ ...form, file: e.target.files?.[0] })} />
-                <button type="submit" className="bg-indigo-600 text-white rounded" disabled={submitting}>
+                <button type="submit" className="bg-indigo-600 text-white rounded transition-all duration-200 hover:-translate-y-0.5 active:scale-95" disabled={submitting}>
                     {submitting ? 'Uploading...' : 'Upload'}
                 </button>
             </form>
@@ -3118,7 +3226,7 @@ export const HospitalRadiologyAIInsights = () => {
     };
 
     return (
-        <DashboardCard>
+        <DashboardCard className="animate-fade-in-up delay-100">
             <h3 className="text-lg font-bold text-gray-900 mb-4">AI Scan Insights</h3>
             <form onSubmit={handleAnalyze} className="space-y-3">
                 <textarea
@@ -3219,13 +3327,13 @@ export const HospitalOTSurgeryScheduling = () => {
     };
 
     return (
-        <DashboardCard>
+        <DashboardCard className="animate-fade-in-up delay-100">
             <h3 className="text-lg font-bold text-gray-900 mb-4">OT Surgery Scheduling</h3>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
                 <input className="p-2 border rounded" placeholder="Patient" value={form.patient} onChange={(e) => setForm({ ...form, patient: e.target.value })} />
                 <input className="p-2 border rounded" placeholder="Procedure" value={form.procedure} onChange={(e) => setForm({ ...form, procedure: e.target.value })} />
                 <input className="p-2 border rounded" placeholder="Time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} />
-                <button className="bg-indigo-600 text-white rounded" onClick={handleAdd} disabled={submitting}>
+                <button className="bg-indigo-600 text-white rounded transition-all duration-200 hover:-translate-y-0.5 active:scale-95" onClick={handleAdd} disabled={submitting}>
                     {submitting ? 'Scheduling...' : 'Schedule'}
                 </button>
             </div>
@@ -3354,7 +3462,7 @@ export const HospitalOTStaffAllocation = () => {
     };
 
     return (
-        <DashboardCard>
+        <DashboardCard className="animate-fade-in-up delay-100">
             <h3 className="text-lg font-bold text-gray-900 mb-4">OT Staff Allocation</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
                 <select className="p-2 border rounded" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })}>

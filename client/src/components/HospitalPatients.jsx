@@ -3,8 +3,10 @@ import ReactDOM from 'react-dom';
 import { useAuth } from '../context/AuthContext';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { apiFetch } from '../config/api';
+import ExportButton from './ExportButton';
+import { DashboardCard, ChartDrillDown, GRADIENT_COLORS } from './Common';
 
-const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+const COLORS = GRADIENT_COLORS;
 
 const buildQuery = (params) => {
     const searchParams = new URLSearchParams();
@@ -52,6 +54,9 @@ const HospitalPatients = () => {
     const [triageResults, setTriageResults] = useState({});
     const [triageLoading, setTriageLoading] = useState({});
 
+    // Drill-down state
+    const [drillDown, setDrillDown] = useState({ open: false, title: '', data: [] });
+
     // Form State
     const [newPatient, setNewPatient] = useState({
         name: '', age: '', gender: 'Male', dept: 'General', room: '', condition: '', severity: 'Stable', oxygen: '98', heartRate: '80', bp: '120/80', symptoms: ''
@@ -95,6 +100,14 @@ const HospitalPatients = () => {
             else groups['60+']++;
         });
         return Object.keys(groups).map(key => ({ name: key, count: groups[key] }));
+    };
+
+    // Drill-down handlers
+    const handlePieClick = (item) => {
+        setDrillDown({ open: true, title: `Department: ${item.name}`, data: [{ label: 'Patients', value: item.value }] });
+    };
+    const handleBarClick = (item) => {
+        setDrillDown({ open: true, title: `Age Group: ${item.name}`, data: [{ label: 'Patients', value: item.count }] });
     };
 
     // 3. Admit Submit
@@ -201,34 +214,50 @@ const handleViewPatient = async (patient) => {
             
             {/* CHARTS */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                {(() => { const deptData = getDeptData(); const ageData = getAgeData(); return (<>
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 animate-fade-in-up delay-100">
                     <h3 className="font-bold text-lg text-slate-800 mb-4">Patients by Department</h3>
-                    <div className="h-64">
+                    <div className="h-64 animate-chart-entrance chart-delay-1">
                         <ResponsiveContainer>
                             <PieChart>
-                                <Pie data={getDeptData()} cx="50%" cy="50%" outerRadius={80} dataKey="value" label>
-                                    {getDeptData().map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                                <Pie data={deptData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label
+                                    isAnimationActive={true} animationDuration={1000} animationBegin={200}
+                                    onClick={handlePieClick}
+                                    cursor="pointer">
+                                    {deptData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                                 </Pie>
-                                <Tooltip />
+                                <Tooltip contentStyle={{ borderRadius: 12, backgroundColor: 'rgba(15, 23, 42, 0.95)', border: 'none', color: '#fff', fontSize: 12, boxShadow: '0 4px 24px rgba(0,0,0,0.2)' }} />
                                 <Legend />
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
+                    <p className="text-[10px] text-slate-400 mt-1 text-center italic">Click a slice to drill down</p>
                 </div>
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 animate-fade-in-up delay-200">
                     <h3 className="font-bold text-lg text-slate-800 mb-4">Age Demographics</h3>
-                    <div className="h-64">
+                    <div className="h-64 animate-chart-entrance chart-delay-2">
                         <ResponsiveContainer>
                             <BarChart data={getAgeData()}>
-                                <XAxis dataKey="name" />
-                                <YAxis allowDecimals={false} />
-                                <Tooltip cursor={{fill: 'transparent'}} />
-                                <Bar dataKey="count" fill="#8884d8" radius={[4, 4, 0, 0]} />
+                                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                                <Tooltip contentStyle={{ borderRadius: 12, backgroundColor: 'rgba(15, 23, 42, 0.95)', border: 'none', color: '#fff', fontSize: 12, boxShadow: '0 4px 24px rgba(0,0,0,0.2)' }} cursor={{fill: 'rgba(0,0,0,0.03)'}} />
+                                <Bar dataKey="count" radius={[8, 8, 0, 0]}
+                                    isAnimationActive={true} animationDuration={800} animationBegin={300}
+                                    onClick={handleBarClick}
+                                    cursor="pointer">
+                                    {ageData.map((entry, index) => (
+                                        <Cell key={`age-cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
+                                </Bar>
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
+                    <p className="text-[10px] text-slate-400 mt-1 text-center italic">Click a bar to drill down</p>
                 </div>
+                </>); })()}
             </div>
+
+            <ChartDrillDown open={drillDown.open} onClose={() => setDrillDown({ open: false, title: '', data: [] })} title={drillDown.title} data={drillDown.data} />
 
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className="p-6 border-b border-slate-100 flex justify-between items-center">
@@ -236,6 +265,7 @@ const handleViewPatient = async (patient) => {
                         <h3 className="font-bold text-xl text-slate-800">Emergency Intake Queue</h3>
                         <p className="text-xs text-gray-500">{intakeQueue.length} patients awaiting triage</p>
                     </div>
+                    <ExportButton data={intakeQueue} filename="emergency_intake_queue" label="Export" columns={['name','symptoms','condition','severity','status','department','gender','age']} columnLabels={{ name: 'Name', symptoms: 'Symptoms', condition: 'Condition', severity: 'Severity', status: 'Status', department: 'Department', gender: 'Gender', age: 'Age' }} />
                 </div>
                 <div className="px-6 pb-4">
                     <div className="flex flex-col md:flex-row gap-2">
@@ -322,13 +352,16 @@ const handleViewPatient = async (patient) => {
                         <h3 className="font-bold text-xl text-slate-800">Admitted Patients Directory</h3>
                         <p className="text-xs text-gray-500">Managing {patients.length} active records</p>
                     </div>
-                    <button 
+                    <div className="flex items-center gap-2">
+                        <ExportButton data={patients} filename="admitted_patients_directory" label="Export" columns={['name','age','gender','dept','room','condition','severity']} columnLabels={{ name: 'Name', age: 'Age', gender: 'Gender', dept: 'Department', room: 'Room', condition: 'Condition', severity: 'Severity' }} />
+                        <button 
                         onClick={() => setIsAdmitOpen(true)}
                         className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 shadow flex items-center gap-2"
                     >
                         <i className="fas fa-plus"></i> Admit New Patient
                     </button>
                 </div>
+            </div>
                 
                 <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
                     <table className="min-w-full text-left text-sm">

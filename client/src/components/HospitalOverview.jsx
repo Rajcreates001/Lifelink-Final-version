@@ -14,9 +14,10 @@ import {
 } from 'recharts';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../config/api';
-import { DashboardCard, LoadingSpinner, StatusPill } from './Common';
+import { DashboardCard, LoadingSpinner, StatusPill, ChartDrillDown, GRADIENT_COLORS } from './Common';
+import { useEmergencyFeed } from '../hooks/useWebSocket';
 
-const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+const COLORS = GRADIENT_COLORS;
 
 const HospitalOverview = () => {
     const { user } = useAuth();
@@ -70,6 +71,27 @@ const HospitalOverview = () => {
         load(!hasCache);
     }, [hospitalId]);
 
+    // Real-time emergency feed via WebSocket
+    const {
+        feed: realtimeFeed,
+        isConnected: wsConnected,
+    } = useEmergencyFeed({
+        enabled: !!hospitalId,
+    });
+
+    // Prepend any new realtime feed items not already in alerts
+    useEffect(() => {
+        if (realtimeFeed.length === 0) return;
+        setAlerts((prev) => {
+            const existingIds = new Set(prev.map((a) => a._id || a.id));
+            const newItems = realtimeFeed.filter(
+                (item) => !existingIds.has(item._id || item.id || item.alertId)
+            );
+            if (newItems.length === 0) return prev;
+            return [...newItems, ...prev].slice(0, 50);
+        });
+    }, [realtimeFeed]);
+
     const handleUpdateEmergency = async (id, status) => {
         setAlerts((prev) => prev.map((item) => (item._id || item.id) === id ? { ...item, status } : item));
         await apiFetch(`/api/hospital-ops/emergency/feed/${id}`, {
@@ -95,6 +117,16 @@ const HospitalOverview = () => {
     const kpiSignals = metrics?.kpiSignals || {};
     const benchmarks = metrics?.benchmarks || {};
     const externalBenchmarks = benchmarks.external || {};
+    
+    // Drill-down state
+    const [drillDown, setDrillDown] = useState({ open: false, title: '', data: [] });
+
+    const handleBarClick = (item) => {
+      setDrillDown({ open: true, title: `Bed Occupancy: ${item.name}`, data: [{ label: 'Occupied', value: item.value }, { label: 'Available', value: (metrics?.beds?.total || 0) - item.value }] });
+    };
+    const handlePieClick = (item) => {
+      setDrillDown({ open: true, title: `Department: ${item.name}`, data: [{ label: 'Patients', value: item.value }] });
+    };
 
     if (loading && !metrics) {
         return <LoadingSpinner />;
@@ -103,32 +135,32 @@ const HospitalOverview = () => {
     return (
         <div className="space-y-6 animate-fade-in pb-10">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <DashboardCard>
+                <DashboardCard colorFlow className="animate-fade-in-up delay-100 hover:border-sky-200 hover:shadow-xl transition-all duration-300">
                     <p className="text-xs font-bold text-gray-500 uppercase">Total Patients</p>
                     <p className="text-2xl font-bold text-gray-900">{metrics?.patients?.total || 0}</p>
                     <p className="text-xs text-gray-400">OPD/ICU/Emergency combined</p>
                 </DashboardCard>
-                <DashboardCard>
+                <DashboardCard colorFlow className="animate-fade-in-up delay-200 hover:border-sky-200 hover:shadow-xl transition-all duration-300">
                     <p className="text-xs font-bold text-gray-500 uppercase">Bed Occupancy</p>
                     <p className="text-2xl font-bold text-gray-900">{metrics?.beds?.occupied || 0}/{metrics?.beds?.total || 0}</p>
                     <p className="text-xs text-gray-400">Available {metrics?.beds?.available || 0}</p>
                 </DashboardCard>
-                <DashboardCard>
+                <DashboardCard colorFlow className="animate-fade-in-up delay-300 hover:border-sky-200 hover:shadow-xl transition-all duration-300">
                     <p className="text-xs font-bold text-gray-500 uppercase">Revenue (Daily/Weekly)</p>
                     <p className="text-2xl font-bold text-gray-900">₹{metrics?.revenue?.daily || 0}</p>
                     <p className="text-xs text-gray-400">Weekly ₹{metrics?.revenue?.weekly || 0}</p>
                 </DashboardCard>
-                <DashboardCard>
+                <DashboardCard className="animate-fade-in-up delay-400 hover:border-sky-200 hover:shadow-xl transition-all duration-300">
                     <p className="text-xs font-bold text-gray-500 uppercase">Staff Availability</p>
                     <p className="text-2xl font-bold text-gray-900">{metrics?.staff?.available || 0}/{metrics?.staff?.total || 0}</p>
                     <p className="text-xs text-gray-400">On-duty coverage</p>
                 </DashboardCard>
-                <DashboardCard>
+                <DashboardCard className="animate-fade-in-up delay-500 hover:border-sky-200 hover:shadow-xl transition-all duration-300">
                     <p className="text-xs font-bold text-gray-500 uppercase">Emergency Load</p>
                     <p className="text-2xl font-bold text-gray-900">{metrics?.emergency?.active || 0}</p>
                     <p className="text-xs text-gray-400">Critical {metrics?.emergency?.critical || 0}</p>
                 </DashboardCard>
-                <DashboardCard>
+                <DashboardCard className="animate-fade-in-up delay-700 hover:border-sky-200 hover:shadow-xl transition-all duration-300">
                     <p className="text-xs font-bold text-gray-500 uppercase">Ambulance Flow</p>
                     <p className="text-2xl font-bold text-gray-900">In {metrics?.ambulance?.inbound || 0}</p>
                     <p className="text-xs text-gray-400">Out {metrics?.ambulance?.outbound || 0}</p>
@@ -136,32 +168,40 @@ const HospitalOverview = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <DashboardCard>
+                <DashboardCard className={`animate-chart-entrance chart-delay-1 ${wsConnected ? 'animate-border-glow' : ''}`}>
                     <h3 className="font-bold text-lg text-gray-900 mb-4">Department Load</h3>
                     <div className="h-64">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
-                                <Pie data={deptData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label>
+                                <Pie data={deptData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label
+                                    isAnimationActive={true} animationDuration={1000} animationBegin={200}
+                                    onClick={handlePieClick}>
                                     {deptData.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
                                 </Pie>
-                                <Tooltip />
+                                <Tooltip contentStyle={{ borderRadius: 12, backgroundColor: 'rgba(15, 23, 42, 0.95)', border: 'none', color: '#fff', fontSize: 12, boxShadow: '0 4px 24px rgba(0,0,0,0.2)' }} />
                                 <Legend verticalAlign="bottom" height={36} />
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
                 </DashboardCard>
-                <DashboardCard>
+                <DashboardCard className={`animate-chart-entrance chart-delay-2 ${wsConnected ? 'animate-border-glow' : ''}`}>
                     <h3 className="font-bold text-lg text-gray-900 mb-4">Bed Occupancy by Unit</h3>
                     <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={bedData}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                <XAxis dataKey="name" />
-                                <YAxis allowDecimals={false} />
-                                <Tooltip />
-                                <Bar dataKey="value" fill="#2563eb" radius={[6, 6, 0, 0]} />
+                        <ResponsiveContainer width="100%" height="100%">                                <BarChart data={bedData}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.04)" />
+                                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                                <Tooltip contentStyle={{ borderRadius: 12, backgroundColor: 'rgba(15, 23, 42, 0.95)', border: 'none', color: '#fff', fontSize: 12, boxShadow: '0 4px 24px rgba(0,0,0,0.2)' }} />
+                                <Bar dataKey="value" radius={[8, 8, 0, 0]}
+                                    isAnimationActive={true} animationDuration={800} animationBegin={300}
+                                    onClick={handleBarClick}
+                                    cursor="pointer">
+                                    {bedData.map((entry, index) => (
+                                        <Cell key={`bed-cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
+                                </Bar>
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
@@ -225,10 +265,39 @@ const HospitalOverview = () => {
                 </DashboardCard>
             )}
 
-            <DashboardCard>
+            <ChartDrillDown open={drillDown.open} onClose={() => setDrillDown({ open: false, title: '', data: [] })} title={drillDown.title} data={drillDown.data} />
+
+            <DashboardCard className={wsConnected ? 'animate-border-glow' : ''}>
                 <div className="flex items-center justify-between mb-4">
                     <div>
-                        <h3 className="font-bold text-lg text-gray-900">Live Emergency Feed</h3>
+                        <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-lg text-gray-900">Live Emergency Feed</h3>
+                            <button
+                                onClick={() => {
+                                    import('../utils/dataExport').then(({ exportCSV }) =>
+                                        exportCSV(alerts, { filename: 'emergency_feed.csv' })
+                                    );
+                                }}
+                                className="text-xs text-slate-500 hover:text-blue-600 hover:bg-blue-50 px-2 py-1 rounded-lg transition-all duration-200"
+                                title="Export as CSV"
+                            >
+                                <i className="fas fa-download"></i>
+                            </button>
+                            <span
+                                className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-0.5 rounded-full ${
+                                    wsConnected
+                                        ? 'bg-emerald-100 text-emerald-700'
+                                        : 'bg-slate-100 text-slate-500'
+                                }`}
+                            >
+                                <span
+                                    className={`inline-block h-2 w-2 rounded-full ${
+                                        wsConnected ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
+                                    }`}
+                                />
+                                {wsConnected ? 'Live' : 'Offline'}
+                            </span>
+                        </div>
                         <p className="text-sm text-gray-500">Active cases requiring rapid triage.</p>
                     </div>
                     <span className="text-xs text-gray-400">Updated {new Date().toLocaleTimeString()}</span>

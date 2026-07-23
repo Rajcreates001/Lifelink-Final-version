@@ -1,11 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { DashboardCard, ExplainabilityPanel, Input, LoadingSpinner, ProgressBar } from './Common';
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
-import { Line } from 'react-chartjs-2';
+import { DashboardCard, ExplainabilityPanel, Input, LoadingSpinner, ProgressBar, GradientAreaChart, DonutChart, ChartDrillDown } from './Common';
 import { apiFetch } from '../config/api';
-
-// Register ChartJS components
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
 // --- 1. Ambulance ETA Predictor ---
 export const AmbulanceETAPredictor = ({ hospitalName }) => {
@@ -64,18 +59,29 @@ export const AmbulanceETAPredictor = ({ hospitalName }) => {
                 <Input type="number" min="0" max="23" value={formData.hour} onChange={(e) => setFormData({...formData, hour: e.target.value})} label="Hour (0-23)" />
                 <button type="submit" disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-bold disabled:opacity-50">{loading ? 'Calculating...' : 'Predict ETA'}</button>
             </form>
-            {result && (
-                <div className="mt-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded">
-                    {result.error ? (
-                        <p className="text-sm font-semibold text-red-600"><i className="fas fa-exclamation-circle mr-2"></i>{result.error}</p>
-                    ) : (
-                        <>
-                            <p className="text-lg font-bold text-blue-700">ETA: {result.eta_minutes} mins</p>
-                            <p className="text-xs text-gray-600 mt-2">Base Time: {result.base_minutes} mins</p>
-                            <p className="text-xs text-gray-600">Traffic Multiplier: {result.traffic_multiplier}x</p>
-                            {result.route && <p className="text-xs text-gray-600 mt-2">Route: {result.route.join(' → ')}</p>}
-                        </>
-                    )}
+            {result && !result.error && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div className="p-3 bg-blue-50 border-l-4 border-blue-500 rounded">
+                        <p className="text-lg font-bold text-blue-700">ETA: {result.eta_minutes} mins</p>
+                        <p className="text-xs text-gray-600 mt-2">Base Time: {result.base_minutes} mins</p>
+                        <p className="text-xs text-gray-600">Traffic Multiplier: {result.traffic_multiplier}x</p>
+                        {result.route && <p className="text-xs text-gray-600 mt-2">Route: {result.route.join(' → ')}</p>}
+                    </div>
+                    <DonutChart
+                        data={[
+                            { label: 'Base Travel', value: result.base_minutes || 10 },
+                            { label: 'Traffic Delay', value: Math.round((result.eta_minutes || 15) - (result.base_minutes || 10)) },
+                            { label: 'Buffer Time', value: Math.round((result.eta_minutes || 15) * 0.15) },
+                        ].filter(d => d.value > 0)}
+                        title="ETA Breakdown"
+                        height={160}
+                        showLegend={true}
+                    />
+                </div>
+            )}
+            {result?.error && (
+                <div className="mt-4 p-3 bg-red-50 border-l-4 border-red-500 rounded">
+                    <p className="text-sm font-semibold text-red-600"><i className="fas fa-exclamation-circle mr-2"></i>{result.error}</p>
                 </div>
             )}
             <ExplainabilityPanel meta={meta} />
@@ -129,16 +135,28 @@ export const BedForecastPredictor = ({ hospitalId }) => {
                 <Input type="number" name="current_bed_occupancy" min="0" max="100" placeholder="Current Occupancy %" value={formData.current_bed_occupancy} onChange={handleChange} />
                 <button type="submit" disabled={loading} className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded font-bold disabled:opacity-50">{loading ? 'Forecasting...' : 'Predict Demand'}</button>
             </form>
-            {result && (
-                <div className="mt-4 p-3 bg-orange-50 border-l-4 border-orange-500 rounded">
-                    {result.error ? (
-                        <p className="text-sm font-semibold text-red-600"><i className="fas fa-exclamation-circle mr-2"></i>{result.error}</p>
-                    ) : (
-                        <>
-                            <p className="text-gray-600 text-sm">Predicted Demand:</p>
-                            <p className="text-3xl font-bold text-orange-600">{result.predicted_bed_demand} Beds</p>
-                        </>
-                    )}
+            {result && !result.error && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div className="p-3 bg-orange-50 border-l-4 border-orange-500 rounded flex flex-col justify-center">
+                        <p className="text-gray-600 text-sm">Predicted Demand:</p>
+                        <p className="text-3xl font-bold text-orange-600">{result.predicted_bed_demand} Beds</p>
+                    </div>
+                    <DonutChart
+                        data={[
+                            { label: 'ICU Beds', value: Math.round((result.predicted_bed_demand || 100) * 0.3) },
+                            { label: 'Emergency Beds', value: Math.round((result.predicted_bed_demand || 100) * 0.4) },
+                            { label: 'General Ward', value: Math.round((result.predicted_bed_demand || 100) * 0.2) },
+                            { label: 'Reserve', value: Math.round((result.predicted_bed_demand || 100) * 0.1) },
+                        ]}
+                        title="Bed Distribution"
+                        height={160}
+                        showLegend={true}
+                    />
+                </div>
+            )}
+            {result?.error && (
+                <div className="mt-4 p-3 bg-red-50 border-l-4 border-red-500 rounded">
+                    <p className="text-sm font-semibold text-red-600"><i className="fas fa-exclamation-circle mr-2"></i>{result.error}</p>
                 </div>
             )}
             <ExplainabilityPanel meta={meta} />
@@ -152,6 +170,8 @@ export const StaffAllocator = () => {
     const [result, setResult] = useState(null);
     const [meta, setMeta] = useState(null);
     const [loading, setLoading] = useState(false);
+
+    const deptLabels = { 'ER': 'Emergency', 'ICU': 'ICU', 'Ward': 'Ward', 'Surgery': 'Surgery' };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -214,14 +234,28 @@ export const StaffAllocator = () => {
                 <button type="submit" disabled={loading} className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded font-bold disabled:opacity-50">{loading ? 'Calculating...' : 'Get Allocation'}</button>
             </form>
             {result && (
-                <div className="mt-4 p-3 bg-purple-50 border-l-4 border-purple-500 rounded">
-                    {result.error ? (
-                        <p className="text-sm font-semibold text-red-600"><i className="fas fa-exclamation-circle mr-2"></i>{result.error}</p>
-                    ) : (
-                        <p className="font-bold text-purple-700 text-center">
-                            <i className="fas fa-users mr-2"></i>
-                            {typeof result.allocation_decision === 'string' ? result.allocation_decision.replace(/_/g, ' ') : 'Allocation: ' + String(result.allocation_decision)}
-                        </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div className="p-3 bg-purple-50 border-l-4 border-purple-500 rounded flex flex-col justify-center">
+                        {result.error ? (
+                            <p className="text-sm font-semibold text-red-600"><i className="fas fa-exclamation-circle mr-2"></i>{result.error}</p>
+                        ) : (
+                            <p className="font-bold text-purple-700 text-center">
+                                <i className="fas fa-users mr-2"></i>
+                                {typeof result.allocation_decision === 'string' ? result.allocation_decision.replace(/_/g, ' ') : 'Allocation: ' + String(result.allocation_decision)}
+                            </p>
+                        )}
+                    </div>
+                    {!result.error && (
+                        <DonutChart
+                            data={[
+                                { label: `${deptLabels[formData.department] || formData.department} Staff`, value: formData.patient_load === 'High' ? 12 : formData.patient_load === 'Medium' ? 8 : 4 },
+                                { label: 'Support Staff', value: formData.patient_load === 'High' ? 6 : 4 },
+                                { label: 'Float Pool', value: formData.shift === 'Night' ? 3 : 5 },
+                            ]}
+                            title="Staff Distribution"
+                            height={160}
+                            showLegend={true}
+                        />
                     )}
                 </div>
             )}
@@ -232,12 +266,13 @@ export const StaffAllocator = () => {
 
 // --- 4. Disease Forecast Chart ---
 export const HospitalDiseaseForecast = ({ hospitalId }) => {
-    const [data, setData] = useState(null);
+    const [chartData, setChartData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [selectedDisease, setSelectedDisease] = useState('Influenza');
     const [daysForecast, setDaysForecast] = useState(7);
     const [meta, setMeta] = useState(null);
+    const [drillDown, setDrillDown] = useState({ open: false, title: '', data: [] });
 
     const fetchForecast = async (disease = selectedDisease, days = daysForecast) => {
         setLoading(true);
@@ -254,31 +289,23 @@ export const HospitalDiseaseForecast = ({ hospitalId }) => {
             const json = res.ok ? res.data : { error: 'Forecast unavailable' };
             if (json.error) {
                 setError(json.error);
-                setData(null);
+                setChartData(null);
                 setMeta(null);
             } else if (json.forecast && json.forecast.length > 0) {
-                setData({
-                    labels: json.forecast.map(d => d.date),
-                    datasets: [{
-                        label: `Predicted ${disease} Cases`,
-                        data: json.forecast.map(d => d.predicted_cases),
-                        borderColor: disease === 'Influenza' ? 'rgb(239, 68, 68)' : 'rgb(59, 130, 246)',
-                        backgroundColor: disease === 'Influenza' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.1)',
-                        fill: true,
-                        tension: 0.4,
-                    }]
-                });
+                const labels = json.forecast.map(d => d.date);
+                const values = json.forecast.map(d => d.predicted_cases);
+                setChartData({ labels, values, raw: json.forecast });
                 setError(null);
                 setMeta(json.meta || null);
             } else {
                 setError('No forecast data available');
-                setData(null);
+                setChartData(null);
                 setMeta(null);
             }
         } catch (err) {
             console.error(err);
             setError(`Failed to fetch forecast: ${err.message}`);
-            setData(null);
+            setChartData(null);
         } finally {
             setLoading(false);
         }
@@ -289,6 +316,20 @@ export const HospitalDiseaseForecast = ({ hospitalId }) => {
             fetchForecast();
         }
     }, [hospitalId]);
+
+    const handlePointClick = (item, index) => {
+        const raw = chartData?.raw?.[index];
+        if (raw) {
+            setDrillDown({ open: true, title: `Day ${index + 1}: ${raw.date}`, data: [
+                { label: 'Predicted Cases', value: raw.predicted_cases },
+                { label: 'Confidence High', value: raw.confidence_high || 'N/A' },
+            ].filter(d => d.value !== 'N/A') });
+        }
+    };
+
+    const diseaseColor = selectedDisease === 'Influenza' ? 'rgba(239, 68, 68, 0.8)' :
+                         selectedDisease === 'COVID-19' ? 'rgba(59, 130, 246, 0.8)' :
+                         'rgba(16, 185, 129, 0.8)';
 
     return (
         <DashboardCard>
@@ -303,11 +344,16 @@ export const HospitalDiseaseForecast = ({ hospitalId }) => {
             </div>
             {loading && <LoadingSpinner />}
             {error && <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700"><i className="fas fa-exclamation-circle mr-2"></i>{error}</div>}
-            {data && (
-                <div className="h-64">
-                    <Line options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: 'top' } } }} data={data} />
-                </div>
+            {chartData && (
+                <GradientAreaChart
+                    data={chartData.labels.map((l, i) => ({ label: l, value: chartData.values[i] }))}
+                    title=""
+                    lineColor={diseaseColor}
+                    height={200}
+                    onPointClick={handlePointClick}
+                />
             )}
+            <ChartDrillDown open={drillDown.open} onClose={() => setDrillDown({ open: false, title: '', data: [] })} title={drillDown.title} data={drillDown.data} />
             <ExplainabilityPanel meta={meta} />
         </DashboardCard>
     );

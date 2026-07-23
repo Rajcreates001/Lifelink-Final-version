@@ -397,18 +397,20 @@ const ModuleWorkbench = ({ moduleKey, title, description, realtimeChannel }) => 
                                                 <XAxis dataKey="label" />
                                                 <YAxis allowDecimals={false} />
                                                 <Tooltip />
-                                                <Bar dataKey="value" fill="#2563eb" radius={[4, 4, 0, 0]} />
+                                                <Bar dataKey="value" fill="#2563eb" radius={[4, 4, 0, 0]}
+                                                    isAnimationActive={true} animationDuration={800} animationBegin={200} />
                                             </BarChart>
                                         </ResponsiveContainer>
                                     </div>
-                                    <div className="h-40">
+                                    <div className="h-40 animate-chart-entrance chart-delay-2">
                                         <ResponsiveContainer width="100%" height="100%">
                                             <LineChart data={analytics.series?.timeline || []}>
                                                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                                 <XAxis dataKey="label" />
                                                 <YAxis allowDecimals={false} />
                                                 <Tooltip />
-                                                <Line type="monotone" dataKey="value" stroke="#16a34a" strokeWidth={2} />
+                                                <Line type="monotone" dataKey="value" stroke="#16a34a" strokeWidth={2}
+                                                    isAnimationActive={true} animationDuration={1200} animationBegin={400} />
                                             </LineChart>
                                         </ResponsiveContainer>
                                     </div>

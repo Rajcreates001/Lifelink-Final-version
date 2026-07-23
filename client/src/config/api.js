@@ -2,20 +2,12 @@
 // Development: falls back to localhost:3010 if not set
 const raw = import.meta.env.VITE_API_URL;
 const devFallback = 'http://localhost:3010';
-const DATA_MODE_KEY = 'lifelink_data_mode';
 export const API_BASE_URL =
   typeof raw === 'string' && raw.trim() !== ''
     ? raw.replace(/\/+$/, '') // strip trailing slashes
     : import.meta.env.DEV
       ? devFallback
       : '';
-
-export const getDataMode = () => {
-  if (typeof window === 'undefined') return 'real';
-  return localStorage.getItem(DATA_MODE_KEY) || 'real';
-};
-
-export const isDemoMode = () => getDataMode() === 'demo';
 
 export const getAuthToken = () => (
   sessionStorage.getItem('lifelink_token') || localStorage.getItem('lifelink_token')
@@ -1428,18 +1420,11 @@ const getDemoResponse = (path, method) => {
 export const apiFetch = async (path, options = {}) => {
   const method = (options.method || 'GET').toUpperCase();
   const url = `${API_BASE_URL}${path}`;
-  const dataMode = getDataMode();
-  const useCache = dataMode !== 'demo' && method === 'GET' && options.cache !== 'no-store' && options.cache !== false;
-  const ttlMs = Number.isFinite(options.ttlMs) ? options.ttlMs : DEFAULT_TTL_MS;
-  const cacheKey = options.cacheKey || `${dataMode}:${method}:${url}`;
-  const staleWhileRevalidate = options.staleWhileRevalidate !== false;
 
-  if (dataMode === 'demo') {
-    const demoData = getDemoResponse(path, method);
-    if (demoData) {
-      return { ok: true, status: 200, data: demoData, demo: true };
-    }
-  }
+  const useCache = method === 'GET' && options.cache !== 'no-store' && options.cache !== false;
+  const ttlMs = Number.isFinite(options.ttlMs) ? options.ttlMs : DEFAULT_TTL_MS;
+  const cacheKey = options.cacheKey || `${method}:${url}`;
+  const staleWhileRevalidate = options.staleWhileRevalidate !== false;
 
   const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
   const headers = {
@@ -1498,6 +1483,19 @@ export const apiFetch = async (path, options = {}) => {
         headers,
         signal: controller.signal,
       });
+
+      // ── 401 fallback to demo data ─────────────────
+      if (res.status === 401) {
+        const demoData = getDemoResponse(path, method);
+        if (demoData) {
+          console.warn(`[API 401] ${method} ${path} — falling back to demo data`);
+          const fallbackPayload = { ok: true, status: 200, data: demoData, demo: true, from401Fallback: true };
+          if (useCache) {
+            responseCache.set(cacheKey, { timestamp: Date.now(), value: fallbackPayload });
+          }
+          return fallbackPayload;
+        }
+      }
 
       const data = await res.json().catch(() => ({}));
       const payload = { ok: res.ok, status: res.status, data };

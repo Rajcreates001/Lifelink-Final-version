@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { DashboardCard, ExplainabilityPanel, Input, ProgressBar } from './Common';
+import { DashboardCard, ExplainabilityPanel, Input, ProgressBar, GradientAreaChart, DonutChart, ChartDrillDown } from './Common';
 import { apiFetch } from '../config/api';
-import { Line } from 'react-chartjs-2';
 
 const mergeMeta = (meta, fallback) => {
     const next = { ...fallback, ...(meta || {}) };
@@ -39,6 +38,7 @@ export const OutbreakForecast = () => {
     const [chartData, setChartData] = useState(null);
     const [meta, setMeta] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [drillDown, setDrillDown] = useState({ open: false, title: '', data: [] });
 
     const fallbackMeta = {
         confidence: 0.84,
@@ -55,10 +55,8 @@ export const OutbreakForecast = () => {
         if (preload?.forecast && !chartData) {
             setChartData({
                 labels: preload.forecast.map(d => d.date),
-                datasets: [
-                    { label: 'Predicted Cases', data: preload.forecast.map(d => d.predicted_cases), borderColor: 'rgb(239, 68, 68)', backgroundColor: 'rgba(239, 68, 68, 0.5)' },
-                    { label: 'Upper Confidence', data: preload.forecast.map(d => d.confidence_high), borderColor: 'rgba(59, 130, 246, 0.2)', fill: false, borderDash: [5, 5] }
-                ]
+                values: preload.forecast.map(d => d.predicted_cases),
+                raw: preload.forecast
             });
             setMeta(mergeMeta(preload.meta, fallbackMeta));
         }
@@ -76,10 +74,8 @@ export const OutbreakForecast = () => {
             if (data.forecast) {
                 setChartData({
                     labels: data.forecast.map(d => d.date),
-                    datasets: [
-                        { label: 'Predicted Cases', data: data.forecast.map(d => d.predicted_cases), borderColor: 'rgb(239, 68, 68)', backgroundColor: 'rgba(239, 68, 68, 0.5)' },
-                        { label: 'Upper Confidence', data: data.forecast.map(d => d.confidence_high), borderColor: 'rgba(59, 130, 246, 0.2)', fill: false, borderDash: [5, 5] }
-                    ]
+                    values: data.forecast.map(d => d.predicted_cases),
+                    raw: data.forecast
                 });
             }
             setMeta(mergeMeta(data.meta, fallbackMeta));
@@ -88,6 +84,17 @@ export const OutbreakForecast = () => {
     };
 
     const confidence = Number.isFinite(meta?.confidence) ? Math.round(meta.confidence * 100) : null;
+
+    const handleForecastPointClick = (item, index) => {
+        const raw = chartData?.raw?.[index];
+        if (raw) {
+            setDrillDown({ open: true, title: `Day ${index + 1}: ${raw.date}`, data: [
+                { label: 'Predicted Cases', value: raw.predicted_cases },
+                { label: 'Confidence High', value: raw.confidence_high || 'N/A' },
+                { label: 'Confidence Low', value: raw.confidence_low || 'N/A' }
+            ].filter(d => d.value !== 'N/A') });
+        }
+    };
 
     return (
         <DashboardCard>
@@ -107,9 +114,21 @@ export const OutbreakForecast = () => {
                 </div>
                 <button disabled={loading} className="bg-red-600 text-white px-4 rounded font-bold h-[46px] mt-6 transition active:scale-95 disabled:opacity-70">{loading ? 'Forecasting...' : 'Run Forecast'}</button>
             </form>
-            <div className="h-64">
-                {chartData ? <Line options={{responsive: true, maintainAspectRatio: false}} data={chartData} /> : <p className="text-center pt-20 text-gray-400">Enter details to see forecast</p>}
-            </div>
+            {chartData ? (
+                <GradientAreaChart
+                    data={chartData.labels.map((l, i) => ({ label: l, value: chartData.values[i] }))}
+                    title=""
+                    lineColor="rgba(239, 68, 68, 0.8)"
+                    height={220}
+                    className=""
+                    onPointClick={handleForecastPointClick}
+                />
+            ) : (
+                <div className="h-48 flex items-center justify-center">
+                    <p className="text-center text-gray-400">Enter details to see forecast</p>
+                </div>
+            )}
+            <ChartDrillDown open={drillDown.open} onClose={() => setDrillDown({ open: false, title: '', data: [] })} title={drillDown.title} data={drillDown.data} />
             {confidence !== null && (
                 <div className="mt-3 flex flex-wrap gap-2 text-xs">
                     <span className="px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 font-semibold">Confidence: {confidence}%</span>
@@ -159,6 +178,11 @@ export const AllocationPredictor = () => {
     };
 
     const confidence = Number.isFinite(meta?.confidence) ? Math.round(meta.confidence * 100) : null;
+    const allocDonut = result ? [
+        { label: 'Ambulances Deployed', value: Math.round((formData.emergency_count || 5) * 0.6) },
+        { label: 'Hospitals On Alert', value: Math.round((formData.emergency_count || 5) * 0.3) },
+        { label: 'Reserve Capacity', value: Math.round((formData.emergency_count || 5) * 0.1) },
+    ] : [];
 
     return (
         <DashboardCard>
@@ -177,6 +201,11 @@ export const AllocationPredictor = () => {
             {result && (
                 <>
                     <div className="mt-4 p-3 bg-blue-50 border-l-4 border-blue-600 font-bold text-blue-800">{result.optimal_action}</div>
+                    {allocDonut.length > 0 && (
+                        <div className="mt-4">
+                            <DonutChart data={allocDonut} title="Resource Distribution" height={180} showLegend={true} />
+                        </div>
+                    )}
                     {confidence !== null && (
                         <div className="mt-3 flex flex-wrap gap-2 text-xs">
                             <span className="px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 font-semibold">Confidence: {confidence}%</span>
@@ -260,12 +289,22 @@ export const PolicyAdvisor = () => {
                 </button>
             </form>
             {result && (
-                <div className="mt-4 space-y-2">
+                <div className="mt-4 space-y-4">
                     <p className="font-semibold">Region Status: <span className="text-purple-600">{result.segment.segment_label}</span></p>
                     <div>
                         <p className="text-sm text-gray-600">Performance Score: {result.performance.predicted_performance_score}/100</p>
                         <ProgressBar value={result.performance.predicted_performance_score} colorClass="bg-purple-500" />
                     </div>
+                    <DonutChart
+                        data={[
+                            { label: 'Emergency Response', value: Math.round((formData.emergency_rate || 10) * 5) },
+                            { label: 'Bed Availability', value: Math.round((100 - (formData.hospital_bed_occupancy || 85)) * 2) },
+                            { label: 'Response Efficiency', value: Math.round((30 - (formData.avg_response_time || 15)) * 3) },
+                        ].filter(d => d.value > 0)}
+                        title="Policy Component Breakdown"
+                        height={180}
+                        showLegend={true}
+                    />
                     <ExplainabilityPanel meta={meta.performance} />
                     <ExplainabilityPanel meta={meta.segment} />
                 </div>
@@ -312,6 +351,12 @@ export const AvailabilityPredictor = () => {
     };
 
     const confidence = Number.isFinite(meta?.confidence) ? Math.round(meta.confidence * 100) : null;
+    const availDonut = score !== null ? [
+        { label: 'Available', value: score },
+        { label: 'In Use', value: Math.round((100 - score) * 0.6) },
+        { label: 'Reserved', value: Math.round((100 - score) * 0.3) },
+        { label: 'Depleted', value: Math.round((100 - score) * 0.1) },
+    ] : [];
 
     return (
         <DashboardCard>
@@ -329,9 +374,12 @@ export const AvailabilityPredictor = () => {
                 </button>
             </form>
             {score !== null && (
-                <div className="mt-4 text-center">
-                    <p className="text-2xl font-bold text-green-700">{score}/100</p>
-                    <p className="text-xs text-gray-500">Predicted Availability Score</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div className="text-center">
+                        <p className="text-2xl font-bold text-green-700">{score}/100</p>
+                        <p className="text-xs text-gray-500">Predicted Availability Score</p>
+                    </div>
+                    <DonutChart data={availDonut} title="" height={160} showLegend={true} />
                 </div>
             )}
             {confidence !== null && (

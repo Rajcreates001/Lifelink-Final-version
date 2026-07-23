@@ -14,7 +14,6 @@ const LandingPage = lazy(() => import('./pages/LandingPage'));
 const ApiTest = lazy(() => import('./pages/ApiTest'));
 const HospitalRoleSelect = lazy(() => import('./pages/HospitalRoleSelect'));
 const GovernmentRoleSelect = lazy(() => import('./pages/GovernmentRoleSelect'));
-const DemoRoleSelect = lazy(() => import('./pages/DemoRoleSelect'));
 const SwitchPortal = lazy(() => import('./pages/SwitchPortal'));
 
 // Protected Route Component
@@ -119,9 +118,6 @@ const App = () => {
                             </ProtectedRoute>
                         }
                     />
-
-                    {/* Demo Role Select */}
-                    <Route path="/demo/role/:portal" element={<DemoRoleSelect />} />
 
                     {/* Protected: Hospital Dashboard */}
                     <Route 

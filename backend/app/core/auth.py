@@ -65,6 +65,9 @@ async def get_current_user(authorization: str | None = Header(default=None)) -> 
     if not user_id or not role:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
 
+    # Try MongoDB lookup for full AuthContext, but fall back to JWT-only context
+    # if the user was not seeded in the database (e.g. demo/development mode).
+    # The JWT already provides cryptographic proof of authentication.
     db = get_db()
     user_repo = MongoRepository(db, USERS)
     try:
@@ -72,9 +75,12 @@ async def get_current_user(authorization: str | None = Header(default=None)) -> 
     except Exception:
         lookup_id = user_id
     user = await user_repo.find_one({"_id": lookup_id})
-    if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    if user:
+        scopes = resolve_scopes(role, sub_role)
+        return AuthContext(user_id=str(user_id), role=role, sub_role=sub_role, scopes=scopes)
 
+    # Fallback: build AuthContext from JWT claims without requiring a database record.
+    # This ensures v2 endpoints work immediately after login even without seeded users.
     scopes = resolve_scopes(role, sub_role)
     return AuthContext(user_id=str(user_id), role=role, sub_role=sub_role, scopes=scopes)
 

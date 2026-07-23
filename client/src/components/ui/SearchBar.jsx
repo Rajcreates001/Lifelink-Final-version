@@ -18,39 +18,59 @@ const SearchBar = ({
                 e.preventDefault();
                 onSubmit?.();
             }}
-            className={`flex items-center gap-2 px-3 py-2 rounded-2xl border shadow-sm transition-all duration-200 w-full overflow-hidden ${
-                isAi ? 'bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200' : 'bg-white/80 border-slate-200'
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-full border transition-all duration-200 w-full overflow-hidden group focus-within:ring-2 focus-within:ring-[#2563EB]/20 ${
+                isAi
+                    ? 'bg-gradient-to-r from-purple-50/80 to-indigo-50/80 border-purple-200 focus-within:border-purple-400'
+                    : 'bg-white border-[#E5E7EB] focus-within:border-[#2563EB] hover:border-gray-300'
             }`}
         >
             {showModeToggle ? (
                 <button
                     type="button"
                     onClick={() => onModeChange?.(isAi ? 'db' : 'ai')}
-                    className={`text-[11px] font-bold uppercase tracking-wide px-3 py-1 rounded-full transition shrink-0 ${
-                        isAi ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-600'
+                    className={`text-[11px] font-bold uppercase tracking-wide px-3 py-1 rounded-full transition-all duration-200 shrink-0 ${
+                        isAi
+                            ? 'bg-gradient-to-r from-[#7C3AED] to-[#2563EB] text-white'
+                            : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                     }`}
                 >
                     {modeLabel}
                 </button>
             ) : (
-                <span className="text-[11px] font-bold uppercase tracking-wide px-3 py-1 rounded-full bg-slate-100 text-slate-600 shrink-0">
+                <span className="text-[11px] font-bold uppercase tracking-wide px-3 py-1 rounded-full bg-gray-100 text-gray-500 shrink-0">
                     {modeLabel}
                 </span>
             )}
-            <input
-                className="flex-1 min-w-0 bg-transparent outline-none text-sm text-slate-700 placeholder:text-slate-400"
-                placeholder={isAi ? 'Ask LifeLink AI…' : 'Search records…'}
-                value={query}
-                onChange={(e) => onQueryChange?.(e.target.value)}
-            />
+            <div className="relative flex-1 min-w-0">
+                <input
+                    className="w-full bg-transparent outline-none text-[15px] text-gray-700 placeholder:text-gray-400 transition-all duration-200"
+                    placeholder={isAi ? 'Ask LifeLink AI…' : 'Search records…'}
+                    value={query}
+                    onChange={(e) => onQueryChange?.(e.target.value)}
+                    aria-label={isAi ? 'Ask LifeLink AI' : 'Search records'}
+                />
+            </div>
             <button
                 type="submit"
                 disabled={loading}
-                className={`text-xs font-semibold px-3 py-1.5 rounded-full transition shrink-0 ${
-                    isAi ? 'bg-purple-600 text-white' : 'bg-sky-600 text-white'
-                }`}
+                className={`text-xs font-semibold px-4 py-1.5 rounded-full transition-all duration-200 shrink-0 active:scale-95 ${
+                    isAi
+                        ? 'bg-gradient-to-r from-[#7C3AED] to-[#2563EB] text-white hover:shadow-md'
+                        : 'bg-gradient-to-r from-[#2563EB] to-[#6366F1] text-white hover:shadow-md'
+                } ${loading ? 'opacity-60 cursor-not-allowed' : ''}`}
+                aria-label="Search"
             >
-                {loading ? 'Searching…' : 'Go'}
+                {loading ? (
+                    <span className="flex items-center gap-1.5">
+                        <i className="fas fa-spinner fa-spin text-[10px]"></i>
+                        Search
+                    </span>
+                ) : (
+                    <span className="flex items-center gap-1.5">
+                        <i className="fas fa-arrow-right text-[10px]"></i>
+                        Go
+                    </span>
+                )}
             </button>
         </form>
     );

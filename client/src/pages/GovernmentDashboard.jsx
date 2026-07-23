@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState, Suspense } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useDataMode } from '../context/DataModeContext';
+
 import DashboardLayout from '../layout/DashboardLayout';
 import { DashboardCard, LoadingSpinner } from '../components/Common';
 import { API_BASE_URL, apiFetch, getAuthToken } from '../config/api';
@@ -80,7 +80,7 @@ const useIsDesktop = () => {
 
 const DesktopGovernmentDashboard = () => {
     const { user } = useAuth();
-    const { mode } = useDataMode();
+
     const navigate = useNavigate();
     const { module } = useParams();
     const [activeTab, setActiveTab] = useState('');
@@ -150,13 +150,12 @@ const DesktopGovernmentDashboard = () => {
 
     useEffect(() => {
         if (user?.role !== 'government') return;
-        if (mode !== 'real') return;
         const token = getAuthToken();
         if (!token) {
             navigate('/login', { replace: true });
             return;
         }
-        const preloadKey = `gov_preload_done_${mode}_${subRole || 'default'}`;
+        const preloadKey = `gov_preload_done_${subRole || 'default'}`;
         if (sessionStorage.getItem(preloadKey)) return;
         sessionStorage.setItem(preloadKey, '1');
 
@@ -272,7 +271,7 @@ const DesktopGovernmentDashboard = () => {
                 return null;
             })
         );
-    }, [user?.role, subRole, moduleSet, mode]);
+    }, [user?.role, subRole, moduleSet]);
 
     const handleRefresh = () => {
         setRefreshKeys((prev) => ({
@@ -324,7 +323,7 @@ const DesktopGovernmentDashboard = () => {
             onRefresh={handleRefresh}
             refreshLabel="Refresh module"
         >
-            <div className="space-y-6 pb-10">
+            <div className="space-y-6 pb-10 animate-fade-in">
                 <DashboardGrid className="md:grid-cols-3">
                     <DashboardCard className="border-l-4 border-blue-500">
                         <p className="text-xs font-bold text-blue-600 uppercase">Pending Verifications</p>
@@ -350,7 +349,7 @@ const DesktopGovernmentDashboard = () => {
 
 const MobileGovernmentDashboard = () => {
     const { user, logout } = useAuth();
-    const { mode } = useDataMode();
+
     const navigate = useNavigate();
     const { module } = useParams();
     const [activeTab, setActiveTab] = useState('');
@@ -416,13 +415,12 @@ const MobileGovernmentDashboard = () => {
 
     useEffect(() => {
         if (user?.role !== 'government') return;
-        if (mode !== 'real') return;
         const token = getAuthToken();
         if (!token) {
             navigate('/login', { replace: true });
             return;
         }
-        const preloadKey = `gov_preload_done_${mode}_${subRole || 'default'}`;
+        const preloadKey = `gov_preload_done_${subRole || 'default'}`;
         if (sessionStorage.getItem(preloadKey)) return;
         sessionStorage.setItem(preloadKey, '1');
 
@@ -538,7 +536,7 @@ const MobileGovernmentDashboard = () => {
                 return null;
             })
         );
-    }, [user?.role, subRole, moduleSet, mode]);
+    }, [user?.role, subRole, moduleSet]);
 
     const handleRefresh = () => {
         setRefreshKeys((prev) => ({
@@ -648,10 +646,10 @@ const MobileGovernmentDashboard = () => {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-slate-50 animate-fade-in">
             <div className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-slate-200">
                 <div className="flex items-center justify-between px-4 py-3">
-                    <button type="button" onClick={() => setMenuOpen(true)} className="text-slate-600">
+                    <button type="button" onClick={() => setMenuOpen(true)} className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg p-2 transition-all duration-200">
                         <i className="fas fa-bars"></i>
                     </button>
                     <div className="flex items-center gap-2">

@@ -1,4 +1,5 @@
 from __future__ import annotations
+import logging
 
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 
@@ -30,7 +31,17 @@ async def close_mongo_connection() -> None:
         db_state.session_factory = None
 
 
+# Module-level logger for graceful degradation messages
+_logger = logging.getLogger("lifelink.database")
+
+
 def get_db() -> async_sessionmaker[AsyncSession]:
+    """
+    Get database session factory with graceful degradation.
+    Returns the session factory if available, or raises RuntimeError.
+    Reconnection is handled asynchronously at the lifespan level.
+    """
     if db_state.session_factory is None:
+        _logger.warning("Database not initialized — will reconnect on next lifespan cycle")
         raise RuntimeError("Database is not initialized")
     return db_state.session_factory

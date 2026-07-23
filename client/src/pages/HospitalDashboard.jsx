@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useDataMode } from '../context/DataModeContext';
+
 import DashboardLayout from '../layout/DashboardLayout';
 import { apiFetch } from '../config/api';
 import MobileDrawer from '../components/layout/MobileDrawer';
@@ -134,7 +134,7 @@ const useIsDesktop = () => {
 
 const DesktopHospitalDashboard = () => {
     const { user } = useAuth();
-    const { mode } = useDataMode();
+
     const navigate = useNavigate();
     const { module } = useParams();
     const [activeTab, setActiveTab] = useState('');
@@ -171,7 +171,6 @@ const DesktopHospitalDashboard = () => {
     }, [module, moduleKey, allowedTabs, defaultTab, navigate]);
 
     useEffect(() => {
-        if (mode !== 'real') return;
         if (!user?._id && !user?.id) return;
         const preloadKey = `hospital_preload_${subRole || 'default'}`;
         if (sessionStorage.getItem(preloadKey)) return;
@@ -204,7 +203,7 @@ const DesktopHospitalDashboard = () => {
         ];
 
         Promise.allSettled(insightCalls.concat(coreCalls));
-    }, [mode, subRole, moduleSet, user?._id, user?.id]);
+    }, [subRole, moduleSet, user?._id, user?.id]);
 
     const handleSelect = (key) => {
         if (key === 'profile' || key === 'notifications') {
@@ -260,7 +259,7 @@ const DesktopHospitalDashboard = () => {
 
 const MobileHospitalDashboard = () => {
     const { user, logout } = useAuth();
-    const { mode } = useDataMode();
+
     const navigate = useNavigate();
     const { module } = useParams();
     const [activeTab, setActiveTab] = useState('');
@@ -299,7 +298,6 @@ const MobileHospitalDashboard = () => {
     }, [module, moduleKey, allowedTabs, defaultTab, navigate]);
 
     useEffect(() => {
-        if (mode !== 'real') return;
         if (!user?._id && !user?.id) return;
         const preloadKey = `hospital_preload_${subRole || 'default'}`;
         if (sessionStorage.getItem(preloadKey)) return;
@@ -332,7 +330,7 @@ const MobileHospitalDashboard = () => {
         ];
 
         Promise.allSettled(insightCalls.concat(coreCalls));
-    }, [mode, subRole, moduleSet, user?._id, user?.id]);
+    }, [subRole, moduleSet, user?._id, user?.id]);
 
     const handleRefresh = () => {
         setRefreshKeys((prev) => ({
@@ -431,10 +429,10 @@ const MobileHospitalDashboard = () => {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-slate-50 animate-fade-in">
             <div className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-slate-200">
                 <div className="flex items-center justify-between px-4 py-3">
-                    <button type="button" onClick={() => setMenuOpen(true)} className="text-slate-600">
+                    <button type="button" onClick={() => setMenuOpen(true)} className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg p-2 transition-all duration-200">
                         <i className="fas fa-bars"></i>
                     </button>
                     <div className="flex items-center gap-2">

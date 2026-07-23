@@ -1,62 +1,206 @@
-version: '3.9'
+# ============================================================
+# LifeLink — Complete Docker Compose Configuration
+# All persistent data stored on D:/Docker to save C: drive space
+# ============================================================
+
+# ─── Shared Configuration ─────────────────────────────────
+x-backend-env: &backend-env
+  POSTGRES_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/lifelink_db
+  REDIS_URL: redis://redis:6379/0
+  CELERY_BROKER_URL: redis://redis:6379/0
+  CELERY_RESULT_BACKEND: redis://redis:6379/1
+  APP_ENV: development
+  JWT_SECRET: change_me_in_production
+  PRIVACY_SALT: change_me_in_production
+  FRONTEND_URL: http://localhost:5000
+  HOST: "0.0.0.0"
+  PORT: 3010
+  LLM_PROVIDER: groq
+  GROQ_API_KEY: ${GROQ_API_KEY:-}
+  GROQ_BASE_URL: https://api.groq.com
+  GROQ_MODEL: llama3-8b-8192
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  EMBEDDING_MODEL: sentence-transformers/all-MiniLM-L6-v2
+  SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
+  SENDGRID_FROM_EMAIL: noreply@lifelink.ai
+  WEAVIATE_URL: http://weaviate:8080
+
+x-healthy-pg: &healthy-pg
+  condition: service_healthy
+
+x-healthy-redis: &healthy-redis
+  condition: service_healthy
 
 services:
+  # ─── PostgreSQL ───────────────────────────────────────────────
   postgres:
     image: postgres:15
-    restart: always
+    container_name: lifelink-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: lifelink_db
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - D:/Docker/postgres_data:/var/lib/postgresql/data
     ports:
-      - '5432:5432'
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d lifelink_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
+  # ─── Redis ────────────────────────────────────────────────────
   redis:
     image: redis:7
-    restart: always
+    container_name: lifelink-redis
+    restart: unless-stopped
+    volumes:
+      - D:/Docker/redis_data:/data
     ports:
-      - '6379:6379'
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
 
+  # ─── Weaviate (Vector Database) ──────────────────────────────
+  weaviate:
+    image: semitechnologies/weaviate:1.25.0
+    container_name: lifelink-weaviate
+    restart: unless-stopped
+    environment:
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
+      DEFAULT_VECTORIZER_MODULE: "none"
+      CLUSTER_HOSTNAME: "node1"
+    volumes:
+      - D:/Docker/weaviate_data:/var/lib/weaviate
+    ports:
+      - "8080:8080"
+      - "50051:50051"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/v1/.well-known/ready"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # ─── Backend API ──────────────────────────────────────────────
   backend:
-    image: python:3.11-slim
-    command: sh -c "pip install -r requirements.txt && uvicorn app.main:app --host 0.0.0.0 --port 3010 --reload"
-    working_dir: /app
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: lifelink-backend
+    restart: unless-stopped
     volumes:
       - ./backend:/app
-      - ./backend/.rag:/app/.rag
+      - ./scripts:/app/scripts
+      - D:/Docker/rag_index:/app/.rag
     environment:
-      POSTGRES_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/lifelink_db
-      JWT_SECRET: replace_with_secure_secret
-      FRONTEND_URL: http://localhost:5000
-      APP_ENV: development
-      REDIS_URL: redis://redis:6379/0
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/1
-      LLM_PROVIDER: groq
-      GROQ_BASE_URL: https://api.groq.com
-      GROQ_MODEL: llama3-8b-8192
-      EMBEDDING_MODEL: sentence-transformers/all-MiniLM-L6-v2
+      <<: *backend-env
+    command: ["api"]
     ports:
-      - '3010:3010'
+      - "3010:3010"
     depends_on:
-      - postgres
-      - redis
+      postgres: *healthy-pg
+      redis: *healthy-redis
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; print(urllib.request.urlopen('http://localhost:3010/health').status)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
 
+  # ─── Database Migration (runs once, then exits) ──────────────
+  db-migrate:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: lifelink-db-migrate
+    volumes:
+      - ./backend:/app
+    environment:
+      <<: *backend-env
+    command: ["migrate"]
+    depends_on:
+      postgres: *healthy-pg
+    restart: "no"
+
+  # ─── Celery Worker ────────────────────────────────────────────
+  celery-worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: lifelink-celery-worker
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
+      - ./scripts:/app/scripts
+    environment:
+      <<: *backend-env
+    command: ["worker"]
+    depends_on:
+      postgres: *healthy-pg
+      redis: *healthy-redis
+      backend:
+        condition: service_started
+
+  # ─── Celery Beat (Scheduled Tasks) ────────────────────────────
+  celery-beat:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: lifelink-celery-beat
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
+      - ./scripts:/app/scripts
+      - D:/Docker/celery_beat_data:/app/celerybeat-schedule
+    environment:
+      <<: *backend-env
+    command: ["beat"]
+    depends_on:
+      postgres: *healthy-pg
+      redis: *healthy-redis
+
+  # ─── Frontend ─────────────────────────────────────────────────
   frontend:
-    image: node:20-bullseye
-    command: sh -c "cd /app && npm install && npm run dev -- --host 0.0.0.0 --port 5000"
-    working_dir: /app
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+    container_name: lifelink-frontend
+    restart: unless-stopped
     volumes:
       - ./client:/app
+      - node_modules:/app/node_modules
     environment:
       VITE_API_URL: http://localhost:3010
     ports:
-      - '5000:5000'
+      - "5000:5000"
+    command:
+      - sh
+      - -c
+      - |
+        echo '📦 Installing frontend dependencies...'
+        npm install
+        echo '🚀 Starting frontend dev server...'
+        npm run dev -- --host 0.0.0.0 --port 5000
     depends_on:
-      - backend
+      backend:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
+# ─── Named Volumes ───────────────────────────────────────────
 volumes:
-  postgres_data:
-    driver: local
+  node_modules:

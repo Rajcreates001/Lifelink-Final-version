@@ -92,29 +92,37 @@ def generate_response(prompt: str, system_prompt: str | None = None, mode: str =
             raise RuntimeError(
                 "OPENAI_API_KEY is not configured. Set it in the backend environment or switch LLM_PROVIDER to groq."
             )
-        model = settings.openai_model or "gpt-4o-mini"
+        model = settings.openai_model or "qwen3.6-27b"
+        base_url = settings.openai_base_url or "http://144.79.62.242:8000/v1"
         cache_key = _make_cache_key(messages, model, effective_mode)
         cache = CacheStore(settings.redis_url, namespace="llm")
-        cached = cache.get(cache_key)
-        if cached and isinstance(cached.get("text"), str):
-            return cached["text"]
+        try:
+            cached = cache.get(cache_key)
+            if cached and isinstance(cached.get("text"), str):
+                return cached["text"]
+        except Exception:
+            pass  # Graceful degradation: skip cache on Redis failure
 
         try:
             import openai
-
             openai.api_key = settings.openai_api_key
-            completion = openai.ChatCompletion.create(
+            openai.base_url = base_url
+            completion = openai.chat.completions.create(
                 model=model,
                 messages=messages,
                 temperature=temperature,
-                max_tokens=max_tokens,
+                max_tokens=max_tokens or settings.llm_max_output_tokens,
                 top_p=DEFAULT_TOP_P,
+                timeout=30,
             )
             choice = completion.choices[0] if completion.choices else None
             text = choice.message.content.strip() if choice and choice.message.content else ""
             if not text:
                 raise RuntimeError("OpenAI returned an empty response")
-            cache.set(cache_key, {"text": text}, ttl=CACHE_TTL_SECONDS)
+            try:
+                cache.set(cache_key, {"text": text}, ttl=CACHE_TTL_SECONDS)
+            except Exception:
+                pass  # Graceful degradation: skip cache on Redis failure
             return text
         except Exception as exc:
             raise RuntimeError(f"OpenAI API error: {exc}") from exc

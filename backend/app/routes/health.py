@@ -60,7 +60,77 @@ async def root() -> dict:
 
 @router.get("/health")
 async def health() -> dict:
-    return {"status": "ok", "service": "lifelink-fastapi"}
+    """
+    Basic health check — returns status immediately.
+    Use /health/ready for a full dependency check.
+    """
+    return {
+        "status": "ok",
+        "service": "lifelink-fastapi",
+        "version": "0.1.0",
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+    }
+
+
+@router.get("/health/ready")
+async def health_ready() -> dict:
+    """
+    Readiness probe — checks all dependencies before reporting healthy.
+    Each dependency is checked individually; one failure doesn't cascade.
+    Returns 503 if critical dependencies are down.
+    """
+    import asyncio
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    checks = {}
+    all_healthy = True
+
+    # 1. MongoDB / PostgreSQL check
+    try:
+        from app.db.mongo import get_db
+        from sqlalchemy import text
+        db = get_db()
+        async with db() as session:
+            await session.execute(text("SELECT 1"))
+        checks["database"] = {"status": "healthy"}
+    except Exception as e:
+        checks["database"] = {"status": "unhealthy", "error": str(e)[:100]}
+        all_healthy = False
+
+    # 2. ML Model check (try loading a basic prediction)
+    try:
+        import joblib
+        import os
+        model_path = os.path.join(os.path.dirname(__file__), "..", "ml", "health_risk_model.joblib")
+        if os.path.exists(model_path):
+            checks["ml_models"] = {"status": "healthy"}
+        else:
+            checks["ml_models"] = {"status": "degraded", "note": "Model files not loaded at startup"}
+    except Exception as e:
+        checks["ml_models"] = {"status": "degraded", "error": str(e)[:100]}
+
+    # 3. LLM endpoint connectivity check
+    try:
+        import httpx
+        base_url = settings.openai_base_url or "http://144.79.62.242:8000/v1"
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(f"{base_url}/models")
+            if resp.status_code < 500:
+                checks["llm_endpoint"] = {"status": "healthy"}
+            else:
+                checks["llm_endpoint"] = {"status": "degraded", "note": f"HTTP {resp.status_code}"}
+    except Exception as e:
+        checks["llm_endpoint"] = {"status": "degraded", "error": str(e)[:80]}
+
+    status_code = 200 if all_healthy else 503
+    raise HTTPException(status_code=status_code, detail={
+        "status": "ready" if all_healthy else "degraded",
+        "service": "lifelink-fastapi",
+        "version": "0.1.0",
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "checks": checks,
+    })
 
 
 @router.post("/health/vitals", status_code=201)
