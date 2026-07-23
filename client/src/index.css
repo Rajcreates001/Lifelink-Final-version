@@ -679,6 +679,111 @@ html { scroll-behavior: smooth; }
     background-size: 300% 300%, 300% 300%, 300% 300%, 300% 300%, 300% 300%;
 }
 
+/* ─── Particle Travel Animation ───────────────────────── */
+@keyframes particleTravel {
+    0% {
+        opacity: 1;
+        transform: translate(0, 0) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(60px, -20px) scale(0);
+    }
+}
+
+/* ─── Emergency Timeline Animations ──────────────────── */
+@keyframes nodeEntrance {
+    0% {
+        opacity: 0;
+        transform: scale(0.6) translateY(20px);
+    }
+    60% {
+        transform: scale(1.08) translateY(-2px);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+@keyframes nodeExit {
+    0% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0.6) translateY(-12px);
+    }
+}
+@keyframes pulseGlowTravel {
+    0% {
+        opacity: 0.2;
+        transform: scale(0.8);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.3);
+    }
+    100% {
+        opacity: 0.2;
+        transform: scale(0.8);
+    }
+}
+@keyframes timelineParticle {
+    0% {
+        opacity: 1;
+        transform: translate(0, 0) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(var(--tx, 40px), var(--ty, -30px)) scale(0);
+    }
+}
+@keyframes arrowGlow {
+    0%, 100% {
+        opacity: 0.3;
+        transform: translateX(0);
+    }
+    50% {
+        opacity: 0.8;
+        transform: translateX(4px);
+    }
+}
+@keyframes auraPulse {
+    0% {
+        transform: scale(1);
+        opacity: 0.35;
+    }
+    50% {
+        transform: scale(1.25);
+        opacity: 0.15;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 0.35;
+    }
+}
+@keyframes stepEnterSlide {
+    0% {
+        opacity: 0;
+        transform: translateY(16px) scale(0.95);
+        filter: blur(4px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0);
+    }
+}
+
+.animate-node-entrance { animation: nodeEntrance 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+.animate-node-exit { animation: nodeExit 0.3s ease-in forwards; }
+.animate-pulse-glow-travel { animation: pulseGlowTravel 1.5s ease-in-out infinite; }
+.animate-timeline-particle { animation: timelineParticle 0.8s ease-out forwards; }
+.animate-arrow-glow { animation: arrowGlow 1.2s ease-in-out infinite; }
+.animate-aura-pulse { animation: auraPulse 2.5s ease-in-out infinite; }
+.animate-step-enter-slide { animation: stepEnterSlide 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
 /* Landing page utility classes */
 .animate-fade-slide-up { animation: fadeSlideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 .animate-counter-number { animation: counterNumber 0.6s ease-out forwards; }
@@ -791,6 +896,16 @@ html { scroll-behavior: smooth; }
 .ticker-container {
     mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
     -webkit-mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+}
+
+/* ─── Chart Tooltip ──────────────────────────────── */
+@keyframes tooltipIn {
+    0% { opacity: 0; transform: translateY(6px) scale(0.95); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-tooltip-in {
+    animation: tooltipIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    transform-origin: bottom center;
 }
 
 /* ─── Loading Skeleton ─────────────────────────────── */
