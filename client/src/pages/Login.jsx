@@ -162,6 +162,18 @@ const Login = () => {
 
     return (
         <div className="min-h-screen flex items-center justify-center px-4 py-4 font-sans relative overflow-hidden bg-gradient-to-br from-[#f0f5ff] via-[#faf5ff] to-[#f5f0ff]">
+            {/* ─── Flowing Role-Color Gradient (from LandingPage) ── */}
+            <div className="absolute inset-0 animate-role-gradient-flow pointer-events-none" aria-hidden="true"
+                style={{
+                    background: `
+                        radial-gradient(ellipse at 20% 50%, rgba(37,99,235,0.10) 0%, transparent 50%),
+                        radial-gradient(ellipse at 80% 20%, rgba(5,150,105,0.08) 0%, transparent 50%),
+                        radial-gradient(ellipse at 40% 80%, rgba(124,58,237,0.08) 0%, transparent 50%),
+                        radial-gradient(ellipse at 60% 40%, rgba(220,38,38,0.06) 0%, transparent 50%),
+                        radial-gradient(ellipse at 90% 70%, rgba(249,115,22,0.06) 0%, transparent 50%)
+                    `
+                }}
+            />
             {/* ─── Premium Aurora Background ──────────────────── */}
             {/* Large flowing aurora blobs */}
             <div className="absolute top-[-15%] left-[-10%] w-[40%] h-[45%] rounded-full bg-gradient-to-br from-blue-400/15 via-indigo-400/15 to-blue-300/10 blur-[120px] animate-aurora pointer-events-none" aria-hidden="true"></div>
