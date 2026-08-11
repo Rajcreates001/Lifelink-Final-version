@@ -3,10 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 import DashboardLayout from '../layout/DashboardLayout';
+import LogoutConfirmDialog from '../components/ui/LogoutConfirmDialog';
 import { apiFetch } from '../config/api';
 import MobileDrawer from '../components/layout/MobileDrawer';
 import LifelinkAiChat from '../components/LifelinkAiChat';
-import NotificationMenu from '../components/NotificationMenu';
+import NotificationHub from '../components/NotificationHub';
 import HospitalProfileModal from '../components/HospitalProfileModal';
 
 // --- CHECK THESE IMPORTS CAREFULLY ---
@@ -17,7 +18,6 @@ import HospitalResources from '../components/HospitalResources';
 import HospitalCommunications from '../components/HospitalCommunications';
 import AmbulanceETARoute from '../components/AmbulanceETARoute';
 import HospitalBedManagement from '../components/HospitalBedManagement';
-import AIExpansionPanel from '../components/AIExpansionPanel';
 import {
     HospitalDepartmentAnalytics,
     HospitalFinanceOverview,
@@ -41,6 +41,8 @@ import {
     HospitalOTSurgeryScheduling,
     HospitalOTStaffAllocation,
 } from '../components/HospitalOpsModules';
+import RevenueIntelligence from '../components/ui/RevenueIntelligence';
+import EmergencyCommandCenter from '../components/ui/EmergencyCommandCenter';
 
 const hospitalModuleSets = {
     ceo: [
@@ -67,23 +69,10 @@ const hospitalModuleSets = {
         ) },
     ],
     emergency: [
-        { key: 'live-emergency-feed', label: 'Live Emergency Feed', icon: 'fa-triangle-exclamation', render: () => <HospitalLiveEmergencyFeed /> },
-        { key: 'ambulance-tracking', label: 'Ambulance Tracking', icon: 'fa-ambulance', render: ({ user }) => (
-            <AmbulanceETARoute
-                currentHospitalId={user?._id || user?.id}
-                currentHospitalName={user?.name}
-                hospitalLocation={{ lat: 12.9716, lng: 77.5946 }}
-            />
-        ) },
-        { key: 'patient-intake', label: 'Patient Intake', icon: 'fa-user-injured', render: () => <HospitalPatients /> },
-        { key: 'bed-allocation', label: 'Bed Allocation', icon: 'fa-bed', render: () => <HospitalBedManagement /> },
-        { key: 'ai-decision-panel', label: 'AI Decision Panel', icon: 'fa-brain', render: () => <HospitalAnalytics /> },
+        { key: 'emergency-command-center', label: 'Emergency Command Center', icon: 'fa-tower-broadcast', render: () => <EmergencyCommandCenter /> },
     ],
     finance: [
-        { key: 'billing', label: 'Billing', icon: 'fa-file-invoice-dollar', render: () => <HospitalBillingSystem /> },
-        { key: 'revenue-analytics', label: 'Revenue Analytics', icon: 'fa-chart-line', render: () => <HospitalRevenueAnalytics /> },
-        { key: 'insurance', label: 'Insurance', icon: 'fa-shield-alt', render: () => <HospitalInsuranceClaims /> },
-        { key: 'cost-optimization', label: 'Cost Optimization', icon: 'fa-sack-dollar', render: () => <HospitalResources /> },
+        { key: 'revenue-intelligence', label: 'Revenue Intelligence', icon: 'fa-coins', render: () => <RevenueIntelligence /> },
     ],
     opd: [
         { key: 'appointment-scheduling', label: 'Appointment Scheduling', icon: 'fa-calendar-check', render: () => <HospitalOPDScheduling /> },
@@ -227,15 +216,6 @@ const DesktopHospitalDashboard = () => {
         return (
             <div className="space-y-6" key={`${activeModule.key}-${refreshKey}`}>
                 {activeModule.render({ user })}
-                <AIExpansionPanel
-                    role="hospital"
-                    subRole={subRole}
-                    moduleKey={activeModule.key}
-                    title="AI Expansion"
-                    description="Futuristic AI capabilities tailored to this hospital unit."
-                    entityId={user?._id || user?.id || user?.userId}
-                    autoRefresh={false}
-                />
             </div>
         );
     };
@@ -268,6 +248,7 @@ const MobileHospitalDashboard = () => {
     const [showChat, setShowChat] = useState(false);
     const [showProfile, setShowProfile] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
     const subRole = user?.subRole?.toLowerCase();
     const moduleSet = useMemo(() => hospitalModuleSets[subRole] || hospitalModuleSets.default, [subRole]);
@@ -346,22 +327,23 @@ const MobileHospitalDashboard = () => {
         return (
             <div className="space-y-4" key={`${activeModule.key}-${refreshKey}`}>
                 {activeModule.render({ user })}
-                <AIExpansionPanel
-                    role="hospital"
-                    subRole={subRole}
-                    moduleKey={activeModule.key}
-                    title="AI Expansion"
-                    description="Futuristic AI capabilities tailored to this hospital unit."
-                    entityId={user?._id || user?.id}
-                    autoRefresh={false}
-                />
             </div>
         );
     };
 
     const handleLogout = () => {
+        setShowLogoutConfirm(true);
+    };
+
+    const handleLogoutConfirm = () => {
+        setShowLogoutConfirm(false);
         logout();
-        navigate('/login');
+        const orgKey = user?.department_key || user?.subRole;
+        if (orgKey) {
+            navigate(`/hospital/${orgKey}`, { replace: true });
+        } else {
+            navigate('/hospital', { replace: true });
+        }
     };
 
     const activeLabel = moduleSet.find((item) => item.key === activeTab)?.label || 'Hospital';
@@ -400,15 +382,18 @@ const MobileHospitalDashboard = () => {
                             setShowNotifications(true);
                             return;
                         }
-                        if (key === 'switch-role') {
-                            navigate('/dashboard/hospital/roles?switch=1');
-                            return;
-                        }
                         navigate(`/dashboard/hospital/${key}`);
                     }}
                     onLogout={handleLogout}
                 />
                 {showProfile && <HospitalProfileModal onClose={() => setShowProfile(false)} />}
+                <LogoutConfirmDialog
+                    open={showLogoutConfirm}
+                    onClose={() => setShowLogoutConfirm(false)}
+                    onConfirm={handleLogoutConfirm}
+                    userName={user?.name || user?.fullName || 'User'}
+                    userRole={user?.subRole || user?.role || 'Hospital Staff'}
+                />
                 {showNotifications && (
                     <div className="fixed inset-0 z-50 bg-slate-900/40 p-4">
                         <div className="relative max-w-3xl mx-auto">
@@ -420,7 +405,7 @@ const MobileHospitalDashboard = () => {
                             >
                                 <i className="fas fa-times"></i>
                             </button>
-                            <NotificationMenu variant="panel" onClose={() => setShowNotifications(false)} />
+                            <NotificationHub variant="panel" onClose={() => setShowNotifications(false)} />
                         </div>
                     </div>
                 )}
@@ -501,10 +486,6 @@ const MobileHospitalDashboard = () => {
                         setShowNotifications(true);
                         return;
                     }
-                    if (key === 'switch-role') {
-                        navigate('/dashboard/hospital/roles?switch=1');
-                        return;
-                    }
                     navigate(`/dashboard/hospital/${key}`);
                 }}
                 onLogout={handleLogout}
@@ -521,7 +502,7 @@ const MobileHospitalDashboard = () => {
                         >
                             <i className="fas fa-times"></i>
                         </button>
-                        <NotificationMenu variant="panel" onClose={() => setShowNotifications(false)} />
+                        <NotificationHub variant="panel" onClose={() => setShowNotifications(false)} />
                     </div>
                 </div>
             )}
@@ -553,10 +534,6 @@ const MobileHospitalMenu = ({ open, onClose, onSelect, onLogout }) => (
                 <button onClick={() => onSelect?.('notifications')} className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100">
                     <i className="fas fa-bell"></i>
                     Notifications
-                </button>
-                <button onClick={() => onSelect?.('switch-role')} className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100">
-                    <i className="fas fa-arrows-rotate"></i>
-                    Switch Role
                 </button>
                 <div className="flex items-center justify-between rounded-xl bg-slate-50 border border-slate-200 px-4 py-3">
                     <div className="flex items-center gap-3">

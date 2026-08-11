@@ -156,6 +156,133 @@ export const ProgressBar = ({ value, colorClass = 'bg-[#2563EB]' }) => (
   </div>
 );
 
+// ═══════════════════════════════════════════════════════════
+// GLOBAL LAYOUT SYSTEM — shared 12-column grid primitives
+// ═══════════════════════════════════════════════════════════
+
+// --- Grid Container (12-column) ---
+export const Grid = ({ children, className = '' }) => (
+  <div className={`grid grid-cols-1 lg:grid-cols-12 gap-6 ${className}`}>
+    {children}
+  </div>
+);
+
+// --- Grid Column (accepts span size 3/4/6/8/12, defaults to full width on mobile) ---
+const SPAN_CLASSES = { 3: 'lg:col-span-3', 4: 'lg:col-span-4', 6: 'lg:col-span-6', 8: 'lg:col-span-8', 12: 'lg:col-span-12' };
+export const GridCol = ({ children, span = 12, className = '' }) => (
+  <div className={`${SPAN_CLASSES[span] || 'lg:col-span-12'} ${className}`}>
+    {children}
+  </div>
+);
+
+// --- Section Header (consistent across all pages) ---
+export const SectionHeader = ({ icon, title, subtitle, action, color = 'from-indigo-500 to-purple-600' }) => (
+  <div className="flex items-center justify-between mb-4">
+    <div className="flex items-center gap-2">
+      {icon && (
+        <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${color} flex items-center justify-center text-white text-xs shadow-sm`}>
+          <i className={`fas ${icon}`} />
+        </div>
+      )}
+      <div>
+        <p className="font-bold text-gray-800 text-sm">{title}</p>
+        {subtitle && <p className="text-[10px] text-gray-400">{subtitle}</p>}
+      </div>
+    </div>
+    {action && <div className="flex items-center gap-2">{action}</div>}
+  </div>
+);
+
+// --- Standard Hero Banner (consistent across all modules) ---
+function _hexToRgb(hex) {
+  const h = hex.replace('#', '');
+  if (h.length === 3) return { r: parseInt(h[0] + h[0], 16), g: parseInt(h[1] + h[1], 16), b: parseInt(h[2] + h[2], 16) };
+  if (h.length === 6) return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16) };
+  return { r: 99, g: 102, b: 241 };
+}
+
+export const StandardHero = ({ icon, title, subtitle, statusItems, gradient = 'from-indigo-600 to-purple-700', accentColor = '#6366F1' }) => {
+  const rgb = _hexToRgb(accentColor);
+  return (
+  <div className="relative rounded-2xl p-6 sm:p-8 mb-6 overflow-hidden"
+    style={{
+      background: `linear-gradient(135deg, #1E1B4B 0%, #312E81 50%, #1E1B4B 100%)`,
+      boxShadow: `0 0 60px rgba(${rgb.r},${rgb.g},${rgb.b},0.08), 0 20px 60px rgba(0,0,0,0.25)`,
+    }}
+  >
+    <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+    <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex items-center gap-4">
+        <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-white/15 to-white/5 flex items-center justify-center shadow-lg border border-white/10">
+          <div className="absolute inset-0 rounded-2xl bg-white/10 animate-ping-slow" />
+          <i className={`fas ${icon} text-white text-xl relative z-10`} />
+        </div>
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">{title}</h1>
+          <p className="text-sm text-white/60 mt-1">{subtitle}</p>
+        </div>
+      </div>
+      {statusItems && (
+        <div className="flex flex-wrap gap-2">
+          {statusItems.map((s) => (
+            <div key={s.label} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-white/5 backdrop-blur-sm border border-white/10">
+              {s.pulse && (
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
+                </span>
+              )}
+              <span className="text-[10px] font-medium text-white/60">{s.label}:</span>
+              <span className="text-[10px] font-bold" style={{ color: s.color }}>{s.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+  );
+};
+
+// --- Metric Card (standard sized metric display) ---
+export const MetricCard = ({ label, value, icon, color = '#2563EB', subtitle }) => (
+  <div className="p-3.5 rounded-xl transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md" style={{ backgroundColor: `${color}06`, border: `1px solid ${color}12` }}>
+    <div className="flex items-center gap-2 mb-2">
+      <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs" style={{ backgroundColor: `${color}10`, color }}>
+        <i className={`fas ${icon}`} />
+      </div>
+      <span className="text-[11px] font-medium text-gray-500">{label}</span>
+    </div>
+    <p className="text-2xl font-bold tabular-nums" style={{ color }}>
+      {value}
+      <span className="text-xs font-normal text-gray-400 ml-1">{subtitle}</span>
+    </p>
+  </div>
+);
+
+const GRID_COLS = { 2: 'sm:grid-cols-2', 3: 'sm:grid-cols-3', 4: 'sm:grid-cols-4', 6: 'sm:grid-cols-6' };
+// --- Metric Grid (auto-layout for metric cards) ---
+export const MetricGrid = ({ items, columns = 4 }) => (
+  <div className={`grid grid-cols-2 ${GRID_COLS[columns] || 'sm:grid-cols-4'} gap-3`}>
+    {items.map((item) => (
+      <MetricCard key={item.label} {...item} />
+    ))}
+  </div>
+);
+
+// --- Empty State (consistent empty state across all pages) ---
+export const EmptyState = ({ icon = 'fa-robot', title, description, action }) => (
+  <DashboardCard>
+    <div className="flex flex-col items-center justify-center py-12 text-center">
+      <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-50 flex items-center justify-center mb-4 border border-gray-200">
+        <i className={`fas ${icon} text-3xl text-gray-300`} />
+      </div>
+      <p className="text-sm font-semibold text-gray-500 mb-1">{title}</p>
+      <p className="text-xs text-gray-400 max-w-xs">{description}</p>
+      {action && <div className="mt-4">{action}</div>}
+    </div>
+  </DashboardCard>
+);
+
 // --- Explainability Panel ---
 export const ExplainabilityPanel = ({ meta }) => {
   if (!meta) return null;

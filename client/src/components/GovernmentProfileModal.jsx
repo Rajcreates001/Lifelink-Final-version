@@ -1,35 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../config/api';
+import EnterpriseModal from './ui/EnterpriseModal';
 
-const GovernmentProfileModal = ({ onClose, variant = 'modal' }) => {
+const GovernmentProfileModal = ({ open, onClose }) => {
     const { user } = useAuth();
-    const isPanel = variant === 'panel';
-    
-    // Government specific fields
+
     const [formData, setFormData] = useState({
-        name: '', 
-        email: '', 
-        phone: '', 
-        department: '', // e.g. Health Ministry
-        zone: '',       // e.g. North Zone
-        badgeId: '',    // e.g. GOVT-8821
+        name: '',
+        email: '',
+        phone: '',
+        department: '',
+        zone: '',
+        badgeId: '',
         password: ''
     });
-    
+
     const [loading, setLoading] = useState(false);
     const [msg, setMsg] = useState('');
 
     useEffect(() => {
-        // Load current details
         setFormData({
-            name: user.name || '',
-            email: user.email || '',
-            phone: user.phone || '',
-            // If these fields exist in your User model under 'governmentProfile', access them here
-            // For now, we simulate them or map to generic fields if you haven't updated the schema yet
-            department: user.location || '', 
-            zone: '', 
+            name: user?.name || '',
+            email: user?.email || '',
+            phone: user?.phone || '',
+            department: user?.location || '',
+            zone: '',
             badgeId: '',
             password: ''
         });
@@ -48,9 +44,8 @@ const GovernmentProfileModal = ({ onClose, variant = 'modal' }) => {
                 method: 'PUT',
                 body: JSON.stringify(payload)
             });
-            if (!ok) throw new Error(data?.message || `Update failed (${status})`);
+            if (!ok) throw new Error(data?.message || 'Update failed (' + status + ')');
 
-            // Update local storage
             localStorage.setItem('user', JSON.stringify({ ...user, ...data.user }));
             setMsg('Official Profile Updated');
             setTimeout(() => { window.location.reload(); }, 1000);
@@ -62,61 +57,69 @@ const GovernmentProfileModal = ({ onClose, variant = 'modal' }) => {
     };
 
     return (
-        <div className={isPanel ? 'w-full' : 'fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in'}>
-            <div className={isPanel
-                ? 'bg-white rounded-lg shadow-lg w-full max-w-3xl mx-auto overflow-hidden border-t-4 border-slate-700'
-                : 'bg-white rounded-lg shadow-2xl w-full max-w-lg overflow-hidden border-t-4 border-slate-700'}
-            >
-                <div className="bg-slate-100 p-6 flex justify-between items-center border-b">
-                    <div>
-                        <h2 className="text-xl font-bold text-slate-800 uppercase tracking-wide">Authority Profile</h2>
-                        <p className="text-xs text-slate-500 font-bold">Government of Karnataka</p>
+        <EnterpriseModal
+            open={open}
+            onClose={onClose}
+            variant="government"
+            size="md"
+            title="Authority Profile"
+            subtitle="Government of India - National Emergency Platform"
+            showCloseBtn={true}
+            closeOnEsc={true}
+            closeOnClickOutside={true}
+            headerFixed={true}
+            footerFixed={false}
+            hideFooter={true}
+            icon={
+                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+            }
+        >
+            <form onSubmit={handleSubmit} className="space-y-5">
+                {msg && (
+                    <div className={'p-3 rounded-xl text-center text-sm font-bold ' + (msg.includes('Updated') ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200')}>
+                        {msg}
                     </div>
-                    {!isPanel && onClose && (
-                        <button onClick={onClose} className="text-slate-400 hover:text-red-600 transition"><i className="fas fa-times text-xl"></i></button>
-                    )}
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Officer Name</label>
+                        <input name="name" value={formData.name} onChange={handleChange} className="w-full px-3.5 py-2.5 rounded-xl text-sm border border-slate-200 bg-slate-50/80 focus:bg-white focus:ring-2 focus:ring-red-200 focus:border-red-300 outline-none transition-all" />
+                    </div>
+                    <div>
+                        <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Official Email</label>
+                        <input name="email" value={formData.email} onChange={handleChange} className="w-full px-3.5 py-2.5 rounded-xl text-sm border border-slate-200 bg-slate-50/80 focus:bg-white focus:ring-2 focus:ring-red-200 focus:border-red-300 outline-none transition-all" />
+                    </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className={isPanel ? 'p-8 space-y-5' : 'p-8 space-y-5'}>
-                    {msg && <div className="p-2 bg-green-100 text-green-800 text-center text-sm font-bold rounded">{msg}</div>}
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Officer Name</label>
-                            <input name="name" value={formData.name} onChange={handleChange} className="w-full p-2 border rounded bg-slate-50" />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Official Email</label>
-                            <input name="email" value={formData.email} onChange={handleChange} className="w-full p-2 border rounded bg-slate-50" />
-                        </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Department</label>
+                        <input name="department" value={formData.department} onChange={handleChange} placeholder="e.g. Health Ministry" className="w-full px-3.5 py-2.5 rounded-xl text-sm border border-slate-200 bg-slate-50/80 focus:bg-white focus:ring-2 focus:ring-red-200 focus:border-red-300 outline-none transition-all" />
                     </div>
-
-                    <div className="grid grid-cols-3 gap-4">
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Department</label>
-                            <input name="department" value={formData.department} onChange={handleChange} className="w-full p-2 border rounded" placeholder="Health Dept" />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Zone</label>
-                            <input name="zone" value={formData.zone} onChange={handleChange} className="w-full p-2 border rounded" placeholder="South Zone" />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Badge ID</label>
-                            <input name="badgeId" value={formData.badgeId} onChange={handleChange} className="w-full p-2 border rounded font-mono" placeholder="ID-882" />
-                        </div>
+                    <div>
+                        <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Zone</label>
+                        <input name="zone" value={formData.zone} onChange={handleChange} placeholder="e.g. South Zone" className="w-full px-3.5 py-2.5 rounded-xl text-sm border border-slate-200 bg-slate-50/80 focus:bg-white focus:ring-2 focus:ring-red-200 focus:border-red-300 outline-none transition-all" />
                     </div>
-
-                    <div className="pt-2 border-t mt-2">
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Update Password</label>
-                        <input name="password" type="password" value={formData.password} onChange={handleChange} className="w-full p-2 border rounded" placeholder="New Password (Optional)" />
+                    <div>
+                        <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Badge ID</label>
+                        <input name="badgeId" value={formData.badgeId} onChange={handleChange} placeholder="e.g. GOVT-8821" className="w-full px-3.5 py-2.5 rounded-xl text-sm border border-slate-200 bg-slate-50/80 focus:bg-white focus:ring-2 focus:ring-red-200 focus:border-red-300 outline-none transition-all font-mono" />
                     </div>
+                </div>
 
-                    <button disabled={loading} className="w-full bg-slate-800 hover:bg-slate-900 text-white py-3 rounded font-bold transition">
-                        {loading ? 'Updating Records...' : 'Save Official Details'}
-                    </button>
-                </form>
-            </div>
-        </div>
+                <div className="border-t border-slate-100 pt-4">
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Update Password</label>
+                    <input name="password" type="password" value={formData.password} onChange={handleChange} placeholder="Leave blank to keep current password" className="w-full px-3.5 py-2.5 rounded-xl text-sm border border-slate-200 bg-slate-50/80 focus:bg-white focus:ring-2 focus:ring-red-200 focus:border-red-300 outline-none transition-all" />
+                </div>
+
+                <div className="flex items-center gap-3 pt-2">
+                    <button type="button" onClick={onClose} disabled={loading} className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50 hover:border-slate-300 transition-all disabled:opacity-50">Cancel</button>
+                    <button type="submit" disabled={loading} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 shadow-lg shadow-red-500/20 transition-all disabled:opacity-50">{loading ? 'Updating Records...' : 'Save Official Details'}</button>
+                </div>
+            </form>
+        </EnterpriseModal>
     );
 };
 

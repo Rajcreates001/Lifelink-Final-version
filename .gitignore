@@ -37,3 +37,12 @@ backend/.rag/
 
 # ignore node environment artifacts
 **/node_modules/
+
+# Freebuff tooling metadata
+.freebuff/
+
+# runtime error logs
+*.err
+
+# e2e validation artifacts (regenerated on each run)
+tests/results/

@@ -1,0 +1,15 @@
+// AI Department Intelligence Center - barrel exports
+export { default as DeptHealthScore } from './DeptHealthScore';
+export { default as DeptDigitalTwinCard } from './DeptDigitalTwinCard';
+export { default as DeptPerformanceRanking } from './DeptPerformanceRanking';
+export { default as DeptBottleneckDetector } from './DeptBottleneckDetector';
+export { default as DeptPatientFlow } from './DeptPatientFlow';
+export { default as DeptForecast } from './DeptForecast';
+export { default as DeptResourceOptimizer } from './DeptResourceOptimizer';
+export { default as DeptStaffIntelligence } from './DeptStaffIntelligence';
+export { default as DeptEquipmentIntelligence } from './DeptEquipmentIntelligence';
+export { default as DeptWaitingTimeAI } from './DeptWaitingTimeAI';
+export { default as DeptAnomalyDetector } from './DeptAnomalyDetector';
+export { default as DeptScenarioSimulator } from './DeptScenarioSimulator';
+export { default as DeptTimeline } from './DeptTimeline';
+export { default as DeptKnowledgeGraph } from './DeptKnowledgeGraph';

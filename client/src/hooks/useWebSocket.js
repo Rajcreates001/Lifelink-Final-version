@@ -18,7 +18,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 
 const WS_BASE = import.meta.env.VITE_API_URL
   ? import.meta.env.VITE_API_URL.replace(/^http/, 'ws')
-  : 'ws://localhost:3010';
+  : 'ws://localhost:3001';
 
 const CHANNELS = {
   ambulance: `${WS_BASE}/v2/realtime/ws/ambulance`,
@@ -77,17 +77,21 @@ export function useWebSocket(channel, options = {}) {
     if (!enabled || !CHANNELS[channel]) return;
 
     const url = CHANNELS[channel];
-    // Add auth token if available
-    const token = sessionStorage.getItem('lifelink_token')
-      || localStorage.getItem('lifelink_token');
-    const wsUrl = token ? `${url}?token=${token}` : url;
+    const token = sessionStorage.getItem('lifelink_token');
+    let authSent = false;
 
     try {
-      const ws = new WebSocket(wsUrl);
+      const ws = new WebSocket(url);
       wsRef.current = ws;
 
       ws.onopen = () => {
         if (!mountedRef.current) return;
+        // Send auth token as first message — NOT as URL param (security: tokens in URLs
+        // can leak via server logs, browser history, and Referer headers).
+        if (token && !authSent) {
+          authSent = true;
+          ws.send(JSON.stringify({ type: 'auth', token }));
+        }
         setIsConnected(true);
         setError(null);
         reconnectAttemptRef.current = 0;
@@ -98,6 +102,8 @@ export function useWebSocket(channel, options = {}) {
         if (!mountedRef.current) return;
         try {
           const data = JSON.parse(event.data);
+          // Ignore internal auth acknowledgment messages
+          if (data.type === 'auth_ok') return;
           setLastMessage(data);
           onMessage?.(data);
         } catch {

@@ -29,48 +29,124 @@ def _numeric(value, fallback: float = 0) -> float:
         return fallback
 
 
+from app.services.medical_knowledge import (
+    classify_severity as _classify_severity,
+    compute_risk_score as _compute_risk_score,
+    estimate_confidence as _est_conf,
+    validate_health_payload as _validate_payload,
+)
+
+
 def _fast_health_risk(payload: dict) -> dict:
-    score = 0
-    drivers: list[str] = []
-    age = _numeric(payload.get("age"))
-    bmi = _numeric(payload.get("bmi"))
-    bp = _numeric(payload.get("blood_pressure"))
-    hr = _numeric(payload.get("heart_rate"))
-    oxygen = _numeric(payload.get("oxygen"))
+    # Use medical_knowledge compute_risk_score for evidence-based, transparent scoring
 
-    if age >= 60:
-        score += 15
-        drivers.append("Age 60+")
-    if bmi >= 30:
-        score += 10
-        drivers.append("BMI over 30")
-    if bp >= 140:
-        score += 20
-        drivers.append("High blood pressure")
-    if hr >= 100:
-        score += 15
-        drivers.append("High resting heart rate")
-    if oxygen and oxygen < 92:
-        score += 15
-        drivers.append("Low oxygen saturation")
-    if payload.get("has_condition") in {"1", 1, True}:
-        score += 15
-        drivers.append("Existing condition")
+    age_val = None
+    try:
+        age_val = int(float(str(payload.get("age", 0)))) if payload.get("age") else None
+    except (TypeError, ValueError):
+        pass
 
-    score = min(100, max(10, score))
-    risk_level = "High" if score >= 70 else "Moderate" if score >= 45 else "Low"
-    explanation = "Fast heuristic scoring based on vitals and reported conditions."
+    bmi_val = None
+    try:
+        bmi_val = float(str(payload.get("bmi", 0))) if payload.get("bmi") else None
+    except (TypeError, ValueError):
+        pass
+
+    bp_val = None
+    bp_raw = payload.get("blood_pressure")
+    if bp_raw is not None:
+        try:
+            bp_str = str(bp_raw)
+            if "/" in bp_str:
+                bp_val = int(float(bp_str.split("/")[0].strip()))
+            else:
+                bp_val = int(float(bp_str))
+        except (TypeError, ValueError):
+            pass
+
+    hr_val = None
+    hr_raw = payload.get("heart_rate")
+    if hr_raw is not None:
+        try:
+            hr_val = int(float(str(hr_raw)))
+        except (TypeError, ValueError):
+            pass
+
+    oxygen_val = None
+    o2_raw = payload.get("oxygen")
+    if o2_raw is not None:
+        try:
+            oxygen_val = int(float(str(o2_raw)))
+        except (TypeError, ValueError):
+            pass
+
+    has_condition = payload.get("has_condition") in {"1", 1, True}
+    lifestyle = payload.get("lifestyle_factor") or payload.get("lifestyle")
+
+    result = _compute_risk_score(
+        age=age_val,
+        bmi=bmi_val,
+        blood_pressure_sys=bp_val,
+        heart_rate=hr_val,
+        oxygen=oxygen_val,
+        has_condition=has_condition,
+        lifestyle=lifestyle,
+    )
+
+    risk_level = result.get("risk_level", "Low")
+    risk_score = result.get("risk_score", 0) or 50
+
+    # Map drivers to the format expected by callers
+    drivers_raw = result.get("drivers", [])
+    if isinstance(drivers_raw, list):
+        drivers = []
+        for d in drivers_raw:
+            if isinstance(d, dict):
+                drivers.append(f"{d.get('factor', '')} ({d.get('contribution', 0)} pts)")
+            else:
+                drivers.append(str(d))
+    else:
+        drivers = []
+
+    # Build evidence-based reasoning
+    reasoning = [
+        "Evidence-based risk scoring using clinical reference ranges and weighted factor analysis.",
+    ]
+    if result.get("missing_data"):
+        reasoning.append(
+            f"Inputs not available: {', '.join(result['missing_data'])}. "
+            "Score may change with complete data."
+        )
+    if result.get("explanation"):
+        reasoning.append(result["explanation"])
+
+    # Confidence from source completeness
+    conf = _est_conf(
+        provided_inputs={
+            "age": payload.get("age") is not None,
+            "bmi": payload.get("bmi") is not None,
+            "blood_pressure": bp_raw is not None,
+            "heart_rate": hr_raw is not None,
+            "oxygen": o2_raw is not None,
+        },
+        model_confidence=None,
+        critical_inputs=["age", "blood_pressure"],
+    )
 
     return {
         "risk_level": risk_level,
-        "risk_score": score,
+        "risk_score": risk_score,
         "drivers": drivers,
-        "explanation": explanation,
+        "explanation": result.get("explanation", "Risk estimated from available clinical data."),
+        "missing_data": result.get("missing_data", []),
         "meta": {
             "command": "predict_risk_fast",
-            "confidence": 0.58,
-            "reasoning": ["Quick rule-based scoring used for faster response."],
+            "confidence": round(conf.overall, 3),
+            "reasoning": reasoning,
+            "data_completeness": conf.data_completeness,
+            "missing_critical_inputs": conf.missing_critical_inputs,
             "references": [
+                {"title": "Medical Knowledge", "detail": "app/services/medical_knowledge.py::compute_risk_score"},
                 {"title": "Model", "detail": "ml/ai_ml.py::predict_health_risk"},
             ],
         },
@@ -78,41 +154,55 @@ def _fast_health_risk(payload: dict) -> dict:
 
 
 def _fast_severity_from_message(message: str) -> dict:
-    msg = (message or "").lower()
-    if any(k in msg for k in ["unconscious", "not breathing", "cardiac arrest", "stroke"]):
-        return {
-            "severity_level": "Critical",
-            "severity_score": 95,
-            "ai_confidence": 0.92,
-            "ambulance_type": "ICU Ambulance",
-            "hospital_type": "Trauma & Critical Care Center",
-            "response_time": "Immediate",
-        }
-    if any(k in msg for k in ["chest pain", "severe", "bleeding", "accident"]):
-        return {
-            "severity_level": "High",
-            "severity_score": 82,
-            "ai_confidence": 0.86,
-            "ambulance_type": "Advanced Life Support",
-            "hospital_type": "Emergency Department - Central",
-            "response_time": "Fast",
-        }
-    if any(k in msg for k in ["fever", "dizzy", "pain", "injury"]):
-        return {
-            "severity_level": "Medium",
-            "severity_score": 64,
-            "ai_confidence": 0.8,
-            "ambulance_type": "Standard Ambulance",
-            "hospital_type": "Urgent Care Center",
-            "response_time": "Normal",
-        }
+    severity_result = _classify_severity(message=message)
+
+    s_level = severity_result.get("severity_level", "Low")
+    s_score = severity_result.get("severity_score", 45)
+    conf = severity_result.get("confidence", {})
+    criteria = severity_result.get("criteria", [])
+
+    # Map severity level to operational recommendations
+    ambulance_types = {
+        "Critical": "ICU Ambulance",
+        "High": "Advanced Life Support",
+        "Medium": "Standard Ambulance",
+        "Low": "Standard Ambulance",
+    }
+    hospital_types = {
+        "Critical": "Trauma & Critical Care Center",
+        "High": "Emergency Department - Central",
+        "Medium": "Urgent Care Center",
+        "Low": "Walk-in Clinic",
+    }
+    response_times = {
+        "Critical": "Immediate",
+        "High": "Fast",
+        "Medium": "Normal",
+        "Low": "Standard",
+    }
+
+    reasoning = []
+    for c in criteria:
+        if isinstance(c, dict):
+            reasoning.append(f"{c.get('type', 'criterion')}: {c.get('detail', '')}")
+    if not reasoning:
+        reasoning.append(f"No specific triage criteria matched. Default severity: {s_level}.")
+
     return {
-        "severity_level": "Low",
-        "severity_score": 45,
-        "ai_confidence": 0.74,
-        "ambulance_type": "Standard Ambulance",
-        "hospital_type": "Walk-in Clinic",
-        "response_time": "Standard",
+        "severity_level": s_level,
+        "severity_score": s_score,
+        "ai_confidence": round(conf.get("overall", 0.74), 2),
+        "ambulance_type": ambulance_types.get(s_level, "Standard Ambulance"),
+        "hospital_type": hospital_types.get(s_level, "Walk-in Clinic"),
+        "response_time": response_times.get(s_level, "Standard"),
+        "criteria": criteria,
+        "recommendation": severity_result.get("recommendation", ""),
+        "meta": {
+            "confidence": round(conf.get("overall", 0.74), 3),
+            "reasoning": reasoning[:4],
+            "data_completeness": conf.get("data_completeness", 0.5),
+            "references": [{"title": "Triage Rules", "detail": "app/services/medical_knowledge.py::classify_severity"}],
+        },
     }
 
 
@@ -154,22 +244,60 @@ async def _run(command: str, payload):
 @router.post("/health-risk")
 async def health_risk(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(require_roles("public", "hospital", "ambulance", "government"))):
     settings = get_settings()
+
+    # Validate payload through medical knowledge layer before processing
+    validated = _validate_payload(payload)
+    val_warnings = validated.get("_warnings", [])
+
+    # Reject impossible values before reaching ML or fast-path logic
+    hard_reject = [
+        w for w in val_warnings
+        if any(kw in w for kw in [
+            "exceeds maximum", "incompatible with life", "cannot be negative",
+            "beyond the measurable range", "below the survivable",
+        ])
+    ]
+    if hard_reject:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "Input validation failed: impossible values detected.",
+                "warnings": hard_reject,
+            },
+        )
+
+    # Build clean payload from validated values, preserving unhandled fields
+    clean_payload = {}
+    for k in ["age", "bmi", "blood_pressure_systolic", "blood_pressure_diastolic", "heart_rate", "lifestyle"]:
+        if k in validated and validated[k] is not None:
+            clean_payload[k] = validated[k]
+    # Map blood_pressure_systolic back to blood_pressure for downstream compatibility
+    if "blood_pressure_systolic" in clean_payload:
+        clean_payload["blood_pressure"] = clean_payload.pop("blood_pressure_systolic")
+    # Carry over all original fields not handled by validation
+    for k, v in payload.items():
+        if k not in clean_payload and k != "_warnings":
+            clean_payload[k] = v
+
     cache = CacheStore(settings.redis_url, namespace="ml")
     fast_mode = bool(payload.get("fast") or payload.get("mode") == "fast")
-    cache_key = f"health-risk:{hash(json.dumps(payload, sort_keys=True))}:{'fast' if fast_mode else 'full'}"
+    cache_key = f"health-risk:{hash(json.dumps(clean_payload, sort_keys=True))}:{'fast' if fast_mode else 'full'}"
     cached = cache.get(cache_key)
     if cached:
         return cached
 
     result = None
     if fast_mode:
-        result = _fast_health_risk(payload)
+        result = _fast_health_risk(clean_payload)
     else:
-        result = await _run("predict_risk", payload)
+        result = await _run("predict_risk", clean_payload)
     if not isinstance(result, dict):
         result = {}
 
     risk_level = result.get("risk_level") or ("High" if result.get("risk_score", 0) >= 70 else "Low")
+    # Normalize legacy labels ("Moderate") to the canonical 4-level scale
+    # (Low / Medium / High / Critical) expected by all callers.
+    risk_level = {"Moderate": "Medium", "Very High": "Critical"}.get(risk_level, risk_level)
     risk_score = result.get("risk_score") or (78 if risk_level == "High" else 35)
 
     drivers = result.get("drivers") or []
@@ -194,6 +322,17 @@ async def health_risk(payload: dict = Body(default_factory=dict), ctx: AuthConte
         "drivers": drivers,
         "explanation": explanation,
     }
+
+    # Attach validation warnings to response meta
+    if val_warnings:
+        meta = enriched.get("meta", {})
+        if not isinstance(meta, dict):
+            meta = {}
+        meta["validation_warnings"] = val_warnings
+        if isinstance(meta.get("reasoning"), list):
+            for w in val_warnings[:3]:
+                meta["reasoning"].append(f"Validation: {w}")
+        enriched["meta"] = meta
 
     cache.set(cache_key, enriched, ttl=300)
 

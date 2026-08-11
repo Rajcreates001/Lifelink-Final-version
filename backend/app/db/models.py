@@ -270,3 +270,136 @@ class CoreAuditLog(Base):
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     hash: Mapped[str] = mapped_column(String(128))
     prev_hash: Mapped[str | None] = mapped_column(String(128))
+
+
+# =====================================================================
+# ENTERPRISE AUTH MODELS (Phase 1: Workspace RBAC)
+# =====================================================================
+
+
+class EnterpriseUser(Base):
+    """Hospital employee / enterprise user with full identity and credentials."""
+    __tablename__ = "enterprise_users"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    full_name: Mapped[str] = mapped_column(String(200), index=True)
+    email: Mapped[str] = mapped_column(String(200), unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255))
+    employee_id: Mapped[str | None] = mapped_column(String(60))
+    designation: Mapped[str | None] = mapped_column(String(120))
+    phone: Mapped[str | None] = mapped_column(String(40))
+    status: Mapped[str] = mapped_column(String(30), default="active", index=True)  # active, suspended, inactive
+    mfa_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    avatar: Mapped[str | None] = mapped_column(String(500))
+    profile_settings: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_activity: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
+class EnterpriseRole(Base):
+    """Named role with priority and description."""
+    __tablename__ = "enterprise_roles"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    name: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    description: Mapped[str | None] = mapped_column(Text)
+    priority: Mapped[int] = mapped_column(Integer, default=0)
+    is_system: Mapped[bool] = mapped_column(Boolean, default=False)  # True for admin, cannot be deleted
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class EnterprisePermission(Base):
+    """Granular permission — stored individually for fine-grained RBAC."""
+    __tablename__ = "enterprise_permissions"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    name: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    description: Mapped[str | None] = mapped_column(Text)
+    category: Mapped[str | None] = mapped_column(String(80), index=True)  # e.g. "patients", "finance", "ai"
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class EnterpriseRolePermission(Base):
+    """Many-to-many: roles ←→ permissions."""
+    __tablename__ = "enterprise_role_permissions"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    role_id: Mapped[str] = mapped_column(String(40), ForeignKey("enterprise_roles.id"), index=True)
+    permission_id: Mapped[str] = mapped_column(String(40), ForeignKey("enterprise_permissions.id"), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class EnterpriseDepartment(Base):
+    """Hospital department with operational status."""
+    __tablename__ = "enterprise_departments"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    key: Mapped[str] = mapped_column(String(60), unique=True, index=True)  # e.g. "emergency", "icu"
+    name: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str | None] = mapped_column(Text)
+    location: Mapped[str | None] = mapped_column(String(120))
+    status: Mapped[str] = mapped_column(String(30), default="operational", index=True)
+    # operational | busy | maintenance | restricted | offline
+    manager_id: Mapped[str | None] = mapped_column(String(40))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class EnterpriseUserDepartment(Base):
+    """Many-to-many: users ←→ departments with specific role in that department.
+    Supports one user being in multiple departments with different roles."""
+    __tablename__ = "enterprise_user_departments"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(40), ForeignKey("enterprise_users.id"), index=True)
+    department_id: Mapped[str] = mapped_column(String(40), ForeignKey("enterprise_departments.id"), index=True)
+    role_id: Mapped[str] = mapped_column(String(40), ForeignKey("enterprise_roles.id"), index=True)
+    is_primary: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class EnterpriseSession(Base):
+    """Active user sessions with device info for Remember Me."""
+    __tablename__ = "enterprise_sessions"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(40), ForeignKey("enterprise_users.id"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(255), index=True)
+    refresh_token_hash: Mapped[str | None] = mapped_column(String(255))
+    device_id: Mapped[str | None] = mapped_column(String(120))
+    device_name: Mapped[str | None] = mapped_column(String(200))
+    browser: Mapped[str | None] = mapped_column(String(200))
+    os: Mapped[str | None] = mapped_column(String(100))
+    ip_address: Mapped[str | None] = mapped_column(String(45))
+    location: Mapped[str | None] = mapped_column(String(200))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    login_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    last_activity: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    logout_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class EnterpriseAuditLog(Base):
+    """Immutable audit trail for every enterprise action."""
+    __tablename__ = "enterprise_audit_logs"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    user_id: Mapped[str | None] = mapped_column(String(40), ForeignKey("enterprise_users.id"), index=True)
+    action: Mapped[str] = mapped_column(String(120), index=True)
+    # login, logout, workspace_entry, workspace_exit, patient_viewed, patient_updated,
+    # report_generated, ai_query, resource_allocated, bed_assigned, emergency_approved,
+    # profile_updated, settings_changed, export_performed, permission_denied
+    category: Mapped[str | None] = mapped_column(String(60), index=True)
+    # auth, patient, workspace, report, ai, resource, admin
+    entity_type: Mapped[str | None] = mapped_column(String(60))
+    entity_id: Mapped[str | None] = mapped_column(String(40))
+    department_id: Mapped[str | None] = mapped_column(String(40))
+    workspace_id: Mapped[str | None] = mapped_column(String(60))
+    details: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    ip_address: Mapped[str | None] = mapped_column(String(45))
+    user_agent: Mapped[str | None] = mapped_column(String(500))
+    success: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)

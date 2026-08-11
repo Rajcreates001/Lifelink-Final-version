@@ -26,6 +26,28 @@ router = APIRouter(tags=["system"])
 _cache = SystemCache()
 
 
+@router.get("/health")
+async def system_health() -> dict:
+    """System-level health endpoint for monitoring probes."""
+    return {
+        "status": "ok",
+        "service": "lifelink-system",
+        "version": "v2",
+    }
+
+
+@router.get("/info")
+async def system_info() -> dict:
+    """System-level info endpoint exposing runtime configuration."""
+    settings = get_settings()
+    return {
+        "app": settings.app_name,
+        "environment": settings.app_env,
+        "llm_provider": settings.llm_provider,
+        "vector_store": "postgres",
+    }
+
+
 def _new_id() -> str:
     return uuid4().hex
 

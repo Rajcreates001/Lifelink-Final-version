@@ -67,7 +67,7 @@ const ReportDownloadButton = ({
 
     try {
       // POST to backend API to generate report
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3010'}${endpoint}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

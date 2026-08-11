@@ -73,8 +73,17 @@ from app.services.collections import (  # noqa: E402
     USERS,
     VENDOR_LEAD_TIMES,
 )
+from app.services.indian_locale import (
+    INDIAN_NAMES, INDIAN_HOSPITALS, INDIAN_BLOOD_GROUPS,
+    DEFAULT_CENTER_LAT, DEFAULT_CENTER_LNG, PRIMARY_CITY,
+    SECONDARY_CITIES, DISTRICTS, random_ka_registration,
+    random_ambulance_registration, random_phone, random_blood_group,
+    random_name, random_hospital, random_doctor_name, random_patient_name,
+    KA_RTO_CODES, MANGALURU_AREAS, MANGALURU_ROADS, KARNATAKA_PINCODES,
+)
 
-faker = Faker("en_US")
+# Use Indian locale for Faker
+faker = Faker("en_IN")
 
 DEMO_PASSWORD = "Demo@2026!"
 DEMO_PASSWORD_HASH = None
@@ -106,12 +115,12 @@ ROLE_COUNTS = {
     "ambulance": 100,
 }
 
-GOV_SUBROLES = ["national_admin", "state_admin", "district_admin", "supervisory_authority"]
+GOV_SUBROLES = ["national_admin", "national_officer", "state_admin", "state_officer", "district_admin", "district_officer", "department_head", "department_officer", "field_staff"]
 HOSPITAL_SUBROLES = ["ceo", "finance", "emergency", "opd", "icu", "radiology", "ot"]
 AMBULANCE_SUBROLES = ["crew", "dispatcher"]
 
-CENTER_LAT = 12.9716
-CENTER_LNG = 77.5946
+CENTER_LAT = DEFAULT_CENTER_LAT  # Mangaluru
+CENTER_LNG = DEFAULT_CENTER_LNG  # Mangaluru
 
 PUBLIC_DOCS_PER_USER = 4
 HOSPITAL_DOCS_PER_COLLECTION = 3
@@ -590,7 +599,7 @@ def _seed_hospital_docs(user: dict, hospital_ids: list[str], now: datetime) -> l
                     INSURANCE_CLAIMS,
                     {
                         "hospitalId": hospital_id,
-                        "payer": random.choice(["Aetna", "Cigna", "United"]),
+                        "payer": random.choice(["Star Health", "ICICI Lombard", "Bajaj Allianz", "New India Assurance", "United India Insurance", "Oriental Insurance", "HDFC ERGO", "Reliance General"]),
                         "status": random.choice(["Submitted", "Approved", "Rejected"]),
                         "createdAt": now.isoformat(),
                     },
@@ -895,12 +904,19 @@ async def seed():
             lat, lng = _coords(0.8)
             beds_total = random.randint(80, 240)
             beds_available = random.randint(10, max(12, int(beds_total * 0.45)))
+            # Use Indian hospital names from our locale data
+            base_name = faker.city()
+            # Map faker cities to nearby Karnataka cities
+            karnataka_cities = SECONDARY_CITIES + [PRIMARY_CITY, "Hassan", "Chikkamagaluru", "Udupi", "Kundapura", "Puttur", "Sullia", "Bantwal"]
+            city = random.choice(karnataka_cities)
+            state = "Karnataka"
+            hospital_types = ["Medical Centre", "Hospital", "Healthcare Centre", "Nursing Home", "Clinic"]
             hospitals.append(
                 GovHospital(
                     id=_uuid(),
-                    name=f"{faker.city()} Medical Center",
-                    city=faker.city(),
-                    state=faker.state(),
+                    name=f"{city} {random.choice(hospital_types)}",
+                    city=city,
+                    state=state,
                     latitude=lat,
                     longitude=lng,
                     status="active",

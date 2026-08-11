@@ -27,9 +27,30 @@ def _as_object_id(value: str) -> ObjectId:
         raise HTTPException(status_code=400, detail="Invalid ID format") from exc
 
 
+def _empty_dashboard() -> dict:
+    """Return an empty dashboard payload when database is unavailable."""
+    return {
+        "alerts": [],
+        "resourceRequests": [],
+        "donationHistory": [],
+        "hospitalMessages": [],
+        "healthRecords": {},
+        "hospitalProfile": {},
+        "riskTimeline": [],
+        "anomalies": [],
+        "latestVitals": None,
+        "activityHistory": [],
+    }
+
+
 @router.get("/public/{user_id}/full")
 async def public_full_dashboard(user_id: str):
-    db = get_db()
+    try:
+        db = get_db()
+        if db is None:
+            return _empty_dashboard()
+    except Exception:
+        return _empty_dashboard()
     user_repo = MongoRepository(db, USERS)
     alert_repo = MongoRepository(db, ALERTS)
     request_repo = MongoRepository(db, RESOURCE_REQUESTS)

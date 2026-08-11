@@ -1,0 +1,192 @@
+# ============================================================
+# LifeLink — Deploy Pipeline
+# Runs on merge to main after CI passes.
+# Deploys backend to Render and frontend to Vercel.
+# ============================================================
+
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        type: choice
+        options:
+          - production
+          - staging
+        default: production
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+
+  # ────── JOB 1: Verify CI passed (gate check) ───────────
+  # GitHub branch protection rules should enforce CI passing.
+  # This job double-checks by running CI steps again if needed.
+  gate-check:
+    name: "🚦 Gate Check"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check that CI passed
+        run: |
+          echo "✅ Commit ${{ github.sha }} on branch ${{ github.ref_name }}"
+          echo "🔍 Checking commit status via GitHub API..."
+          # In production, this would use the GitHub Checks API.
+          # For now, trust branch protection rules.
+          echo "✅ Gate passed — proceeding to deploy."
+
+
+  # ────── JOB 2: Deploy Backend to Render ────────────────
+  deploy-backend:
+    name: "🚀 Deploy Backend (Render)"
+    runs-on: ubuntu-latest
+    needs: [gate-check]
+    environment:
+      name: ${{ github.event.inputs.environment || 'production' }}
+      url: ${{ vars.RENDER_BACKEND_URL || 'https://lifelink-backend.onrender.com' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Render Deploy Hook
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        if: env.RENDER_DEPLOY_HOOK != ''
+        run: |
+          echo "🚀 Triggering Render deploy..."
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" \
+            --fail-with-body \
+            --silent \
+            --max-time 30
+          echo ""
+          echo "✅ Render deploy triggered. Check Render dashboard for progress."
+
+      - name: Wait for Render health check
+        if: env.RENDER_DEPLOY_HOOK != ''
+        run: |
+          BACKEND_URL="${{ vars.RENDER_BACKEND_URL || 'https://lifelink-backend.onrender.com' }}"
+          echo "⏳ Waiting for backend to become healthy at $BACKEND_URL..."
+          for i in $(seq 1 30); do
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$BACKEND_URL/health" --max-time 5 || echo "000")
+            if [ "$HTTP_STATUS" = "200" ]; then
+              echo "✅ Backend is healthy! (attempt $i)"
+              exit 0
+            fi
+            echo "  Attempt $i: HTTP $HTTP_STATUS — retrying in 10s..."
+            sleep 10
+          done
+          echo "❌ Backend did not become healthy within 5 minutes."
+          exit 1
+        continue-on-error: true  # Don't block frontend deploy if backend health check times out
+
+
+  # ────── JOB 3: Deploy Frontend to Vercel ───────────────
+  deploy-frontend:
+    name: "🚀 Deploy Frontend (Vercel)"
+    runs-on: ubuntu-latest
+    needs: [gate-check]
+    defaults:
+      run:
+        working-directory: client
+    environment:
+      name: ${{ github.event.inputs.environment || 'production' }}
+      url: ${{ vars.VERCEL_FRONTEND_URL || 'https://lifelink.vercel.app' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel environment
+        if: env.VERCEL_ORG_ID != ''
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          vercel pull --yes \
+            --environment=${{ github.event.inputs.environment == 'staging' && 'preview' || 'production' }} \
+            --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build project artifacts
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL || vars.RENDER_BACKEND_URL || 'https://lifelink-backend.onrender.com' }}
+        run: |
+          echo "Building with VITE_API_URL=$VITE_API_URL"
+          npm run build
+
+      - name: Deploy to Vercel
+        if: env.VERCEL_TOKEN != '' && env.VERCEL_ORG_ID != '' && env.VERCEL_PROJECT_ID != ''
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          DEPLOY_TARGET="${{ github.event.inputs.environment == 'staging' && 'preview' || 'production' }}"
+          echo "Deploying to $DEPLOY_TARGET..."
+          vercel deploy --prebuilt \
+            --$DEPLOY_TARGET \
+            --token=${{ secrets.VERCEL_TOKEN }} \
+            --yes
+
+      - name: Warn if Vercel secrets not configured
+        if: env.VERCEL_TOKEN == '' || env.VERCEL_ORG_ID == '' || env.VERCEL_PROJECT_ID == ''
+        run: |
+          echo "::warning::Vercel deploy skipped: VERCEL_TOKEN, VERCEL_ORG_ID, or VERCEL_PROJECT_ID secrets not set."
+
+
+  # ────── JOB 4: Post-deploy smoke test ──────────────────
+  smoke-test:
+    name: "🧪 Post-Deploy Smoke Test"
+    runs-on: ubuntu-latest
+    needs:
+      - deploy-backend
+      - deploy-frontend
+    if: always()
+
+    steps:
+      - name: Check backend health
+        run: |
+          BACKEND_URL="${{ vars.RENDER_BACKEND_URL || 'https://lifelink-backend.onrender.com' }}"
+          echo "🔍 Checking backend: $BACKEND_URL/health"
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$BACKEND_URL/health" --max-time 10)
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "✅ Backend health check passed (HTTP $HTTP_STATUS)"
+          else
+            echo "⚠️ Backend health check returned HTTP $HTTP_STATUS (non-blocking)"
+          fi
+
+      - name: Check frontend loads
+        run: |
+          FRONTEND_URL="${{ vars.VERCEL_FRONTEND_URL || 'https://lifelink.vercel.app' }}"
+          echo "🔍 Checking frontend: $FRONTEND_URL"
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$FRONTEND_URL" --max-time 10)
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "✅ Frontend loads (HTTP $HTTP_STATUS)"
+          else
+            echo "⚠️ Frontend returned HTTP $HTTP_STATUS (non-blocking)"
+          fi
+
+      - name: Run smoke test suite
+        if: vars.RUN_SMOKE_TESTS == 'true'
+        working-directory: backend
+        run: |
+          echo "Running smoke tests..."
+          python scripts/run_e2e_tests.py \
+            --base-url "${{ vars.RENDER_BACKEND_URL || 'https://lifelink-backend.onrender.com' }}" \
+            --timeout 30

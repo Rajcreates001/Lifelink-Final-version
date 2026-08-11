@@ -5,6 +5,7 @@ from app.core.dependencies import get_auth_service
 from app.core.rbac import AuthContext
 from app.schemas.portal_auth import PortalLoginRequest, PortalSignupRequest
 from app.services.auth_service import AuthService
+from app.services.rate_limiter import rate_limit_auth, rate_limit_login, rate_limit_signup
 
 router = APIRouter(tags=["auth"])
 
@@ -18,6 +19,7 @@ async def list_portals(service: AuthService = Depends(get_auth_service)) -> dict
 async def signup(
     payload: PortalSignupRequest,
     service: AuthService = Depends(get_auth_service),
+    _: None = Depends(rate_limit_signup.dependency()),
 ) -> dict:
     return await service.signup(payload)
 
@@ -26,6 +28,7 @@ async def signup(
 async def login(
     payload: PortalLoginRequest,
     service: AuthService = Depends(get_auth_service),
+    _: None = Depends(rate_limit_login.dependency()),
 ) -> dict:
     return await service.login(payload)
 
@@ -35,6 +38,7 @@ async def select_role(
     payload: dict,
     ctx: AuthContext = Depends(get_current_user),
     service: AuthService = Depends(get_auth_service),
+    _: None = Depends(rate_limit_auth.dependency()),
 ) -> dict:
     sub_role = payload.get("subRole")
     if not sub_role:

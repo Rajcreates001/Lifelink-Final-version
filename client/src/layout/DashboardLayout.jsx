@@ -1,26 +1,27 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import NotificationMenu from '../components/NotificationMenu';
+import NotificationHub from '../components/NotificationHub';
+import LifeTimeline from '../components/LifeTimeline';
+import LogoutConfirmDialog from '../components/ui/LogoutConfirmDialog';
 import ResponsiveNavbar from '../components/layout/ResponsiveNavbar';
 import ResponsiveSidebar from '../components/layout/ResponsiveSidebar';
-import Card from '../components/ui/Card';
 import SearchBar from '../components/ui/SearchBar';
+import SearchEngine from '../components/SearchEngine';
 import { apiFetch } from '../config/api';
-import LifelinkAiChat from '../components/LifelinkAiChat';
+import LifeLinkAICopilot from '../components/LifeLinkAICopilot';
+import AutoSaveIndicator from '../components/ui/AutoSaveIndicator';
+import LogoutToast from '../components/ui/LogoutToast';
 
+import ProfileEditModal from '../components/ProfileEditModal';
 
-import ProfileModal from '../components/ProfileModal';
-import HospitalProfileModal from '../components/HospitalProfileModal';
-import GovernmentProfileModal from '../components/GovernmentProfileModal';
-
-const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, onRefresh, refreshLabel = 'Refresh' }) => {
-    const { user, logout } = useAuth();
+const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, onRefresh, refreshLabel = 'Refresh', onAiChat, ...rest }) => {
+    const { user, logout, performLogout } = useAuth();
     const navigate = useNavigate();
 
     const [hasUnread, setHasUnread] = useState(false);
 
-    const [searchMode] = useState('db');
+    const [searchMode, setSearchMode] = useState('quick');
     const [searchQuery, setSearchQuery] = useState('');
     const [searchLoading, setSearchLoading] = useState(false);
     const [searchResult, setSearchResult] = useState(null);
@@ -51,6 +52,9 @@ const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, on
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
     const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
+    const [showProfileEditModal, setShowProfileEditModal] = useState(false);
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    const [showLogoutToast, setShowLogoutToast] = useState(false);
 
     useEffect(() => {
         const checkUnread = async () => {
@@ -81,8 +85,14 @@ const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, on
     }, []);
 
     const handleLogout = () => {
-        logout();
-        navigate('/');
+        setShowLogoutConfirm(true);
+    };
+
+    const handleLogoutConfirm = () => {
+        setShowLogoutConfirm(false);
+        const redirectRoute = performLogout();
+        setShowLogoutToast(true);
+        navigate(redirectRoute, { replace: true });
     };
 
     const handleSelect = (key) => {
@@ -90,40 +100,16 @@ const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, on
         setIsDrawerOpen(false);
     };
 
-    const handleProfile = () => handleSelect('profile');
+    const handleProfile = () => setShowProfileEditModal(true);
     const handleNotifications = () => handleSelect('notifications');
+    const handleHistory = () => handleSelect('history');
 
-    const handleSwitchRole = () => {
-        const role = user?.role?.toLowerCase();
-        if (!role) return;
-        if (role === 'hospital') {
-            navigate('/dashboard/hospital/roles?switch=1', { replace: true });
-            return;
-        }
-        if (role === 'government') {
-            navigate('/dashboard/government/roles?switch=1', { replace: true });
-            return;
-        }
-        if (role === 'ambulance') {
-            navigate('/dashboard/ambulance/roles?switch=1', { replace: true });
-            return;
-        }
-    };
+    // Switch Role removed — each user stays in their assigned workspace
 
-    const renderProfilePanel = () => {
-        switch (user?.role) {
-            case 'hospital':
-                return <HospitalProfileModal variant="panel" />;
-            case 'government':
-                return <GovernmentProfileModal variant="panel" />;
-            case 'public':
-            default:
-                return <ProfileModal variant="panel" />;
-        }
-    };
 
-    const handleSearch = async () => {
-        const trimmed = searchQuery.trim();
+
+    const handleSearch = async (overrideText) => {
+        const trimmed = (overrideText ?? searchQuery).trim();
         if (!trimmed) return;
         const cacheKey = `${searchMode}:${trimmed.toLowerCase()}`;
         const cached = searchCacheRef.current.get(cacheKey);
@@ -184,21 +170,26 @@ const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, on
         setSearchResult(null);
         try {
             const path = '/v2/search';
-            const payload = { query: trimmed };
+            const payload = {
+                query: trimmed,
+                mode: searchMode,
+                latitude: searchLocation?.lat || null,
+                longitude: searchLocation?.lng || null,
+                max_results: 20,
+            };
             const { ok, data, status } = await apiFetch(path, {
                 method: 'POST',
                 body: JSON.stringify(payload),
-                timeoutMs: 20000,
+                timeoutMs: 30000,
             });
             if (!ok) {
                 const message = data.detail || data.error || `Search failed (${status})`;
                 setSearchError(message);
             } else {
-                const result = { mode: 'db', data };
-                setSearchResult(result);
-                searchCacheRef.current.set(cacheKey, { timestamp: Date.now(), result });
+                setSearchResult(data);
+                searchCacheRef.current.set(cacheKey, { timestamp: Date.now(), result: data });
                 const stored = readStoredSearchCache();
-                stored[cacheKey] = result;
+                stored[cacheKey] = data;
                 writeStoredSearchCache(stored);
             }
         } catch (err) {
@@ -211,77 +202,8 @@ const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, on
         }
     };
 
-    const renderSearchResults = () => {
-        if (!searchResult && !searchError) return null;
-        return (
-            <Card className="mb-6">
-                <div className="flex items-center justify-between mb-3">
-                    <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
-                        Database Results
-                    </p>
-                    {searchResult?.offline && (
-                        <span className="text-[10px] text-amber-600 font-semibold uppercase">Offline cache</span>
-                    )}
-                    <button
-                        className="text-xs text-gray-400 hover:text-gray-600 transition-colors duration-200"
-                        onClick={() => {
-                            setSearchResult(null);
-                            setSearchError('');
-                        }}
-                    >
-                        Clear
-                    </button>
-                </div>
-                {searchError && (
-                    <p className="text-sm text-[#DC2626]">{searchError}</p>
-                )}
-                {searchResult?.mode === 'ai' && (
-                    <div>
-                        <p className="text-sm text-gray-700 whitespace-pre-line">{searchResult.data.answer}</p>
-                        {searchResult.data.contextUsed?.length > 0 && (
-                            <div className="mt-4 space-y-2">
-                                {searchResult.data.contextUsed.map((item, idx) => (
-                                    <div key={idx} className="p-3 bg-gray-50 rounded-xl text-xs text-gray-600">
-                                        {item.content}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
-                {searchResult?.mode === 'db' && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                        {Object.entries(searchResult.data.results || {}).map(([key, items]) => (
-                            <div key={key}>
-                                <p className="font-semibold text-gray-700 mb-2 capitalize">{key}</p>
-                                {items?.length ? (
-                                    items.map((item) => (
-                                        <div key={item._id} className="p-2 bg-gray-50 rounded-lg mb-2">
-                                            <p className="text-gray-700 font-medium">{item.name || item.message || item.ambulanceId || 'Record'}</p>
-                                            <p className="text-xs text-gray-500">
-                                                {item.email
-                                                    || (typeof item.location === 'string'
-                                                        ? item.location
-                                                        : item.location?.city || item.location?.address || '')
-                                                    || item.registrationNumber
-                                                    || ''}
-                                            </p>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <p className="text-xs text-gray-400">No matches</p>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </Card>
-        );
-    };
-
     const isNotificationsTab = activeItem === 'notifications';
-    const isProfileTab = activeItem === 'profile';
-    const allowSwitchRole = ['hospital', 'government'].includes(String(user?.role || '').toLowerCase());
+    // Switch Role permanently removed — consistent enterprise authentication
     const subtitle = user?.role ? `${user.role} portal${user?.subRole ? ` • ${user.subRole}` : ''}` : 'Portal';
 
     return (
@@ -299,9 +221,9 @@ const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, on
                         navigate('/');
                     }}
                     onLogout={handleLogout}
-                    onSwitchRole={allowSwitchRole ? handleSwitchRole : null}
                     onProfile={handleProfile}
                     onNotifications={handleNotifications}
+                    onHistory={handleHistory}
                     hasUnread={hasUnread}
                 />
                 <div className="relative flex-1 min-w-0">
@@ -330,7 +252,10 @@ const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, on
                                     </div>
                                 <button
                                     type="button"
-                                    onClick={() => setIsAiPanelOpen((prev) => !prev)}
+                                    onClick={() => {
+                                        setIsAiPanelOpen((prev) => !prev);
+                                        onAiChat?.();
+                                    }}
                                     className="group text-xs font-semibold text-gray-700 border border-[#E5E7EB] px-3 py-2 rounded-lg shrink-0 flex items-center gap-2 transition-all duration-200 hover:-translate-y-0.5 active:scale-95 shadow-[0_0_0_1px_rgba(0,0,0,0.02)] hover:shadow-[0_4px_12px_rgba(99,102,241,0.15)] hover:border-[#7C3AED]/20 bg-white/80 backdrop-blur-sm"
                                 >
                                     <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-tr from-[#2563EB] to-[#7C3AED] text-white text-[10px] group-hover:animate-ai-sparkle">
@@ -365,9 +290,16 @@ const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, on
                                             loading={searchLoading}
                                         />
                                     </div>
+
+                                    {/* ── Reassuring Auto-Save Indicator ── */}
+                                    {user && <AutoSaveIndicator className="hidden xl:inline-flex shrink-0" />}
+
                                 <button
                                     type="button"
-                                    onClick={() => setIsAiPanelOpen((prev) => !prev)}
+                                    onClick={() => {
+                                        setIsAiPanelOpen((prev) => !prev);
+                                        onAiChat?.();
+                                    }}
                                     className="group text-xs font-semibold text-gray-700 border border-[#E5E7EB] px-3 py-2 rounded-lg shrink-0 flex items-center gap-2 transition-all duration-200 hover:-translate-y-0.5 active:scale-95 animate-breathing-glow shadow-[0_0_0_1px_rgba(0,0,0,0.02)] hover:shadow-[0_4px_12px_rgba(99,102,241,0.15)] hover:border-[#7C3AED]/20 bg-white/80 backdrop-blur-sm"
                                 >
                                     <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-tr from-[#2563EB] to-[#7C3AED] text-white text-[10px] group-hover:animate-ai-sparkle">
@@ -392,15 +324,27 @@ const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, on
                             <div className="animate-page-enter">
                             {isNotificationsTab ? (
                                 <div className="w-full animate-fade-in-up">
-                                    <NotificationMenu variant="panel" onMarkRead={() => setHasUnread(false)} />
+                                    <NotificationHub variant="panel" onMarkRead={() => setHasUnread(false)} />
                                 </div>
-                            ) : isProfileTab ? (
+                            ) : activeItem === 'history' ? (
                                 <div className="w-full animate-fade-in-up">
-                                    {renderProfilePanel()}
+                                    <LifeTimeline user={user} />
                                 </div>
                             ) : (
                                 <>
-                                    {renderSearchResults()}
+                                    {(searchResult || searchLoading || searchError) && (
+                                        <SearchEngine
+                                            query={searchQuery}
+                                            result={searchResult}
+                                            loading={searchLoading}
+                                            error={searchError}
+                                            searchMode={searchMode}
+                                            onModeChange={setSearchMode}
+                                            onClear={() => { setSearchResult(null); setSearchError(''); }}
+                                            onFollowUp={(q) => { setSearchQuery(q); handleSearch(q); }}
+                                            moduleKey={activeItem || 'general'}
+                                        />
+                                    )}
                                     <div className="animate-fade-in-up">
                                         {children}
                                     </div>
@@ -413,7 +357,7 @@ const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, on
                         className={`hidden lg:flex flex-col absolute right-0 top-0 h-full w-[360px] bg-white/95 backdrop-blur-lg border-l border-[#E5E7EB] shadow-2xl transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${isAiPanelOpen ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}
                     >
                         <div className="p-4 h-full">
-                            <LifelinkAiChat
+                            <LifeLinkAICopilot
                                 variant="panel"
                                 onClose={() => setIsAiPanelOpen(false)}
                                 location={searchLocation}
@@ -426,14 +370,36 @@ const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, on
             {isAiPanelOpen && (
                 <div className="lg:hidden fixed inset-0 z-50 bg-gray-900/30 backdrop-blur-sm animate-fade-in">
                     <div className="absolute right-0 top-0 h-full w-full sm:max-w-md bg-white shadow-2xl p-4 animate-slide-in-right">
-                        <LifelinkAiChat
+                        <LifeLinkAICopilot
                             variant="panel"
                             onClose={() => setIsAiPanelOpen(false)}
                             location={searchLocation}
+                            moduleKey={activeItem || 'dashboard'}
                         />
                     </div>
                 </div>
             )}
+
+            {/* Profile Edit Modal — rendered as portal floating above everything */}
+            {showProfileEditModal && (
+                <ProfileEditModal onClose={() => setShowProfileEditModal(false)} />
+            )}
+
+            {/* Logout Confirmation Dialog */}
+            <LogoutConfirmDialog
+                open={showLogoutConfirm}
+                onClose={() => setShowLogoutConfirm(false)}
+                onConfirm={handleLogoutConfirm}
+                userName={user?.name || user?.fullName || 'User'}
+                userRole={user?.subRole || user?.role || 'Active session'}
+                workspaceName={user?.subRole ? `${user?.department_name || user?.subRole}` : undefined}
+            />
+
+            {/* Reassuring post-logout toast notification */}
+            <LogoutToast
+                open={showLogoutToast}
+                onClose={() => setShowLogoutToast(false)}
+            />
         </div>
     );
 };

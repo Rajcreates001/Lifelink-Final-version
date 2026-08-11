@@ -16,6 +16,8 @@ const AuthorityAI = () => {
         rate: '10.2', time: '15.5', occupancy: '85',
         emergencies: '5', nearestCap: '65',
         type: 'Accident', region: 'Central City', density: '5000', resTime: '15',
+        heartRate: '80', bpSys: '120', o2Sat: '97', respRate: '16',
+        patientAge: '45', gcs: '15', traumaType: 'none', complaint: 'chest_pain',
         anomRegion: 'Central City', dailyCount: '50', admissions: '20', reports: '30',
         disease: 'COVID-19', outRegion: 'Central City'
     });
@@ -148,29 +150,61 @@ const AuthorityAI = () => {
 
                 <DashboardCard>
                     <h4 className="font-bold text-slate-800 mb-4">Emergency Severity Prediction</h4>
-                    <div className="grid grid-cols-4 gap-4 mb-4">
+                    <p className="text-[10px] text-slate-500 mb-4">Enter patient vitals and incident details for AI severity assessment using real clinical features.</p>
+                    <div className="grid grid-cols-3 gap-4 mb-4">
                         <div>
-                            <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Emergency Type</label>
-                            <select className="p-3 border rounded-xl bg-gray-50 text-sm w-full" value={inputs.type} onChange={e => setInputs({ ...inputs, type: e.target.value })}>
-                                <option>Accident</option>
-                                <option>Cardiac</option>
-                                <option>Stroke</option>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Heart Rate</label>
+                            <Input value={inputs.heartRate} onChange={e => setInputs({ ...inputs, heartRate: e.target.value })} placeholder="bpm" />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">BP Systolic</label>
+                            <Input value={inputs.bpSys} onChange={e => setInputs({ ...inputs, bpSys: e.target.value })} placeholder="mmHg" />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">O2 Saturation</label>
+                            <Input value={inputs.o2Sat} onChange={e => setInputs({ ...inputs, o2Sat: e.target.value })} placeholder="%" />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Respiratory Rate</label>
+                            <Input value={inputs.respRate} onChange={e => setInputs({ ...inputs, respRate: e.target.value })} placeholder="breaths/min" />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Age</label>
+                            <Input value={inputs.patientAge} onChange={e => setInputs({ ...inputs, patientAge: e.target.value })} placeholder="years" />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">GCS Score</label>
+                            <Input value={inputs.gcs} onChange={e => setInputs({ ...inputs, gcs: e.target.value })} placeholder="3-15" />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Trauma Type</label>
+                            <select className="p-3 border rounded-xl bg-gray-50 text-sm w-full" value={inputs.traumaType} onChange={e => setInputs({ ...inputs, traumaType: e.target.value })}>
+                                <option value="none">None</option>
+                                <option value="blunt">Blunt</option>
+                                <option value="penetrating">Penetrating</option>
+                                <option value="burn">Burn</option>
                             </select>
                         </div>
                         <div>
-                            <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Region</label>
-                            <Input value={inputs.region} onChange={e => setInputs({ ...inputs, region: e.target.value })} />
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Population Density</label>
-                            <Input value={inputs.density} onChange={e => setInputs({ ...inputs, density: e.target.value })} />
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Response Time (min)</label>
-                            <Input value={inputs.resTime} onChange={e => setInputs({ ...inputs, resTime: e.target.value })} />
+                            <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Chief Complaint</label>
+                            <select className="p-3 border rounded-xl bg-gray-50 text-sm w-full" value={inputs.complaint} onChange={e => setInputs({ ...inputs, complaint: e.target.value })}>
+                                <option value="chest_pain">Chest Pain</option>
+                                <option value="dyspnea">Dyspnea</option>
+                                <option value="trauma">Trauma</option>
+                                <option value="altered_mental">Altered Mental</option>
+                            </select>
                         </div>
                     </div>
-                    <button onClick={() => triggerML('predict_severity', { emergency_type: inputs.type, region: inputs.region, population_density: parseInt(inputs.density), avg_response_time_min: parseInt(inputs.resTime) }, setSeverityData, 'severity')}
+                    <button onClick={() => triggerML('predict_severity', {
+                        heart_rate: parseFloat(inputs.heartRate) || 80,
+                        blood_pressure_sys: parseFloat(inputs.bpSys) || 120,
+                        oxygen_saturation: parseFloat(inputs.o2Sat) || 97,
+                        respiratory_rate: parseFloat(inputs.respRate) || 16,
+                        age: parseFloat(inputs.patientAge) || 45,
+                        glasgow_coma_scale: parseFloat(inputs.gcs) || 15,
+                        trauma_type: inputs.traumaType || 'none',
+                        chief_complaint: inputs.complaint || 'chest_pain',
+                    }, setSeverityData, 'severity')}
                         className="w-full bg-indigo-500 text-white py-3 rounded-xl font-bold hover:bg-indigo-600 active:scale-95 transition-all">
                         {loading.severity ? <i className="fas fa-spinner fa-spin"></i> : 'Predict Severity'}
                     </button>
@@ -182,9 +216,24 @@ const AuthorityAI = () => {
                         ) : (
                             <>
                                 <div className="mt-4 p-4 bg-red-50 rounded-xl border-l-4 border-red-500 animate-slide-in-up">
-                                    <p className="text-[10px] font-bold text-red-400 uppercase">AI Prediction Result</p>
-                                    <p className="text-xl font-bold text-red-700">{severityData.predicted_severity || severityData.status}</p>
-                                    <p className="text-[10px] text-slate-400 mt-1 italic">Last Calculated: {new Date().toLocaleTimeString()}</p>
+                                    <p className="text-[10px] font-bold text-red-400 uppercase">AI Severity Result</p>
+                                    <p className="text-xl font-bold text-red-700 capitalize">{severityData.predicted_severity || 'unknown'}</p>
+                                    {severityData.severity_score && (
+                                        <div className="mt-2 flex items-center gap-2">
+                                            <div className="flex-1 h-2 bg-red-100 rounded-full overflow-hidden">
+                                                <div className="h-full rounded-full transition-all duration-700"
+                                                    style={{
+                                                        width: `${severityData.severity_score}%`,
+                                                        background: severityData.severity_score >= 80 ? '#DC2626' : severityData.severity_score >= 60 ? '#F97316' : '#EAB308',
+                                                    }}>
+                                                </div>
+                                            </div>
+                                            <span className="text-[10px] font-bold text-slate-500">{severityData.severity_score}/100</span>
+                                        </div>
+                                    )}
+                                    <p className="text-[10px] text-slate-400 mt-2 italic">
+                                        Based on {inputs.heartRate || 80} bpm HR, {inputs.bpSys || 120} mmHg BP (systolic), {inputs.o2Sat || 97}% O2
+                                    </p>
                                 </div>
                                 <ExplainabilityPanel meta={severityData.meta} />
                             </>

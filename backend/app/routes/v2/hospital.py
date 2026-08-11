@@ -14,6 +14,7 @@ from app.core.rbac import AuthContext
 from app.db.mongo import get_db
 from app.services.collections import ANALYTICS_EVENTS, HOSPITALS, HOSPITAL_WAIT_TIMES, RESOURCES
 from app.services.hospital_service import HospitalService
+from app.services.indian_locale import INDIAN_HOSPITALS, SECONDARY_CITIES, PRIMARY_CITY
 from app.services.repository import MongoRepository
 from app.services.routing_service import RoutingService
 
@@ -61,7 +62,7 @@ async def _ensure_hospital_locations(db, center_lat: float, center_lng: float) -
     if not docs:
         return 0
 
-    faker = Faker()
+    indian_cities = [PRIMARY_CITY] + SECONDARY_CITIES
     updates = 0
     for doc in docs:
         if _extract_coords(doc):
@@ -70,12 +71,13 @@ async def _ensure_hospital_locations(db, center_lat: float, center_lng: float) -
         lng_offset = random.uniform(-0.25, 0.25)
         lat = center_lat + lat_offset
         lng = center_lng + lng_offset
+        city = random.choice(indian_cities)
         location = {
             "lat": round(lat, 6),
             "lng": round(lng, 6),
-            "address": faker.street_address(),
-            "city": faker.city(),
-            "state": faker.state(),
+            "address": f"Near {random.choice(['Bus Stand', 'Railway Station', 'Market', 'Temple', 'Circle'])}, {city}",
+            "city": city,
+            "state": "Karnataka",
         }
         await repo.collection.update_one({"_id": doc["_id"]}, {"$set": {"location": location}})
         updates += 1
@@ -84,8 +86,9 @@ async def _ensure_hospital_locations(db, center_lat: float, center_lng: float) -
 
 async def _seed_hospitals(db, center_lat: float, center_lng: float, count: int = 25) -> int:
     repo = MongoRepository(db, HOSPITALS)
-    faker = Faker()
     inserted = 0
+    indian_cities = [PRIMARY_CITY] + SECONDARY_CITIES
+    hospital_suffixes = ["Hospital", "Medical Centre", "Healthcare Centre", "Nursing Home", "Clinic", "Institute of Medical Sciences"]
     for _ in range(count):
         lat_offset = random.uniform(-0.35, 0.35)
         lng_offset = random.uniform(-0.35, 0.35)
@@ -93,14 +96,15 @@ async def _seed_hospitals(db, center_lat: float, center_lng: float, count: int =
         lng = center_lng + lng_offset
         beds_total = random.randint(80, 220)
         beds_available = random.randint(10, max(15, int(beds_total * 0.4)))
+        city = random.choice(indian_cities)
         doc = {
-            "name": f"{faker.city()} Medical Center",
+            "name": f"{city} {random.choice(hospital_suffixes)}",
             "location": {
                 "lat": round(lat, 6),
                 "lng": round(lng, 6),
-                "address": faker.street_address(),
-                "city": faker.city(),
-                "state": faker.state(),
+                "address": f"Near {random.choice(['Bus Stand', 'Railway Station', 'Main Road', 'Temple', 'Circle'])}, {city}",
+                "city": city,
+                "state": "Karnataka",
             },
             "beds_total": beds_total,
             "beds_available": beds_available,

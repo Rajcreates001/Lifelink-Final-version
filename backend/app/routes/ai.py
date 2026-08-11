@@ -1,6 +1,5 @@
 import csv
 import io
-import random
 import re
 from datetime import datetime
 from pathlib import Path
@@ -13,6 +12,14 @@ from pydantic import BaseModel
 from app.db.mongo import get_db
 from app.services.collections import ANALYTICS_EVENTS, HEALTH_RECORDS, USERS
 from app.core.celery_app import celery_app
+from app.services.medical_knowledge import (
+    assess_donor_compatibility,
+    assess_vitals,
+    compute_risk_score,
+    estimate_confidence,
+    validate_blood_group,
+    validate_health_payload,
+)
 from app.services.prediction_store import get_latest_prediction
 from app.services.repository import MongoRepository
 from app.services.ml_runner import run_ml_model
@@ -498,55 +505,53 @@ def _extract_conditions(report_text: str) -> list[str]:
     return conditions
 
 
-def _normalize_blood_group(value: str | None) -> str | None:
-    if not value:
-        return None
-    return str(value).replace(" ", "").upper()
-
-
-def _blood_compatibility_factor(receiver: str | None, donor: str | None) -> float:
-    receiver_group = _normalize_blood_group(receiver)
-    donor_group = _normalize_blood_group(donor)
-    if not receiver_group or not donor_group:
-        return 0.6
-
-    compatible = {
-        "O-": {"O-", "O+", "A-", "A+", "B-", "B+", "AB-", "AB+"},
-        "O+": {"O+", "A+", "B+", "AB+"},
-        "A-": {"A-", "A+", "AB-", "AB+"},
-        "A+": {"A+", "AB+"},
-        "B-": {"B-", "B+", "AB-", "AB+"},
-        "B+": {"B+", "AB+"},
-        "AB-": {"AB-", "AB+"},
-        "AB+": {"AB+"},
-    }
-
-    if donor_group == receiver_group:
-        return 1.0
-    if receiver_group in compatible.get(donor_group, set()):
-        return 0.85
-    return 0.25
-
-
-def _compatibility_fallback_score(payload: dict) -> float:
-    receiver_blood = payload.get("receiver_blood_type")
-    donor_blood = payload.get("donor_blood_type")
-    receiver_age = payload.get("receiver_age") or 30
-    donor_age = payload.get("donor_age") or 30
-    distance_km = payload.get("location_distance") or 5
-
-    blood_factor = _blood_compatibility_factor(receiver_blood, donor_blood)
-    age_gap = abs(int(receiver_age) - int(donor_age))
-    age_factor = max(0.4, 1 - (age_gap / 60))
-    distance_factor = max(0.4, 1 - (float(distance_km) / 80))
-
-    score = (0.55 * blood_factor) + (0.25 * age_factor) + (0.2 * distance_factor)
-    return max(0.35, min(0.98, score))
-
 
 @router.post("/predict_health_risk")
 async def predict_health_risk(payload: dict = Body(default_factory=dict)):
-    return await _run_prediction("predict_risk", payload)
+    # Validate payload before forwarding to ML model
+    validated = validate_health_payload(payload)
+    warnings = validated.get("_warnings", [])
+
+    # Reject impossible values before reaching ML
+    hard_reject = [
+        w for w in warnings
+        if any(kw in w for kw in [
+            "exceeds maximum", "incompatible with life", "cannot be negative",
+            "beyond the measurable range", "below the survivable",
+        ])
+    ]
+    if hard_reject:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "Input validation failed: impossible values detected.",
+                "warnings": hard_reject,
+            },
+        )
+
+    # Forward validated/normalized payload (strip _warnings before ML)
+    clean_payload = {k: v for k, v in validated.items() if k != "_warnings"}
+    # Merge back any fields that validate_health_payload didn't handle
+    for k, v in payload.items():
+        if k not in clean_payload or clean_payload.get(k) is None:
+            if k not in ("_warnings",):
+                clean_payload.setdefault(k, v)
+
+    result = await _run_prediction("predict_risk", clean_payload)
+
+    # Attach validation warnings to result meta
+    if warnings and isinstance(result, dict):
+        meta = result.get("meta", {})
+        if not isinstance(meta, dict):
+            meta = {}
+        meta["validation_warnings"] = warnings
+        meta.setdefault("reasoning", [])
+        if isinstance(meta["reasoning"], list):
+            for w in warnings:
+                meta["reasoning"].append(f"Validation: {w}")
+        result["meta"] = meta
+
+    return result
 
 
 @router.post("/predict_user_cluster")
@@ -568,28 +573,74 @@ async def check_profile_cluster(payload: ProfileClusterRequest):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    # Derive cluster data from actual user profile instead of random
+    public_profile = user.get("publicProfile") or {}
+    health_records = public_profile.get("healthRecords") or {}
+
+    # Count actual emergency/SOS events from user data
+    sos_count = len(user.get("sos_alerts") or []) if isinstance(user.get("sos_alerts"), list) else 0
+    if isinstance(user.get("sos_alerts"), dict):
+        sos_count = len(user["sos_alerts"])
+    donation_count = len(user.get("donation_history") or []) if isinstance(user.get("donation_history"), list) else 0
+
+    # Compute deterministic cluster features from real profile data
+    emergency_rate = min(15, sos_count + 1)
+    avg_response_time = max(5, 25 - donation_count * 2)
+    hospital_bed_occupancy = min(100, max(20, 50 + sos_count * 5))
+
     cluster_data = {
-        "emergency_rate": random.randint(1, 15),
-        "avg_response_time": random.randint(5, 25),
-        "hospital_bed_occupancy": random.randint(20, 100),
+        "emergency_rate": emergency_rate,
+        "avg_response_time": avg_response_time,
+        "hospital_bed_occupancy": hospital_bed_occupancy,
+        "donations_made": donation_count,
+        "sos_usage": sos_count,
+        "health_logs": min(10, max(1, len(health_records))),
     }
 
-    result = await _run_prediction("predict_cluster", cluster_data)
+    # Also try the dedicated predict_user_cluster endpoint with proper user data
+    cluster_payload = {
+        "sos_usage": sos_count,
+        "donations_made": donation_count,
+        "health_logs": min(10, max(1, len(health_records))),
+    }
+    result = await _run_prediction("predict_cluster", cluster_payload)
+
     cluster_labels = {
         0: "Regular User - Low Activity",
         1: "Active Donor - High Engagement",
         2: "Medical Professional - Specialized",
     }
-    cluster = result.get("cluster_id") if isinstance(result, dict) else None
+
+    # If ML model returned a valid cluster, use it; otherwise infer from actual data
+    if isinstance(result, dict):
+        cluster = result.get("cluster_id")
     if cluster is None:
-        cluster = random.randint(0, 2)
+        # Derive from actual engagement metrics
+        total_engagement = donation_count + sos_count
+        if total_engagement >= 5:
+            cluster = 1  # Active Donor
+        elif total_engagement >= 2:
+            cluster = 2  # Medical Professional
+        else:
+            cluster = 0  # Regular User
+
+    engagement_level = (
+        "High" if cluster == 1 else
+        "Professional" if cluster == 2 else
+        "Standard"
+    )
+
+    confidence = 0.55 + min(0.30, (donation_count + sos_count) * 0.05)
+    reasoning = [
+        f"Cluster derived from {donation_count} donations, {sos_count} SOS events, and profile engagement patterns.",
+    ]
 
     meta = _ensure_meta(
         result.get("meta") if isinstance(result, dict) else None,
-        0.62,
-        ["Cluster inferred from emergency rate, response time, and bed occupancy patterns."],
+        min(0.85, confidence),
+        reasoning,
         [
-            {"title": "Dataset", "detail": "ml/user_activity_data.csv"},
+            {"title": "Data Source", "detail": f"User profile with {donation_count + sos_count} engagement events"},
             {"title": "Model", "detail": "ml/activity_cluster_model.joblib"},
         ],
     )
@@ -597,30 +648,71 @@ async def check_profile_cluster(payload: ProfileClusterRequest):
     return {
         "cluster_id": cluster,
         "cluster_label": cluster_labels.get(cluster, "User Profile"),
-        "engagement_level": "High" if cluster == 1 else "Professional" if cluster == 2 else "Standard",
+        "engagement_level": engagement_level,
         "meta": meta,
     }
 
 
 @router.post("/predict_donation_forecast")
 async def predict_donation_forecast(payload: DonationForecastRequest):
+    # Derive donation frequency from real user data when possible
+    donation_frequency = 1
+    hospital_stock_level = 50
+
+    db = get_db()
+    if payload.user_id:
+        try:
+            user_repo = MongoRepository(db, USERS)
+            user = await user_repo.find_one({"_id": _as_object_id(payload.user_id)})
+            if user:
+                donation_history = user.get("donation_history") or []
+                if isinstance(donation_history, list):
+                    donation_frequency = min(12, max(1, len(donation_history)))
+                    # Estimate hospital stock level from donation frequency
+                    hospital_stock_level = min(95, max(10, donation_frequency * 15 + 20))
+        except Exception:
+            pass
+
+    blood_group = payload.blood_group or "O+"
+    try:
+        normalized_bg = validate_blood_group(blood_group)
+        blood_group = normalized_bg or "O+"
+    except Exception:
+        pass
+
     forecast_data = {
         "month": datetime.utcnow().month,
-        "donation_frequency": random.randint(1, 5),
-        "hospital_stock_level": random.randint(0, 100),
+        "donation_frequency": donation_frequency,
+        "hospital_stock_level": hospital_stock_level,
         "region": "General",
-        "resource_type": payload.blood_group or "O+",
+        "resource_type": blood_group,
     }
 
     result = await _run_prediction("predict_availability", forecast_data)
     score = result.get("predicted_availability_score") if isinstance(result, dict) else None
+
     if score is None:
-        score = random.randint(40, 100)
+        # Deterministic fallback based on real donation frequency
+        score = min(95, max(30, donation_frequency * 12 + 20))
+    elif isinstance(score, (int, float)) and (score <= 0 or score > 100):
+        score = min(95, max(30, donation_frequency * 12 + 20))
+
+    status = "High Availability" if score > 70 else "Moderate" if score > 40 else "Low Availability"
+
+    reasoning = [
+        f"Forecast based on donation frequency ({donation_frequency}), blood group ({blood_group}), and current month ({datetime.utcnow().strftime('%B')}).",
+    ]
+    if score > 70:
+        reasoning.append("Current availability is sufficient for most requests.")
+    elif score > 40:
+        reasoning.append("Supply may need attention; consider scheduling donations.")
+    else:
+        reasoning.append("Availability is limited; urgent donations recommended.")
 
     meta = _ensure_meta(
         result.get("meta") if isinstance(result, dict) else None,
-        0.66,
-        ["Availability score based on donation frequency, hospital stock, and regional demand."],
+        max(0.50, min(0.80, 0.50 + donation_frequency * 0.03)),
+        reasoning,
         [
             {"title": "Dataset", "detail": "ml/donor_availability_data.csv"},
             {"title": "Model", "detail": "ml/donor_availability_model.joblib"},
@@ -628,16 +720,59 @@ async def predict_donation_forecast(payload: DonationForecastRequest):
     )
 
     return {
-        "forecast_days": int(score // 10) + 1,
-        "availability_score": score,
-        "status": "High Availability" if score > 70 else "Moderate" if score > 40 else "Low Availability",
+        "forecast_days": max(1, int(score // 10) + 1),
+        "availability_score": round(score, 1),
+        "status": status,
         "meta": meta,
     }
 
 
+_SEVERITY_TRIAGE_MAP = {
+    "critical": {
+        "severity_score": 95, "ai_confidence": 0.92,
+        "ambulance_type": "ICU Ambulance",
+        "hospital_type": "Trauma & Critical Care Center",
+        "response_time": "Immediate",
+    },
+    "high": {
+        "severity_score": 82, "ai_confidence": 0.86,
+        "ambulance_type": "Advanced Life Support",
+        "hospital_type": "Emergency Department - Central",
+        "response_time": "Fast",
+    },
+    "moderate": {
+        "severity_score": 64, "ai_confidence": 0.8,
+        "ambulance_type": "Standard Ambulance",
+        "hospital_type": "Urgent Care Center",
+        "response_time": "Normal",
+    },
+    "medium": {
+        "severity_score": 64, "ai_confidence": 0.8,
+        "ambulance_type": "Standard Ambulance",
+        "hospital_type": "Urgent Care Center",
+        "response_time": "Normal",
+    },
+    "low": {
+        "severity_score": 45, "ai_confidence": 0.74,
+        "ambulance_type": "Standard Ambulance",
+        "hospital_type": "Walk-in Clinic",
+        "response_time": "Standard",
+    },
+}
+
+
 @router.post("/hosp/predict_severity")
 async def hosp_predict_severity(payload: dict = Body(default_factory=dict)):
-    return await _run_prediction("predict_hosp_severity", payload)
+    result = await _run_prediction("predict_hosp_severity", payload)
+    # Enrich the raw model output into a full triage response so callers always
+    # receive severity_level, severity_score, ambulance/hospital type and response time.
+    if isinstance(result, dict) and not result.get("error"):
+        predicted = str(result.get("predicted_severity") or "").lower()
+        triage = _SEVERITY_TRIAGE_MAP.get(predicted, _SEVERITY_TRIAGE_MAP["moderate"])
+        result["severity_level"] = str(result.get("predicted_severity") or "Moderate").title()
+        for key, value in triage.items():
+            result.setdefault(key, value)
+    return result
 
 
 @router.post("/hosp/predict_policy")
@@ -726,66 +861,114 @@ async def check_compatibility(payload: CompatibilityRequest):
     requester = await user_repo.find_one({"_id": _as_object_id(payload.requester_id)})
     donor = await user_repo.find_one({"_id": _as_object_id(payload.donor_id)})
 
-    if not requester or not donor:
-        raise HTTPException(status_code=404, detail="User not found")
+    profile_warnings = []
+    if not requester:
+        profile_warnings.append(f"requester profile {payload.requester_id} not found; using default profile")
+    if not donor:
+        profile_warnings.append(f"donor profile {payload.donor_id} not found; using default profile")
 
-    requester_hr = (requester.get("publicProfile") or {}).get("healthRecords") or {}
-    donor_profile = (donor.get("publicProfile") or {}).get("donorProfile") or {}
-    donor_hr = (donor.get("publicProfile") or {}).get("healthRecords") or {}
+    requester_hr = ((requester or {}).get("publicProfile") or {}).get("healthRecords") or {}
+    donor_profile = ((donor or {}).get("publicProfile") or {}).get("donorProfile") or {}
+    donor_hr = ((donor or {}).get("publicProfile") or {}).get("healthRecords") or {}
+
+    recipient_blood = requester_hr.get("bloodGroup") or None
+    donor_blood = donor_hr.get("bloodGroup") or None
 
     compatibility_payload = {
-        "receiver_blood_type": requester_hr.get("bloodGroup") or "O+",
+        "receiver_blood_type": recipient_blood or "O+",
         "receiver_age": requester_hr.get("age") or 30,
         "receiver_gender": requester_hr.get("gender") or "Male",
-        "donor_blood_type": donor_hr.get("bloodGroup") or "O+",
+        "donor_blood_type": donor_blood or "O+",
         "donor_age": donor_hr.get("age") or 30,
         "donor_gender": donor_hr.get("gender") or "Male",
         "organ_type": payload.organ_type or "Blood",
         "location_distance": 5,
     }
 
+    availability = donor_profile.get("availability") or "Available"
+    donor_available = availability != "Unavailable"
+
+    # Primary: try ML prediction model
+    ml_score = None
+    ml_result = None
     try:
         result = await _run_prediction("predict_compat", compatibility_payload)
-    except HTTPException as exc:
-        raise exc
+        if isinstance(result, dict) and not result.get("error"):
+            ml_result = result
+            raw_score = result.get("probability") or result.get("compatibility_score") or 0
+            if 0 < raw_score <= 1:
+                raw_score = raw_score * 100
+            if not (raw_score == 0 or (45 <= raw_score <= 55)):
+                ml_score = raw_score
+    except HTTPException:
+        pass
 
-    if isinstance(result, dict) and result.get("error"):
-        raise HTTPException(status_code=500, detail=result["error"])
+    # Secondary: use evidence-based medical_knowledge assessment
+    knowledge_assessment = assess_donor_compatibility(
+        recipient_blood=recipient_blood,
+        donor_blood=donor_blood,
+        recipient_age=requester_hr.get("age"),
+        donor_age=donor_hr.get("age"),
+        distance_km=5.0,
+        donor_available=donor_available,
+    )
 
-    score = result.get("probability") or result.get("compatibility_score") or 0
-    if score <= 1 and score > 0:
-        score = score * 100
+    # Blend: prefer ML score when reasonable, otherwise use knowledge layer
+    if ml_score is not None and 10 <= ml_score <= 100:
+        score = ml_score
+        # Blend with knowledge score for robustness
+        k_score = float(knowledge_assessment["compatibility_score"])
+        score = round(0.6 * score + 0.4 * k_score, 2)
+        reasoning = [
+            "ML model prediction combined with medical knowledge layer assessment.",
+        ]
+    else:
+        score = float(knowledge_assessment["compatibility_score"])
+        reasoning = [
+            "Evidence-based assessment from medical knowledge layer (ML model unavailable or inconclusive).",
+        ]
 
-    if score == 0 or (45 <= score <= 55):
-        fallback = _compatibility_fallback_score(compatibility_payload)
-        score = round(fallback * 100, 2)
-
-    availability = donor_profile.get("availability") or "Available"
+    # Adjust for availability
     if availability == "Unavailable":
         score = max(30, score - 20)
     if availability == "On Call":
         score = max(40, score - 10)
+    score = max(10, min(100, score))
+
+    # Build factors summary from knowledge assessment
+    factor_summaries = [
+        f["factor"] for f in knowledge_assessment.get("factors", [])
+    ] + [
+        f"Availability: {availability}",
+    ]
+    reasoning.append(
+        f"Factors: {'; '.join(factor_summaries[:5])}."
+    )
 
     priority = "High" if score >= 80 else "Medium" if score >= 60 else "Low"
     estimated_wait_minutes = 15 if availability == "Available" else 35 if availability == "On Call" else 60
 
     meta = _ensure_meta(
-        result.get("meta") if isinstance(result, dict) else None,
-        0.7,
-        ["Compatibility derived from blood type, age, gender, and distance factors."],
+        ml_result.get("meta") if isinstance(ml_result, dict) else None,
+        knowledge_assessment["confidence"].get("overall", 0.70),
+        reasoning + profile_warnings,
         [
-            {"title": "Dataset", "detail": "ml/compatibility_data.csv"},
+            {"title": "Medical Knowledge", "detail": "app/services/medical_knowledge.py::assess_donor_compatibility"},
             {"title": "Model", "detail": "ml/compatibility_model.joblib"},
         ],
     )
+    if profile_warnings:
+        meta["warnings"] = profile_warnings
 
     return {
         "compatibility_score": round(score),
         "probability": round(score / 100, 4),
         "recommendation": "Good Match" if score > 70 else "Check Further",
+        "compatible": knowledge_assessment.get("compatible"),
         "availability": availability,
         "priority": priority,
         "estimated_wait_minutes": estimated_wait_minutes,
+        "factors": knowledge_assessment.get("factors", []),
         "meta": meta,
     }
 
@@ -807,6 +990,15 @@ async def _build_report_analysis(report_text: str, user_id: str | None, source_m
     conditions = result.get("detected_conditions") or _extract_conditions(report_text)
     conditions = _normalize_conditions(conditions)
     metrics = _extract_report_metrics(report_text)
+
+    # Validate extracted metrics through medical knowledge layer
+    validated_metrics = validate_health_payload(metrics)
+    metric_warnings = validated_metrics.get("_warnings", [])
+    # Overwrite extracted metrics with validated/normalized values
+    for key in ["age", "bmi", "blood_pressure_systolic", "blood_pressure_diastolic", "heart_rate", "lifestyle"]:
+        if key in validated_metrics and validated_metrics[key] is not None:
+            metrics[key] = validated_metrics[key]
+
     risk_flags = _build_risk_flags(metrics)
     lifestyle = _extract_lifestyle(report_text)
     ml_payload = None
@@ -833,6 +1025,16 @@ async def _build_report_analysis(report_text: str, user_id: str | None, source_m
     primary_category = result.get("primary_category") or (conditions[0] if conditions else "General")
     summary = result.get("summary") or "Automated summary generated from the submitted report."
 
+    # ── Use medical_knowledge for evidence-based vital assessment and risk computation ──
+    vital_assessment = assess_vitals(
+        heart_rate=metrics.get("heart_rate"),
+        blood_pressure_sys=metrics.get("blood_pressure_systolic"),
+        blood_pressure_dia=metrics.get("blood_pressure_diastolic"),
+        oxygen=metrics.get("oxygen"),
+        bmi=metrics.get("bmi"),
+        age=metrics.get("age"),
+    )
+
     if ml_result and isinstance(ml_result, dict):
         model_score = ml_result.get("risk_score")
         model_level = ml_result.get("risk_level")
@@ -842,6 +1044,25 @@ async def _build_report_analysis(report_text: str, user_id: str | None, source_m
         if model_level in severity_order and severity_order.get(model_level, 0) > severity_order.get(risk_level, 0):
             risk_level = model_level
 
+    # Compute clinical risk score from medical knowledge layer
+    clinical_risk = compute_risk_score(
+        age=metrics.get("age"),
+        bmi=metrics.get("bmi"),
+        blood_pressure_sys=metrics.get("blood_pressure_systolic"),
+        heart_rate=metrics.get("heart_rate"),
+        oxygen=metrics.get("oxygen"),
+        has_condition=bool(conditions),
+        lifestyle=lifestyle,
+    )
+
+    if clinical_risk.get("risk_score") is not None:
+        # Blend clinical risk with existing risk score
+        risk_score = max(risk_score, clinical_risk["risk_score"])
+        severity_order = {"Low": 0, "Moderate": 1, "High": 2, "Critical": 3}
+        if clinical_risk["risk_level"] in severity_order and \
+           severity_order.get(clinical_risk["risk_level"], 0) > severity_order.get(risk_level, 0):
+            risk_level = clinical_risk["risk_level"]
+
     if risk_flags:
         if risk_level == "Low" and len(risk_flags) >= 2:
             risk_level = "Moderate"
@@ -849,6 +1070,20 @@ async def _build_report_analysis(report_text: str, user_id: str | None, source_m
             risk_level = "High"
         if risk_level == "High" and len(risk_flags) >= 4:
             risk_level = "Critical"
+
+    # Confidence estimation from medical knowledge layer
+    provided_inputs = {
+        "heart_rate": metrics.get("heart_rate") is not None,
+        "blood_pressure": metrics.get("blood_pressure_systolic") is not None,
+        "oxygen": metrics.get("oxygen") is not None,
+        "bmi": metrics.get("bmi") is not None,
+        "age": metrics.get("age") is not None,
+    }
+    conf_result = estimate_confidence(
+        provided_inputs=provided_inputs,
+        model_confidence=ml_result.get("meta", {}).get("confidence") if isinstance(ml_result, dict) else None,
+        critical_inputs=["heart_rate", "blood_pressure"],
+    )
 
     metric_notes = []
     if metrics.get("blood_pressure_systolic") and metrics.get("blood_pressure_diastolic"):
@@ -894,13 +1129,16 @@ async def _build_report_analysis(report_text: str, user_id: str | None, source_m
     patient_summary += f" Overall risk estimate: {risk_level} ({risk_score}/100)."
     patient_summary += " This is a text-only screening, not a diagnosis."
 
+    # Evidence-based confidence from medical_knowledge
+    analysis_confidence = conf_result.overall
+
     analysis_steps = []
     if source_meta and source_meta.get("source"):
         analysis_steps.append(
             {
                 "step": "Document ingestion",
                 "detail": f"Source: {source_meta.get('source')}",
-                "confidence": 0.7,
+                "confidence": round(analysis_confidence + 0.06, 2),
             }
         )
 
@@ -908,33 +1146,46 @@ async def _build_report_analysis(report_text: str, user_id: str | None, source_m
         [
             {
                 "step": "Input parsing",
-                "detail": "Report text normalized and prepared for keyword scanning.",
-                "confidence": 0.7,
+                "detail": "Report text normalized and prepared for medical keyword scanning.",
+                "confidence": round(analysis_confidence + 0.06, 2),
             },
             {
                 "step": "Vitals extraction",
                 "detail": "Extracted vitals and lab values from the report text.",
-                "confidence": 0.66,
+                "confidence": round(analysis_confidence, 2),
             },
             {
                 "step": "Condition detection",
                 "detail": "Detected conditions: " + (", ".join(conditions) if conditions else "None found"),
-                "confidence": 0.66,
+                "confidence": round(analysis_confidence - 0.02, 2),
             },
             {
                 "step": "Risk scoring",
-                "detail": f"Risk level {risk_level} with score {risk_score}.",
-                "confidence": 0.64,
+                "detail": f"Risk level {risk_level} with score {risk_score}. Evidence-based calculation used.",
+                "confidence": round(analysis_confidence - 0.04, 2),
             },
         ]
     )
+
+    # Add clinical risk drivers from medical knowledge layer
+    if clinical_risk.get("drivers"):
+        driver_details = "; ".join(
+            d["detail"] for d in clinical_risk["drivers"][:3]
+            if isinstance(d, dict) and d.get("detail")
+        )
+        if driver_details:
+            analysis_steps.append({
+                "step": "Clinical risk factors",
+                "detail": driver_details,
+                "confidence": round(analysis_confidence - 0.03, 2),
+            })
 
     if ml_result and isinstance(ml_result, dict):
         analysis_steps.append(
             {
                 "step": "ML risk model",
                 "detail": f"Model suggests {ml_result.get('risk_level')} risk with score {ml_result.get('risk_score')}",
-                "confidence": 0.62,
+                "confidence": round(analysis_confidence - 0.05, 2),
             }
         )
 
@@ -942,26 +1193,49 @@ async def _build_report_analysis(report_text: str, user_id: str | None, source_m
         {
             "step": "Summary synthesis",
             "detail": patient_summary,
-            "confidence": 0.6,
+            "confidence": round(analysis_confidence - 0.07, 2),
         }
     )
 
+    # Build evidence-based meta with confidence from medical knowledge layer
+    meta_reasoning = [
+        "Report analysis based on medical knowledge layer with clinical reference ranges.",
+        "Step-by-step trace included for transparency.",
+    ]
+    if conf_result.missing_critical_inputs:
+        missing = conf_result.missing_critical_inputs
+        meta_reasoning.append(
+            f"Missing inputs ({', '.join(missing)}) — adding these would improve assessment confidence."
+        )
+    if conf_result.warnings:
+        meta_reasoning.extend(conf_result.warnings[:2])
+
     meta = _ensure_meta(
         result.get("meta") if isinstance(result, dict) else None,
-        0.64,
+        round(analysis_confidence, 3),
+        meta_reasoning,
         [
-            "Report analysis based on detected clinical keywords and risk scoring.",
-            "Step-by-step trace included for transparency.",
-        ],
-        [
+            {"title": "Medical Knowledge", "detail": "app/services/medical_knowledge.py"},
             {"title": "Pipeline", "detail": "ml/ai_ml.py::analyze_report"},
         ],
     )
+    meta["data_completeness"] = conf_result.data_completeness
+    meta["missing_critical_inputs"] = conf_result.missing_critical_inputs
+
+    # Attach metric warnings from medical knowledge validation
+    if metric_warnings:
+        existing_warnings = meta.get("warnings", [])
+        if isinstance(existing_warnings, list):
+            meta["warnings"] = (existing_warnings + metric_warnings[:6])[:10]
+            for w in metric_warnings[:3]:
+                meta.setdefault("reasoning", []).append(f"Validation: {w}")
 
     if source_meta:
         meta["source"] = source_meta.get("source")
         if source_meta.get("warnings"):
-            meta["warnings"] = source_meta.get("warnings")[:4]
+            existing_warnings = meta.get("warnings", [])
+            if isinstance(existing_warnings, list):
+                meta["warnings"] = (existing_warnings + source_meta["warnings"][:4])[:10]
 
     enriched = {
         "risk_level": risk_level,
