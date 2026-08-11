@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { apiFetch, getAuthToken } from '../config/api';
 import { useAuth } from '../context/AuthContext';
+import { useEnterpriseAI } from '../hooks/useEnterpriseAI';
 
 const STORAGE_KEY = 'lifelink:ai-chat:sessions';
 const ACTIVE_KEY = 'lifelink:ai-chat:active';
@@ -39,6 +40,27 @@ const normalizeMessage = (message) => ({
   metadata: message.metadata || null,
   followUp: message.followUp || null,
 });
+
+const parseAskResponse = (data = {}) => {
+  if (data.conversation) {
+    // Enterprise backend: /v2/lifelink-ai/ask
+    return {
+      answer: data.answer || '',
+      conversation: data.conversation,
+      context: data.context || null,
+      ragChunks: data.rag_chunks || [],
+      ok: data.ok !== false,
+    };
+  }
+  // Public backend: /v2/agents/ask
+  return {
+    answer: data.answer || '',
+    conversation: data.session ? { id: data.session.id, title: data.session.title, messages: data.session.messages || [] } : null,
+    context: null,
+    ragChunks: [],
+    ok: true,
+  };
+};
 
 const formatTimestamp = (value) => {
   if (!value) return '';
@@ -150,6 +172,7 @@ const getQuickSuggestions = (moduleKey) => {
 
 const LifelinkAiChat = ({ variant = 'panel', onClose, location, moduleKey = 'general' }) => {
   const { user, loading: authLoading } = useAuth();
+  const { apiBase, isEnterpriseUser, normalizeMessage, normalizeConversation } = useEnterpriseAI();
   const [sessions, setSessions] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
@@ -194,7 +217,11 @@ const LifelinkAiChat = ({ variant = 'panel', onClose, location, moduleKey = 'gen
     if (isRemote) {
       const loadRemote = async () => {
         setLoadingHistory(true);
-        const res = await apiFetch('/v2/agents/chat/sessions', { cache: false });
+        // Enterprise users use /v2/lifelink-ai/conversations, public users use /v2/agents/chat/sessions
+        const sessionsEndpoint = isEnterpriseUser
+          ? `${apiBase}/conversations?limit=20&offset=0`
+          : '/v2/agents/chat/sessions';
+        const res = await apiFetch(sessionsEndpoint, { cache: false });
         if (res.status === 401) {
           setIsRemote(false);
           initLocalSessions();
@@ -202,17 +229,12 @@ const LifelinkAiChat = ({ variant = 'panel', onClose, location, moduleKey = 'gen
           return;
         }
         if (res.ok) {
-          const list = (res.data?.sessions || []).map((item) => ({
-            id: item.id,
-            title: item.title,
-            memoryId: item.id,
-            createdAt: item.createdAt,
-            updatedAt: item.updatedAt,
-            messages: [],
-            messageCount: item.messageCount || 0,
-            module: item.module,
-            mode: item.mode,
-          }));
+          // Normalize the response from whichever backend
+          const rawList = isEnterpriseUser
+            ? (res.data?.conversations || [])
+            : (res.data?.sessions || []);
+          const list = rawList.map((item) => normalizeConversation(item));
+
           const stored = localStorage.getItem(STORAGE_KEY);
           const parsed = stored ? JSON.parse(stored) : [];
           const localHasMessages = parsed.some((session) => (session.messages || []).length > 0);
@@ -232,28 +254,26 @@ const LifelinkAiChat = ({ variant = 'panel', onClose, location, moduleKey = 'gen
               setLoadingHistory(false);
               return;
             }
-            const created = await apiFetch('/v2/agents/chat/sessions', {
+            // Create a new conversation/session
+            const createEndpoint = isEnterpriseUser
+              ? `${apiBase}/conversations`
+              : '/v2/agents/chat/sessions';
+            const created = await apiFetch(createEndpoint, {
               method: 'POST',
               body: JSON.stringify({ module: moduleKey, mode }),
             });
             if (created.status === 401) {
               setIsRemote(false);
               initLocalSessions();
-            } else if (created.ok && created.data?.session) {
-              const session = created.data.session;
-              setSessions([
-                {
-                  id: session.id,
-                  title: session.title,
-                  memoryId: session.id,
-                  createdAt: session.createdAt,
-                  updatedAt: session.updatedAt,
-                  messages: [],
-                  module: session.module,
-                  mode: session.mode,
-                },
-              ]);
-              setActiveId(session.id);
+            } else if (created.ok) {
+              const sessionData = isEnterpriseUser
+                ? created.data?.conversation
+                : created.data?.session;
+              if (sessionData) {
+                const normalized = normalizeConversation(sessionData);
+                setSessions([normalized]);
+                setActiveId(normalized.id);
+              }
             }
           } else {
             setSessions(list);
@@ -266,7 +286,7 @@ const LifelinkAiChat = ({ variant = 'panel', onClose, location, moduleKey = 'gen
       return;
     }
     initLocalSessions();
-  }, [isRemote]);
+  }, [isRemote, isEnterpriseUser, apiBase]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -296,19 +316,27 @@ const LifelinkAiChat = ({ variant = 'panel', onClose, location, moduleKey = 'gen
     if (!isRemote || !activeId) return;
     const loadMessages = async () => {
       setLoadingHistory(true);
-      const res = await apiFetch(`/v2/agents/chat/sessions/${activeId}`, { cache: false });
-      if (res.ok && res.data?.session) {
-        const sessionData = res.data.session;
-        setSessions((prev) => prev.map((item) => (
-          item.id === activeId
-            ? { ...item, title: sessionData.title, updatedAt: sessionData.updatedAt, messages: sessionData.messages || [] }
-            : item
-        )));
+      const endpoint = isEnterpriseUser
+        ? `${apiBase}/conversations/${activeId}`
+        : `/v2/agents/chat/sessions/${activeId}`;
+      const res = await apiFetch(endpoint, { cache: false });
+      if (res.ok) {
+        const data = isEnterpriseUser
+          ? res.data?.conversation
+          : res.data?.session;
+        if (data) {
+          const msgs = (data.messages || []).map(normalizeMessage);
+          setSessions((prev) => prev.map((item) => (
+            item.id === activeId
+              ? { ...item, title: data.title || item.title, updatedAt: data.updatedAt || item.updatedAt, messages: msgs }
+              : item
+          )));
+        }
       }
       setLoadingHistory(false);
     };
     loadMessages();
-  }, [activeId, isRemote]);
+  }, [activeId, isRemote, isEnterpriseUser, apiBase]);
 
   const updateSession = (sessionId, updater) => {
     setSessions((prev) => prev.map((session) => (
@@ -320,7 +348,10 @@ const LifelinkAiChat = ({ variant = 'panel', onClose, location, moduleKey = 'gen
     if (isRemote) {
       const createRemote = async () => {
         setLoadingHistory(true);
-        const res = await apiFetch('/v2/agents/chat/sessions', {
+        const endpoint = isEnterpriseUser
+          ? `${apiBase}/conversations`
+          : '/v2/agents/chat/sessions';
+        const res = await apiFetch(endpoint, {
           method: 'POST',
           body: JSON.stringify({ module: moduleKey, mode }),
         });
@@ -330,22 +361,15 @@ const LifelinkAiChat = ({ variant = 'panel', onClose, location, moduleKey = 'gen
           setLoadingHistory(false);
           return;
         }
-        if (res.ok && res.data?.session) {
-          const session = res.data.session;
-          setSessions((prev) => [
-            {
-              id: session.id,
-              title: session.title,
-              memoryId: session.id,
-              createdAt: session.createdAt,
-              updatedAt: session.updatedAt,
-              messages: [],
-              module: session.module,
-              mode: session.mode,
-            },
-            ...prev,
-          ]);
-          setActiveId(session.id);
+        if (res.ok) {
+          const sessionData = isEnterpriseUser
+            ? res.data?.conversation
+            : res.data?.session;
+          if (sessionData) {
+            const normalized = normalizeConversation(sessionData);
+            setSessions((prev) => [normalized, ...prev]);
+            setActiveId(normalized.id);
+          }
         }
         setLoadingHistory(false);
       };
@@ -466,7 +490,10 @@ const LifelinkAiChat = ({ variant = 'panel', onClose, location, moduleKey = 'gen
         payload.longitude = location.lng;
       }
 
-      const res = await apiFetch('/v2/agents/ask', {
+      const askEndpoint = isEnterpriseUser
+        ? `${apiBase}/ask`
+        : '/v2/agents/ask';
+      const res = await apiFetch(askEndpoint, {
         method: 'POST',
         body: JSON.stringify(payload),
         timeoutMs: 35000,
@@ -477,20 +504,35 @@ const LifelinkAiChat = ({ variant = 'panel', onClose, location, moduleKey = 'gen
       }
 
       const data = res.data || {};
+      const parsed = parseAskResponse(data);
       const assistantMessage = normalizeMessage({
         role: 'assistant',
-        content: data.answer || 'No response generated.',
+        content: parsed.answer || 'No response generated.',
         sourceQuery: payload.query,
         confidence: data.confidence,
-        webResults: data.web_results || [],
+        webResults: data.web_results || data.webResults || [],
         report: data.report,
-        charts: data.charts,
-        references: data.references,
-        reasoning: data.reasoning,
-        clarifying: data.clarifying_questions || [],
+        charts: data.charts || [],
+        references: data.references || parsed.conversation?.messages?.[parsed.conversation.messages.length - 1]?.references || [],
+        reasoning: data.reasoning || parsed.conversation?.messages?.[parsed.conversation.messages.length - 1]?.reasoning || [],
+        clarifying: data.clarifying_questions || data.clarifying || [],
         orchestration: data.orchestration,
         metadata: data.metadata,
       });
+
+      // If conversation returned from enterprise backend, use its ID
+      if (parsed.conversation) {
+        const conv = parsed.conversation;
+        setSessions((prev) => prev.map((session) => (
+          session.id === sessionForSend.id
+            ? normalizeConversation({ ...conv, messages: [...(conv.messages || [])] })
+            : session
+        )));
+        if (conv.id && conv.id !== sessionForSend.id) {
+          setActiveId(conv.id);
+        }
+        return;
+      }
 
       const nextMemoryId = data.memoryId || sessionForSend.memoryId || sessionForSend.id;
       setSessions((prev) => prev.map((session) => (
@@ -570,7 +612,10 @@ const LifelinkAiChat = ({ variant = 'panel', onClose, location, moduleKey = 'gen
         payload.longitude = location.lng;
       }
 
-      const res = await apiFetch('/v2/agents/ask', {
+      const regenerateEndpoint = isEnterpriseUser
+        ? apiBase + '/ask'
+        : '/v2/agents/ask';
+      const res = await apiFetch(regenerateEndpoint, {
         method: 'POST',
         body: JSON.stringify(payload),
         timeoutMs: 35000,
@@ -586,15 +631,31 @@ const LifelinkAiChat = ({ variant = 'panel', onClose, location, moduleKey = 'gen
         content: data.answer || 'No response generated.',
         sourceQuery: payload.query,
         confidence: data.confidence,
-        webResults: data.web_results || [],
+        webResults: data.web_results || data.webResults || [],
         report: data.report,
-        charts: data.charts,
-        references: data.references,
-        reasoning: data.reasoning,
-        clarifying: data.clarifying_questions || [],
+        charts: data.charts || [],
+        references: data.references || [],
+        reasoning: data.reasoning || [],
+        clarifying: data.clarifying_questions || data.clarifying || [],
         orchestration: data.orchestration,
         metadata: data.metadata,
       });
+
+      // If enterprise backend returned a conversation, normalize from that
+      if (data.conversation) {
+        const conv = data.conversation;
+        updateSession(activeSession.id, (session) => ({
+          ...session,
+          id: conv.id || session.id,
+          title: conv.title || session.title,
+          updatedAt: new Date().toISOString(),
+          messages: (conv.messages || []).map(normalizeMessage),
+        }));
+        if (conv.id && conv.id !== activeSession.id) {
+          setActiveId(conv.id);
+        }
+        return;
+      }
 
       updateSession(activeSession.id, (session) => ({
         ...session,

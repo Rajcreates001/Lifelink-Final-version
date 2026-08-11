@@ -14,7 +14,7 @@ from sqlalchemy import or_, select, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.celery_app import celery_app
-from app.core.auth import require_roles
+from app.core.auth import require_scopes
 from app.core.config import get_settings
 from app.core.dependencies import get_realtime_service
 from app.core.rbac import AuthContext
@@ -501,7 +501,7 @@ async def _detect_anomalies(session: AsyncSession) -> dict[str, Any] | None:
 @router.post("/command/seed")
 async def seed_command_center(
     payload: dict = Body(default_factory=dict),
-    ctx: AuthContext = Depends(require_roles("government")),
+    ctx: AuthContext = Depends(require_scopes("gov:admin")),
 ):
     db = get_db()
     center_lat = float(payload.get("lat", 12.9716))
@@ -513,7 +513,7 @@ async def seed_command_center(
 
 
 @router.get("/command/overview")
-async def command_overview(ctx: AuthContext = Depends(require_roles("government"))):
+async def command_overview(ctx: AuthContext = Depends(require_scopes("dashboard:read"))):
     db = get_db()
     async with db() as session:
         hospitals = await session.scalar(select(func.count()).select_from(GovHospital))
@@ -527,7 +527,7 @@ async def command_overview(ctx: AuthContext = Depends(require_roles("government"
 
 
 @router.post("/decision/engine")
-async def decision_engine(ctx: AuthContext = Depends(require_roles("government"))):
+async def decision_engine(ctx: AuthContext = Depends(require_scopes("dashboard:read"))):
     settings = get_settings()
     cache = CacheStore(settings.redis_url, namespace="gov")
     cached = cache.get("decision_engine")
@@ -559,7 +559,7 @@ async def decision_engine(ctx: AuthContext = Depends(require_roles("government")
 
 
 @router.post("/disaster/detect")
-async def detect_disaster(ctx: AuthContext = Depends(require_roles("government"))):
+async def detect_disaster(ctx: AuthContext = Depends(require_scopes("dashboard:read"))):
     db = get_db()
     async with db() as session:
         emergencies = (await session.scalars(select(GovEmergency).where(GovEmergency.status == "active"))).all()
@@ -593,7 +593,7 @@ async def detect_disaster(ctx: AuthContext = Depends(require_roles("government")
 
 
 @router.post("/disaster/trigger")
-async def trigger_disaster(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(require_roles("government"))):
+async def trigger_disaster(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(require_scopes("dashboard:read"))):
     db = get_db()
     lat = payload.get("lat")
     lng = payload.get("lng")
@@ -617,14 +617,14 @@ async def trigger_disaster(payload: dict = Body(default_factory=dict), ctx: Auth
 
 
 @router.post("/disaster/broadcast")
-async def broadcast_disaster(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(require_roles("government"))):
+async def broadcast_disaster(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(require_scopes("dashboard:read"))):
     realtime: RealtimeService = get_realtime_service()
     await realtime.broadcast("government", {"type": "disaster", "payload": payload})
     return {"status": "ok"}
 
 
 @router.get("/disaster/recent")
-async def recent_disasters(ctx: AuthContext = Depends(require_roles("government"))):
+async def recent_disasters(ctx: AuthContext = Depends(require_scopes("dashboard:read"))):
     db = get_db()
     async with db() as session:
         items = (
@@ -653,7 +653,7 @@ async def recent_disasters(ctx: AuthContext = Depends(require_roles("government"
 
 @router.get("/resources/hospitals")
 async def list_hospitals(
-    ctx: AuthContext = Depends(require_roles("government")),
+    ctx: AuthContext = Depends(require_scopes("dashboard:read")),
     limit: int | None = Query(None, ge=1),
     offset: int | None = Query(None, ge=0),
 ):
@@ -687,7 +687,7 @@ async def list_hospitals(
 
 @router.get("/resources/ambulances")
 async def list_ambulances(
-    ctx: AuthContext = Depends(require_roles("government")),
+    ctx: AuthContext = Depends(require_scopes("dashboard:read")),
     limit: int | None = Query(None, ge=1),
     offset: int | None = Query(None, ge=0),
 ):
@@ -716,7 +716,7 @@ async def list_ambulances(
 
 
 @router.get("/monitoring/summary")
-async def monitoring_summary(ctx: AuthContext = Depends(require_roles("government"))):
+async def monitoring_summary(ctx: AuthContext = Depends(require_scopes("dashboard:read"))):
     db = get_db()
     async with db() as session:
         resolve_before = datetime.utcnow() - timedelta(minutes=LIVE_MONITOR_AUTO_RESOLVE_MINUTES)
@@ -754,7 +754,7 @@ async def monitoring_summary(ctx: AuthContext = Depends(require_roles("governmen
 async def monitoring_feed(
     limit: int | None = Query(None, ge=1),
     window_minutes: int | None = Query(None, ge=5),
-    ctx: AuthContext = Depends(require_roles("government")),
+    ctx: AuthContext = Depends(require_scopes("dashboard:read")),
 ):
     resolved_limit = min(limit or LIVE_MONITOR_DEFAULT_LIMIT, LIVE_MONITOR_MAX_LIMIT)
     resolved_window = min(window_minutes or LIVE_MONITOR_WINDOW_MINUTES, LIVE_MONITOR_MAX_WINDOW_MINUTES)
@@ -796,7 +796,7 @@ async def monitoring_feed(
 
 
 @router.post("/verification/submit")
-async def submit_verification(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(require_roles("government"))):
+async def submit_verification(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(require_scopes("dashboard:read"))):
     entity_type = payload.get("entity_type")
     entity_id = payload.get("entity_id")
     if not entity_type or not entity_id:
@@ -822,8 +822,11 @@ async def submit_verification(payload: dict = Body(default_factory=dict), ctx: A
 
 
 @router.get("/verification/pending")
-async def pending_verification(ctx: AuthContext = Depends(require_roles("government"))):
-    _require_district(ctx)
+async def pending_verification(ctx: AuthContext = Depends(require_scopes("dashboard:read"))):
+    # Any authenticated government authority (National/State/District) may view
+    # the pending verification queue — district-only restriction was wrong.
+    if (ctx.role or "").lower() != "government":
+        raise HTTPException(status_code=403, detail="Government authority required")
     db = get_db()
     async with db() as session:
         requests = (await session.scalars(select(GovVerificationRequest).where(GovVerificationRequest.status == "pending"))).all()
@@ -843,7 +846,7 @@ async def pending_verification(ctx: AuthContext = Depends(require_roles("governm
 
 
 @router.post("/verification/{request_id}/approve")
-async def approve_verification(request_id: str, ctx: AuthContext = Depends(require_roles("government"))):
+async def approve_verification(request_id: str, ctx: AuthContext = Depends(require_scopes("dashboard:read"))):
     _require_district(ctx)
     db = get_db()
     async with db() as session:
@@ -861,7 +864,7 @@ async def approve_verification(request_id: str, ctx: AuthContext = Depends(requi
 
 
 @router.post("/verification/{request_id}/reject")
-async def reject_verification(request_id: str, payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(require_roles("government"))):
+async def reject_verification(request_id: str, payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(require_scopes("dashboard:read"))):
     _require_district(ctx)
     db = get_db()
     async with db() as session:
@@ -879,7 +882,7 @@ async def reject_verification(request_id: str, payload: dict = Body(default_fact
 
 
 @router.post("/simulation/start")
-async def start_simulation(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(require_roles("government"))):
+async def start_simulation(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(require_scopes("dashboard:read"))):
     db = get_db()
     session = GovSimulationSession(
         id=_uuid(),
@@ -896,7 +899,7 @@ async def start_simulation(payload: dict = Body(default_factory=dict), ctx: Auth
 
 
 @router.post("/simulation/run")
-async def run_simulation(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(require_roles("government"))):
+async def run_simulation(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(require_scopes("dashboard:read"))):
     count = int(payload.get("count", 60))
     center_lat = float(payload.get("lat", 12.9716))
     center_lng = float(payload.get("lng", 77.5946))
@@ -908,7 +911,7 @@ async def run_simulation(payload: dict = Body(default_factory=dict), ctx: AuthCo
 
 
 @router.post("/simulation/step")
-async def simulation_step(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(require_roles("government"))):
+async def simulation_step(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(require_scopes("dashboard:read"))):
     count = int(payload.get("count", 25))
     center_lat = float(payload.get("lat", 12.9716))
     center_lng = float(payload.get("lng", 77.5946))
@@ -919,7 +922,7 @@ async def simulation_step(payload: dict = Body(default_factory=dict), ctx: AuthC
 
 
 @router.post("/simulation/multi-phase")
-async def simulation_multi_phase(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(require_roles("government"))):
+async def simulation_multi_phase(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(require_scopes("dashboard:read"))):
     phases = payload.get("phases") or []
     if not phases:
         raise HTTPException(status_code=400, detail="phases required")
@@ -946,6 +949,12 @@ async def simulation_multi_phase(payload: dict = Body(default_factory=dict), ctx
 
         results: list[dict[str, Any]] = []
         for idx, phase in enumerate(phases):
+            # Accept both structured phases ({"name": ..., "intensity": ...})
+            # and plain string phase keys ("warning", "evacuation", ...).
+            if isinstance(phase, str):
+                phase = {"name": phase}
+            if not isinstance(phase, dict):
+                phase = {"name": str(phase)}
             name = phase.get("name") or f"Phase {idx + 1}"
             intensity = (phase.get("intensity") or sim.intensity or "medium").lower()
             defaults = _phase_defaults(intensity)
@@ -972,7 +981,7 @@ async def simulation_multi_phase(payload: dict = Body(default_factory=dict), ctx
 
 
 @router.post("/simulation/stop/{session_id}")
-async def stop_simulation(session_id: str, ctx: AuthContext = Depends(require_roles("government"))):
+async def stop_simulation(session_id: str, ctx: AuthContext = Depends(require_scopes("dashboard:read"))):
     db = get_db()
     async with db() as session:
         sim = await session.get(GovSimulationSession, session_id)
@@ -985,7 +994,7 @@ async def stop_simulation(session_id: str, ctx: AuthContext = Depends(require_ro
 
 
 @router.post("/simulation/after-action/{session_id}")
-async def after_action_report(session_id: str, ctx: AuthContext = Depends(require_roles("government"))):
+async def after_action_report(session_id: str, ctx: AuthContext = Depends(require_scopes("dashboard:read"))):
     db = get_db()
     async with db() as session:
         sim = await session.get(GovSimulationSession, session_id)
@@ -1040,7 +1049,7 @@ async def after_action_report(session_id: str, ctx: AuthContext = Depends(requir
 
 
 @router.post("/cache/precompute")
-async def precompute_metrics(ctx: AuthContext = Depends(require_roles("government"))):
+async def precompute_metrics(ctx: AuthContext = Depends(require_scopes("dashboard:read"))):
     settings = get_settings()
     cache = CacheStore(settings.redis_url, namespace="gov")
     db = get_db()
@@ -1057,7 +1066,7 @@ async def precompute_metrics(ctx: AuthContext = Depends(require_roles("governmen
 
 
 @router.post("/ai/ask")
-async def eva_assistant(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(require_roles("government"))):
+async def eva_assistant(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(require_scopes("dashboard:read"))):
     query = payload.get("query", "")
     execute = bool(payload.get("execute"))
     db = get_db()
@@ -1095,7 +1104,7 @@ async def eva_assistant(payload: dict = Body(default_factory=dict), ctx: AuthCon
 
 
 @router.get("/predictions/anomaly")
-async def anomaly_prediction(ctx: AuthContext = Depends(require_roles("government"))):
+async def anomaly_prediction(ctx: AuthContext = Depends(require_scopes("dashboard:read"))):
     settings = get_settings()
     cache = CacheStore(settings.redis_url, namespace="gov")
     cached = cache.get("anomaly_prediction")
@@ -1128,7 +1137,7 @@ async def list_policy_actions(
     status: str | None = None,
     limit: int | None = Query(None, ge=1),
     offset: int | None = Query(None, ge=0),
-    ctx: AuthContext = Depends(require_roles("government")),
+    ctx: AuthContext = Depends(require_scopes("dashboard:read")),
 ):
     db = get_db()
     async with db() as session:
@@ -1156,7 +1165,7 @@ async def list_policy_actions(
 
 
 @router.post("/policy/actions")
-async def create_policy_action(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(require_roles("government"))):
+async def create_policy_action(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(require_scopes("policy:write"))):
     title = payload.get("title")
     action = payload.get("action")
     if not title or not action:
@@ -1189,7 +1198,7 @@ async def create_policy_action(payload: dict = Body(default_factory=dict), ctx: 
 
 
 @router.patch("/policy/actions/{action_id}")
-async def update_policy_action(action_id: str, payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(require_roles("government"))):
+async def update_policy_action(action_id: str, payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(require_scopes("policy:write"))):
     db = get_db()
     async with db() as session:
         record = await session.get(GovPolicyAction, action_id)

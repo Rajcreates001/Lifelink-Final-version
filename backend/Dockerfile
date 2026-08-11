@@ -30,4 +30,4 @@ ENTRYPOINT ["docker-entrypoint.sh"]
 
 # Health check (shared by API container)
 HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
-    CMD python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:3010/health').status)" 2>/dev/null || exit 1
+    CMD python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:3001/health').status)" 2>/dev/null || exit 1

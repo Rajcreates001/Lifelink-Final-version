@@ -11,40 +11,80 @@
     --color-ink: #0f172a;
     --color-muted: #475569;
 
-    /* ─── Design Tokens ──────────────────────────────── */
-    /* Role Colors */
+    /* ─── Accent Color CSS Variables — animated via CSS transitions ── */
+    /* Set dynamically by inline style on .auth-accent-container */
+    --accent-hex: #2563EB;
+    --accent-rgb: 37, 99, 235;
+    --accent-light: rgba(37, 99, 235, 0.08);
+    --accent-flow: rgba(37, 99, 235, 0.22);
+    --accent-border: rgba(37, 99, 235, 0.13);
+    --accent-glow: rgba(37, 99, 235, 0.25);
+    --accent-ring: rgba(37, 99, 235, 0.15);
+
+    /* Design Tokens */
     --role-blue: #2563EB;
     --role-green: #059669;
     --role-red: #DC2626;
     --role-purple: #7C3AED;
     --role-orange: #F97316;
 
-    /* Role Light Backgrounds */
-    --role-blue-bg: rgba(37, 99, 235, 0.08);
-    --role-green-bg: rgba(5, 150, 105, 0.08);
-    --role-red-bg: rgba(220, 38, 38, 0.08);
-    --role-purple-bg: rgba(124, 58, 237, 0.08);
-
-    /* Elevation */
     --shadow-ambient: 0 0 0 1px rgba(0,0,0,0.02), 0 2px 8px rgba(0,0,0,0.04), 0 8px 32px rgba(0,0,0,0.06), 0 16px 48px rgba(0,0,0,0.04);
     --shadow-glass: 0 8px 32px rgba(0,0,0,0.06), 0 24px 60px rgba(0,0,0,0.08);
     --shadow-button: 0 4px 14px rgba(37,99,235,0.3);
 
-    /* Border Radii */
     --radius-card: 24px;
     --radius-input: 14px;
     --radius-button: 14px;
     --radius-pill: 9999px;
 
-    /* Animation Durations */
     --anim-duration-fast: 200ms;
     --anim-duration-normal: 300ms;
     --anim-duration-slow: 500ms;
 
-    /* Glass Tokens */
     --glass-bg: rgba(255, 255, 255, 0.75);
     --glass-border: rgba(255, 255, 255, 0.3);
     --glass-blur: 16px;
+
+    /* ─── Synchronized Theme Transition — 350ms easeInOutCubic ── */
+    --theme-transition: 350ms cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* ─── Auth Accent Container — all accent elements transition together ── */
+.auth-accent-container {
+    /* Container for accent CSS variables — no transition needed here */
+}
+.auth-accent-card {
+    transition: border-color var(--theme-transition),
+                box-shadow var(--theme-transition);
+}
+.auth-accent-icon {
+    transition: background var(--theme-transition),
+                box-shadow var(--theme-transition);
+}
+.auth-accent-pill {
+    transition: background-color var(--theme-transition),
+                border-color var(--theme-transition),
+                color var(--theme-transition),
+                box-shadow var(--theme-transition),
+                transform 0.2s ease;
+}
+.auth-accent-input-icon {
+    transition: color var(--theme-transition);
+}
+.auth-accent-button {
+    transition: background var(--theme-transition),
+                box-shadow var(--theme-transition),
+                transform 0.2s ease;
+}
+.auth-accent-link {
+    transition: color var(--theme-transition);
+}
+.auth-accent-panel {
+    transition: background-color var(--theme-transition),
+                border-color var(--theme-transition);
+}
+.auth-accent-glow {
+    transition: box-shadow var(--theme-transition);
 }
 
 body {
@@ -204,6 +244,35 @@ html { scroll-behavior: smooth; }
     to { opacity: 1; transform: translateY(0); }
 }
 
+/* ─── Premium Auth Card Animations ────────────── */
+@keyframes cardGlowPulse {
+    0%, 100% { opacity: 0.10; transform: scale(1); }
+    50% { opacity: 0.18; transform: scale(1.08); }
+}
+@keyframes neonBreathing {
+    0%, 100% {
+        border-color: color-mix(in srgb, var(--accent-hex) 22%, transparent);
+        box-shadow: 0 0 8px color-mix(in srgb, var(--accent-hex) 8%, transparent);
+    }
+    50% {
+        border-color: color-mix(in srgb, var(--accent-hex) 42%, transparent);
+        box-shadow: 0 0 20px color-mix(in srgb, var(--accent-hex) 20%, transparent), 0 0 40px color-mix(in srgb, var(--accent-hex) 8%, transparent);
+    }
+}
+@keyframes borderFlow {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+@keyframes pillNeonPulse {
+    0%, 100% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 0 12px color-mix(in srgb, var(--accent-hex) 20%, transparent); }
+    50% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 0 24px color-mix(in srgb, var(--accent-hex) 40%, transparent); }
+}
+@keyframes pillBounce {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+}
+
 /* ─── V3 Auth Keyframes ─────────────────────────── */
 @keyframes aurora {
     0% { transform: translate(-30%, -30%) rotate(0deg) scale(1); opacity: 0.15; }
@@ -307,8 +376,8 @@ html { scroll-behavior: smooth; }
 .animate-heartbeat { animation: heartbeat 2.5s ease-in-out infinite; }
 .animate-breathe { animation: breathe 4s ease-in-out infinite; }
 .animate-heartbeat-line { animation: heartbeatLine 3s linear infinite; }
-.animate-color-flow { animation: colorFlow 12s ease-in-out infinite; background-size: 200% 200%; }
-.animate-color-breathe { animation: colorBreathe 4s ease-in-out infinite; }
+.animate-color-flow { animation: colorFlow 12s ease-in-out infinite; background-size: 200% 200%; animation-fill-mode: backwards; }
+.animate-color-breathe { animation: colorBreathe 4s ease-in-out infinite; animation-fill-mode: backwards; }
 .animate-icon-bounce { animation: iconBounce 2s ease-in-out infinite; }
 .animate-icon-glow { animation: iconGlow 2.5s ease-in-out infinite; }
 .animate-sidebar-pulse { animation: sidebarActivePulse 2s ease-in-out infinite; }
@@ -318,42 +387,379 @@ html { scroll-behavior: smooth; }
 .animate-breathing-glow { animation: breathingGlow 2.5s ease-in-out infinite; }
 .animate-page-enter { animation: pageEnter 0.25s cubic-bezier(0.4,0,0.2,1) forwards; }
 .animate-slide-down-fade { animation: slideDownFade 0.3s ease-out forwards; }
-.animate-aurora { animation: aurora 20s ease-in-out infinite; }
+.animate-aurora { animation: aurora 20s ease-in-out infinite; animation-fill-mode: backwards; }
 .animate-border-glow-slide { animation: borderGlowSlide 4s ease infinite; background-size: 200% 100%; }
-.animate-border-glow-pulse { animation: borderGlowPulse 3s ease-in-out infinite; }
+.animate-border-glow-pulse { animation: borderGlowPulse 3s ease-in-out infinite; animation-fill-mode: backwards; }
 .animate-shine-sweep { animation: shineSweep 0.8s ease-in-out; }
 
-/* ─── V3 Auth Component Classes ───────────────── */
+/* ─── Premium Role Selector ─────────────────────────── */
+.role-selector-container {
+  display: flex;
+  width: 100%;
+  margin-bottom: 1.5rem;
+}
+.role-selector-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.5);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.9),
+    0 4px 16px rgba(0,0,0,0.04),
+    0 1px 3px rgba(0,0,0,0.03);
+}
+
+.role-selector-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  height: 68px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  overflow: hidden;
+  font-family: inherit;
+  padding: 8px 4px;
+  transition:
+    background 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    border-color 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    color 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.role-selector-btn:hover {
+  transform: translateY(-3px) scale(1.02);
+}
+.role-selector-btn:active {
+  transform: scale(0.96);
+  transition-duration: 0.08s;
+}
+
+/* Focus ring — WCAG compliant */
+.role-selector-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.35), 0 0 12px rgba(37,99,235,0.15);
+}
+
+/* Inactive state has subtle reflection */
+.role-selector-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,0.5) 0%, transparent 40%, transparent 60%, rgba(0,0,0,0.02) 100%);
+}
+.role-selector-btn--active::before {
+  opacity: 0;
+}
+
+/* Inner highlight overlay for active button */
+.role-selector-btn-highlight {
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,0.22) 0%, transparent 35%);
+}
+
+/* Animated light sweep across active button */
+.role-selector-btn-sweep {
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  pointer-events: none;
+  transform: translateX(-100%);
+  animation: roleSweep 7s ease-in-out infinite;
+  animation-delay: 1s;
+  mix-blend-mode: overlay;
+}
+
+/* Selection indicator dot */
+.role-selector-dot {
+  position: absolute;
+  bottom: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  box-shadow: 0 0 6px rgba(255,255,255,0.6);
+  animation: roleDotPulse 2s ease-in-out infinite;
+}
+
+/* Icon styling */
+.role-selector-icon {
+  font-size: 20px;
+  transition:
+    transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+    filter 0.25s ease;
+  position: relative;
+  z-index: 1;
+}
+.role-selector-btn:hover .role-selector-icon {
+  transform: translateY(-2px);
+}
+.role-selector-icon--active {
+  filter: drop-shadow(0 1px 4px rgba(255,255,255,0.35));
+}
+
+/* Label styling */
+.role-selector-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  position: relative;
+  z-index: 1;
+  line-height: 1;
+}
+
+/* ─── Role Selector Keyframes ─────────────────────────── */
+@keyframes roleSweep {
+  0% { transform: translateX(-100%); }
+  8% { transform: translateX(100%); }
+  100% { transform: translateX(100%); }
+}
+@keyframes roleDotPulse {
+  0%, 100% { opacity: 0.5; transform: translateX(-50%) scale(1); }
+  50% { opacity: 1; transform: translateX(-50%) scale(1.3); }
+}
+
+/* ─── V3 Auth Premium Enhancements ──────────────── */
+/* Layer 1: Outer shadow + flowing gradient border for .auth-accent-card */
+.auth-card-shadow {
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    border-radius: var(--radius-card);
+    pointer-events: none;
+    transition:
+        box-shadow var(--theme-transition),
+        opacity var(--theme-transition),
+        transform 0.3s ease;
+    box-shadow:
+        0 10px 25px rgba(0,0,0,0.06),
+        0 30px 70px rgba(0,0,0,0.08),
+        0 0 50px color-mix(in srgb, var(--accent-hex) 15%, transparent);
+}
+/* Flowing conic gradient ring — always visible at subtle level */
+.auth-card-shadow::before {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: calc(var(--radius-card) + 3px);
+    background: conic-gradient(
+        from 0deg at 50% 50%,
+        transparent 0deg,
+        color-mix(in srgb, var(--accent-hex) 35%, transparent) 90deg,
+        transparent 180deg,
+        color-mix(in srgb, var(--accent-hex) 35%, transparent) 270deg,
+        transparent 360deg
+    );
+    opacity: 0.2;
+    transition: opacity 0.6s ease;
+    animation: borderFlow 10s linear infinite;
+    mask: radial-gradient(farthest-side, transparent calc(100% - 3px), black calc(100% - 2px));
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), black calc(100% - 2px));
+}
+/* Inner accent ring */
+.auth-card-shadow::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: var(--radius-card);
+    border: 2px solid transparent;
+    background: conic-gradient(
+        from 0deg at 50% 50%,
+        transparent 0deg,
+        color-mix(in srgb, var(--accent-hex) 50%, transparent) 90deg,
+        transparent 180deg,
+        color-mix(in srgb, var(--accent-hex) 50%, transparent) 270deg,
+        transparent 360deg
+    );
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), black calc(100% - 1px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 2px), black calc(100% - 1px));
+    opacity: 0.2;
+    transition: opacity 0.6s ease;
+    animation: borderFlow 10s linear infinite;
+    animation-delay: -5s;
+}
+
+/* Card with neon breathing border glow — hover via container */
+.auth-accent-card {
+    transition: border-color var(--theme-transition),
+                box-shadow var(--theme-transition);
+}
+
+/* Container-level hover: lifts card AND shadow together */
+.auth-accent-container:hover .auth-accent-card {
+    transform: translateY(-3px);
+}
+.auth-accent-container:hover .auth-card-shadow {
+    transform: translateY(-3px);
+    box-shadow:
+        0 12px 30px rgba(0,0,0,0.08),
+        0 35px 80px rgba(0,0,0,0.10),
+        0 0 60px color-mix(in srgb, var(--accent-hex) 20%, transparent);
+}
+.auth-accent-container:hover .auth-card-shadow::before,
+.auth-accent-container:hover .auth-card-shadow::after {
+    opacity: 0.55;
+}
+.auth-accent-container:hover .auth-floating-glow {
+    animation: none;
+    opacity: 0.22;
+}
+
+/* Layer 2: Inner glass highlight */
+.auth-inner-highlight {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-card);
+    pointer-events: none;
+    background: linear-gradient(
+        135deg,
+        rgba(255,255,255,0.5) 0%,
+        transparent 35%,
+        transparent 65%,
+        rgba(255,255,255,0.2) 100%
+    );
+}
+
+/* Layer 3: Floating glow behind the card */
+.auth-floating-glow {
+    position: absolute;
+    width: 70%;
+    height: 70%;
+    top: 15%;
+    left: 15%;
+    border-radius: 50%;
+    pointer-events: none;
+    filter: blur(80px);
+    opacity: 0.12;
+    transition: background var(--theme-transition), opacity var(--theme-transition);
+    animation: cardGlowPulse 6s ease-in-out infinite;
+}
+
+/* Premium neon breathing border */
+.auth-neon-border {
+    position: absolute;
+    inset: -2px;
+    border-radius: var(--radius-card);
+    pointer-events: none;
+    border: 2px solid color-mix(in srgb, var(--accent-hex) 25%, transparent);
+    transition: border-color var(--theme-transition),
+                box-shadow var(--theme-transition);
+    animation: neonBreathing 6s ease-in-out infinite;
+}
+.auth-neon-border::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: calc(var(--radius-card) + 4px);
+    border: 1px solid color-mix(in srgb, var(--accent-hex) 10%, transparent);
+    filter: blur(4px);
+    transition: border-color var(--theme-transition);
+    animation: neonBreathing 6s ease-in-out infinite;
+    animation-delay: -3s;
+}
+
+/* Premium role pill buttons */
+.portal-pill {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 54px;
+    flex: 1;
+    min-width: 0;
+    border-radius: 16px;
+    font-size: 13px;
+    font-weight: 600;
+    border: 1.5px solid transparent;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    padding-left: 10px;
+    padding-right: 10px;
+    transition:
+        transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+        box-shadow 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+        background-color 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+        border-color 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+        color 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.portal-pill:hover {
+    transform: translateY(-1px);
+}
+.portal-pill:active {
+    transform: scale(0.97);
+}
+.portal-pill i {
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.portal-pill:hover i {
+    transform: scale(1.08);
+}
+.portal-pill[aria-checked="true"] i {
+    animation: pillBounce 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Pill inner glow for selected state */
+.portal-pill[aria-checked="true"] {
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.5),
+        0 0 16px color-mix(in srgb, var(--accent-hex) 30%, transparent);
+    animation: pillNeonPulse 3s ease-in-out infinite;
+}
+
+/* Premium input fields */
 .auth-input {
     width: 100%;
     height: 52px;
     padding-left: 48px;
     padding-right: 16px;
-    background: rgba(249, 250, 251, 0.8);
-    backdrop-filter: blur(4px);
+    background: #FAFBFD;
     border: 1px solid var(--border-light, #E5E7EB);
     border-radius: var(--radius-input);
     font-size: 15px;
     color: #111827;
     outline: none;
-    transition: all 0.2s ease;
+    transition: border-color var(--theme-transition),
+                background var(--theme-transition),
+                box-shadow var(--theme-transition);
 }
 .auth-input:hover {
-    border-color: #93c5fd;
-    background: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    border-color: color-mix(in srgb, var(--accent-hex) 45%, #D1D5DB);
+    background: #FFFFFF;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 .auth-input:focus {
-    border-color: var(--auth-focus, var(--role-blue, #2563EB));
-    background: white;
-    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.08);
+    border-color: var(--accent-hex);
+    background: #FFFFFF;
+    box-shadow:
+        0 0 0 3px color-mix(in srgb, var(--accent-hex) 15%, transparent),
+        0 0 20px color-mix(in srgb, var(--accent-hex) 8%, transparent);
 }
 .auth-input::placeholder {
     color: #9ca3af;
     transition: opacity 0.2s ease, transform 0.2s ease;
 }
 .auth-input:focus::placeholder {
-    opacity: 0.6;
+    opacity: 0.5;
     transform: translateX(4px);
 }
 
@@ -365,27 +771,6 @@ html { scroll-behavior: smooth; }
     text-transform: uppercase;
     letter-spacing: 0.06em;
     margin-bottom: 8px;
-}
-
-/* ─── Portal pill icon-first animation ────────────── */
-.portal-pill {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    height: 48px;
-    flex: 1;
-    min-width: 0;
-    border-radius: var(--radius-input);
-    font-size: 13px;
-    font-weight: 600;
-    border: 1.5px solid transparent;
-    cursor: pointer;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    overflow: hidden;
-    padding-left: 10px;
-    padding-right: 10px;
 }
 
 /* ─── Delay Utilities ─────────────────────────────── */
@@ -601,6 +986,30 @@ html { scroll-behavior: smooth; }
     animation: none;
 }
 
+/* ─── Notification Hub Animations ────────────────────── */
+@keyframes breathingRedGlow {
+    0%, 100% { box-shadow: 0 0 8px rgba(239,68,68,0.15); }
+    50% { box-shadow: 0 0 25px rgba(239,68,68,0.35), 0 0 50px rgba(239,68,68,0.1); }
+}
+.animate-breathing-red-glow {
+    animation: breathingRedGlow 2.5s ease-in-out infinite;
+}
+@keyframes slideNotification {
+    0% { opacity: 0; transform: translateX(40px) scale(0.95); }
+    100% { opacity: 1; transform: translateX(0) scale(1); }
+}
+.animate-slide-notification {
+    animation: slideNotification 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+/* Hide scrollbar for filter bar */
+.scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+    display: none;
+}
+
 /* ─── Landing Page Keyframes ────────────────────────── */
 @keyframes fadeSlideUp {
     from { opacity: 0; transform: translateY(40px); }
@@ -676,6 +1085,7 @@ html { scroll-behavior: smooth; }
 }
 .animate-role-gradient-flow {
     animation: roleGradientFlow 28s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+    animation-fill-mode: backwards;
     background-size: 300% 300%, 300% 300%, 300% 300%, 300% 300%, 300% 300%;
 }
 
@@ -917,4 +1327,135 @@ html { scroll-behavior: smooth; }
 @keyframes shimmer {
     0% { background-position: -200% 0; }
     100% { background-position: 200% 0; }
+}
+
+/* ─── Ping Slow for AI Health Score Ring ─────────────── */
+.animate-ping-slow {
+  animation: ping-slow 3s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+@keyframes ping-slow {
+  75%, 100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* ─── HomeTab: ECG Line Animation ─────────────────────── */
+.animate-ecg-line {
+    animation: ecgLine 3s linear infinite;
+}
+@keyframes ecgLine {
+    0% { stroke-dashoffset: 2400; }
+    100% { stroke-dashoffset: 0; }
+}
+
+/* ─── HomeTab: ECG Pulse ──────────────────────────────── */
+.animate-ecg-pulse {
+    animation: ecgPulse 2s ease-in-out infinite;
+}
+@keyframes ecgPulse {
+    0%, 100% { transform: scale(1); opacity: 0.3; }
+    50% { transform: scale(1.08); opacity: 0.7; }
+}
+
+/* ─── HomeTab: Emergency Floating Particles ────────────── */
+.animate-emergency-particle {
+    animation: emergencyParticle 8s ease-in-out infinite;
+}
+@keyframes emergencyParticle {
+    0% { transform: translateY(0) translateX(0) scale(1); opacity: 0; }
+    10% { opacity: 0.5; }
+    50% { transform: translateY(-40px) translateX(20px) scale(0.8); opacity: 0.4; }
+    90% { opacity: 0.5; }
+    100% { transform: translateY(-80px) translateX(-10px) scale(0.2); opacity: 0; }
+}
+
+/* ─── HomeTab: Emergency Radial Glow (used inline) ─────── */
+@keyframes emergencyGlow {
+    0%, 100% { opacity: 0.15; transform: scale(1); }
+    50% { opacity: 0.28; transform: scale(1.1); }
+}
+
+/* ─── HomeTab: Waveform Audio Bars ────────────────────── */
+.waveform-bar {
+    animation: waveformBar 0.6s ease-in-out infinite alternate;
+}
+@keyframes waveformBar {
+    0% { height: 20%; opacity: 0.6; }
+    100% { height: 100%; opacity: 1; }
+}
+
+/* ─── HomeTab: AI Breathing Button ────────────────────── */
+.ai-float-btn {
+    background: linear-gradient(135deg, #3B82F6, #8B5CF6);
+    box-shadow: 0 4px 20px rgba(59,130,246,0.35), 0 0 40px rgba(139,92,246,0.15);
+    transition: box-shadow 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ai-float-btn:hover {
+    box-shadow: 0 6px 30px rgba(59,130,246,0.45), 0 0 60px rgba(139,92,246,0.25);
+}
+.animate-ai-breathing {
+    animation: aiBreathing 3s ease-in-out infinite;
+}
+@keyframes aiBreathing {
+    0%, 100% { box-shadow: inset 0 0 20px rgba(255,255,255,0.1); opacity: 0.5; }
+    50% { box-shadow: inset 0 0 30px rgba(255,255,255,0.2); opacity: 0.8; }
+}
+.animate-ai-ring {
+    animation: aiRing 2s ease-out infinite;
+}
+@keyframes aiRing {
+    0% { transform: scale(1); opacity: 0.3; }
+    100% { transform: scale(1.5); opacity: 0; }
+}
+
+/* ─── HomeTab: Glass Card Sm ──────────────────────────── */
+.glass-card-sm {
+    background: rgba(255, 255, 255, 0.78);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow:
+        0 2px 12px rgba(0,0,0,0.04),
+        0 8px 30px rgba(0,0,0,0.06),
+        0 0 0 1px rgba(0,0,0,0.02);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.glass-card-sm:hover {
+    background: rgba(255, 255, 255, 0.88);
+    box-shadow:
+        0 4px 20px rgba(0,0,0,0.06),
+        0 12px 40px rgba(0,0,0,0.08),
+        0 0 0 1px rgba(0,0,0,0.02);
+}
+
+/* ─── HomeTab: SOS Hero Card ──────────────────────────── */
+.sos-hero-card {
+    position: relative;
+    isolation: isolate;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.sos-hero-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 80px rgba(220,38,38,0.2), 0 25px 70px rgba(0,0,0,0.35) !important;
+}
+
+/* ─── HomeTab: Thin Custom Scrollbar ──────────────────── */
+.custom-scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(156,163,175,0.5) transparent;
+}
+.custom-scrollbar-thin::-webkit-scrollbar {
+    width: 3px;
+    height: 3px;
+}
+.custom-scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+}
+.custom-scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgba(156,163,175,0.4);
+    border-radius: 999px;
+}
+.custom-scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: rgba(156,163,175,0.6);
 }

@@ -17,6 +17,8 @@ from app.services.notification_service import NotificationService
 from app.services.public_service import PublicService
 from app.services.realtime_service import RealtimeService
 from app.services.routing_service import RoutingService
+from app.services.enterprise_ai_service import EnterpriseAIChatService
+from app.services.enterprise_rag_service import EnterpriseRAGService
 from app.services.user_service import UserService
 from app.services.weather_service import WeatherService
 
@@ -118,3 +120,11 @@ def get_weather_service() -> WeatherService:
 
 def get_realtime_service() -> RealtimeService:
     return _realtime_service
+
+
+def get_enterprise_ai_service(db=Depends(get_db)) -> EnterpriseAIChatService:
+    return EnterpriseAIChatService(db)
+
+
+def get_enterprise_rag_service(db=Depends(get_db)) -> EnterpriseRAGService:
+    return EnterpriseRAGService(db)

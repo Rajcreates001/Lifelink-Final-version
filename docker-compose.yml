@@ -14,7 +14,7 @@ x-backend-env: &backend-env
   PRIVACY_SALT: change_me_in_production
   FRONTEND_URL: http://localhost:5000
   HOST: "0.0.0.0"
-  PORT: 3010
+  PORT: 3001
   LLM_PROVIDER: groq
   GROQ_API_KEY: ${GROQ_API_KEY:-}
   GROQ_BASE_URL: https://api.groq.com
@@ -106,12 +106,12 @@ services:
       <<: *backend-env
     command: ["api"]
     ports:
-      - "3010:3010"
+      - "3001:3001"
     depends_on:
       postgres: *healthy-pg
       redis: *healthy-redis
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; print(urllib.request.urlopen('http://localhost:3010/health').status)"]
+      test: ["CMD", "python", "-c", "import urllib.request; print(urllib.request.urlopen('http://localhost:3001/health').status)"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -180,7 +180,7 @@ services:
       - ./client:/app
       - node_modules:/app/node_modules
     environment:
-      VITE_API_URL: http://localhost:3010
+      VITE_API_URL: http://localhost:3001
     ports:
       - "5000:5000"
     command:

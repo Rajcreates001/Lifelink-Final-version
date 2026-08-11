@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime
 from html.parser import HTMLParser
 from urllib.parse import quote_plus
@@ -16,10 +17,13 @@ from app.services.ai_chat_service import AiChatService
 from app.services.collections import ALERTS, DONATIONS, HOSPITALS, RESOURCE_REQUESTS, USERS
 from app.services.rag.vector_store import search
 from app.services.agents.llm_client import generate_text
+from app.services.llm_service import generate_response_async
 from app.core.celery_app import celery_app
 from app.services.repository import MongoRepository
 from app.services.routing_service import RoutingService
 from app.services.weather_service import WeatherService
+
+from app.services.multi_agent import run_multi_agent_analysis
 
 router = APIRouter(tags=["agents"])
 
@@ -28,6 +32,13 @@ class AgentEvent(BaseModel):
     event: dict
     memoryId: str | None = None
     execute: bool | None = True
+
+
+class MultiAgentRequest(BaseModel):
+    request_type: str = "general"
+    inputs: dict = {}
+    hospitals: list[dict] | None = None
+    donor_pool: list[dict] | None = None
 
 
 class AskRequest(BaseModel):
@@ -75,22 +86,6 @@ def _extract_coords(doc: dict) -> tuple[float, float] | None:
     return None
 
 
-def _extract_coords(doc: dict) -> tuple[float, float] | None:
-    location = doc.get("location") or {}
-    for key_pair in (("lat", "lng"), ("latitude", "longitude")):
-        if key_pair[0] in doc and key_pair[1] in doc:
-            try:
-                return float(doc[key_pair[0]]), float(doc[key_pair[1]])
-            except (TypeError, ValueError):
-                return None
-    if isinstance(location, dict) and "lat" in location and "lng" in location:
-        try:
-            return float(location["lat"]), float(location["lng"])
-        except (TypeError, ValueError):
-            return None
-    return None
-
-
 def _needs_clarification(query: str) -> bool:
     tokens = [token for token in query.strip().split() if token]
     if len(tokens) <= 2:
@@ -98,6 +93,127 @@ def _needs_clarification(query: str) -> bool:
     if len(query.strip()) < 8:
         return True
     return False
+
+
+# ─── Multi-Agent Query Classifier ──────────────────────────────
+
+import re as _re
+
+
+def _classify_query_type(query: str) -> str | None:
+    """
+    Classify a natural-language user query into a multi-agent request type.
+
+    Returns one of: "health_assessment", "emergency", "hospital_search",
+    "donor_match", "record_analysis", "general", or None if classification is
+    too ambiguous.
+    """
+    if not query:
+        return None
+
+    text = query.lower().strip()
+
+    # ── Health assessment keywords ──
+    health_terms = {
+        "health", "assessment", "risk", "vitals", "heart rate", "blood pressure",
+        "bmi", "symptoms", "fever", "pain", "dizziness", "cough", "fatigue",
+        "headache", "nausea", "breathing", "chest pain", "palpitations",
+    }
+    health_count = sum(1 for t in health_terms if t in text)
+
+    # ── Emergency keywords ──
+    emergency_terms = {
+        "emergency", "urgent", "critical", "severe", "unconscious", "bleeding",
+        "accident", "trauma", "heart attack", "stroke", "sos", "help",
+        "ambulance", "911", "rescue", "life-threatening",
+    }
+    emergency_count = sum(1 for t in emergency_terms if t in text)
+
+    # ── Hospital search keywords ──
+    hospital_terms = {
+        "hospital", "nearby", "nearest", "clinic", "doctor", "specialist",
+        "cardiology", "icu", "emergency room", "er", "trauma center",
+        "find hospital", "where", "treatment",
+    }
+    hospital_count = sum(1 for t in hospital_terms if t in text)
+
+    # ── Donor / blood keywords ──
+    donor_terms = {
+        "donor", "donors", "donation", "blood", "plasma", "platelets",
+        "o negative", "o+", "a+", "a-", "b+", "b-", "ab+", "ab-",
+        "blood group", "blood type", "compatible", "transfusion",
+    }
+    donor_count = sum(1 for t in donor_terms if t in text)
+
+    # ── Record analysis keywords ──
+    record_terms = {
+        "record", "report", "upload", "mri", "x-ray", "ct scan", "ecg",
+        "lab", "test result", "prescription", "diagnosis", "doctor notes",
+        "medical history", "file", "document",
+    }
+    record_count = sum(1 for t in record_terms if t in text)
+
+    # ── Determine the strongest match ──
+    scores = {
+        "emergency": emergency_count * 2.0,
+        "health_assessment": health_count * 1.5,
+        "donor_match": donor_count * 1.4,
+        "hospital_search": hospital_count * 1.2,
+        "record_analysis": record_count * 1.1,
+    }
+
+    # Short queries with high signal get a clarity bonus
+    if len(text.split()) <= 3:
+        max_count = max(health_count, emergency_count, hospital_count, donor_count, record_count)
+        if max_count >= 2:
+            top_type = max(scores, key=lambda k: scores[k])
+            scores[top_type] += 2.0
+
+    best_type = max(scores, key=lambda k: scores[k])
+    best_score = scores[best_type]
+
+    if best_score >= 2.5:
+        return best_type
+
+    return None
+
+
+def _extract_multi_agent_inputs(query: str) -> dict:
+    """Extract structured inputs from a natural-language query."""
+    text = query.lower().strip()
+    inputs: dict = {}
+
+    # Extract age mentions
+    age_match = _re.search(r'(?:age|aged|years old|yo)\s*(\d+)', text) or \
+                _re.search(r'(\d+)\s*(?:year old|yo|years)', text)
+    if age_match:
+        try:
+            age_val = int(age_match.group(1))
+            if 0 < age_val < 130:
+                inputs["age"] = age_val
+        except (ValueError, IndexError):
+            pass
+
+    # Extract blood group mentions
+    bg_match = _re.search(r'(A|B|AB|O)\s*([+\-])', text)
+    if bg_match:
+        inputs["recipient_blood"] = f"{bg_match.group(1)}{bg_match.group(2)}"
+
+    # Extract symptoms (common single-word symptoms)
+    symptom_keywords = [
+        "chest pain", "fever", "headache", "dizziness", "fatigue", "cough",
+        "nausea", "vomiting", "shortness of breath", "palpitations",
+        "back pain", "joint pain", "blurred vision", "swelling", "numbness",
+    ]
+    detected = [s for s in symptom_keywords if s in text]
+    if detected:
+        inputs["symptoms"] = detected
+
+    # Use the full query as message for the emergency agent
+    if len(query) >= 10:
+        inputs["message"] = query
+
+    return inputs
 
 
 def _build_attachment_context(attachments: list[dict]) -> tuple[str, list[dict]]:
@@ -202,6 +318,47 @@ def _compute_confidence(context_len: int, web_count: int, attachment_count: int,
     return round(min(0.95, max(0.2, score)), 2)
 
 
+@router.post("/analyze")
+async def multi_agent_analyze(
+    payload: MultiAgentRequest,
+    ctx: AuthContext = Depends(require_scopes("ai:ask")),
+) -> dict:
+    """
+    Run a multi-agent analysis pipeline.
+
+    Routes the request to the appropriate specialized agents (Clinical,
+    Emergency, Hospital, Donation, Record) and combines outputs via
+    the Coordinator agent into a confidence-weighted, explainable result.
+    """
+    valid_types = {
+        "health_assessment", "emergency", "hospital_search",
+        "donor_match", "record_analysis", "general",
+    }
+    request_type = payload.request_type
+    if request_type not in valid_types:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": f"Invalid request_type '{request_type}'.",
+                "valid_types": sorted(valid_types),
+            },
+        )
+
+    result = run_multi_agent_analysis(
+        request_type=request_type,
+        inputs=payload.inputs,
+        hospitals=payload.hospitals,
+        donor_pool=payload.donor_pool,
+    )
+
+    return {
+        "requestedBy": ctx.user_id,
+        "request_type": request_type,
+        "generatedAt": datetime.utcnow().isoformat(),
+        **result,
+    }
+
+
 @router.post("/decision")
 async def decision(payload: AgentEvent, ctx: AuthContext = Depends(require_scopes("emergency:trigger"))) -> dict:
     session = None
@@ -211,7 +368,7 @@ async def decision(payload: AgentEvent, ctx: AuthContext = Depends(require_scope
         session = create_session({"createdBy": ctx.user_id})
 
     event_payload = {**payload.event, "execute": payload.execute}
-    result = run_decision_workflow(event_payload, memory_id=session["id"])
+    result = await asyncio.to_thread(run_decision_workflow, event_payload, memory_id=session["id"])
     update_session(session["id"], result)
     append_log(session["id"], {"type": "decision", "by": ctx.user_id})
     return {"requestedBy": ctx.user_id, "memoryId": session["id"], "result": result}
@@ -226,7 +383,7 @@ async def workflow(payload: AgentEvent, ctx: AuthContext = Depends(require_scope
         session = create_session({"createdBy": ctx.user_id})
 
     event_payload = {**payload.event, "execute": payload.execute}
-    result = run_decision_workflow(event_payload, memory_id=session["id"])
+    result = await asyncio.to_thread(run_decision_workflow, event_payload, memory_id=session["id"])
     update_session(session["id"], result)
     append_log(session["id"], {"type": "workflow", "by": ctx.user_id})
     return {"requestedBy": ctx.user_id, "memoryId": session["id"], "result": result}
@@ -347,7 +504,9 @@ async def ask(
 
     actions = []
     answer = None
+    agent_analysis = None
 
+    # ── Clarification check ──
     if _needs_clarification(question) and not attachments_context and not _donor_intent(question) and not _hospital_intent(question):
         clarifying = [
             "What specific information or outcome do you need?",
@@ -399,10 +558,92 @@ async def ask(
         if persisted_session and persisted_session.get("title") == "New chat":
             await chat_service.update_title(ctx.user_id, memory_id, question[:32])
 
-    if _hospital_intent(question) and payload.latitude is not None and payload.longitude is not None:
-        db = get_db()
-        repo = MongoRepository(db, HOSPITALS)
-        hospitals = await repo.find_many({}, limit=200)
+    # ════════════════════════════════════════════════════════════
+    # Multi-Agent Intelligence Pipeline
+    # ════════════════════════════════════════════════════════════
+    # Classify user query → gather context → run specialized agents
+    # → enrich answer with explainable AI outputs
+
+    # ── Classify query and initialise agent data ──
+    agent_type = _classify_query_type(question)
+    hospitals_for_agents = None
+    donors_for_agents = None
+
+    # Only run agents for queries with sufficient signal
+    if agent_type and not answer:
+        agent_inputs = _extract_multi_agent_inputs(question)
+
+        # Merge coordinates from the request payload
+        if payload.latitude is not None and payload.longitude is not None:
+            agent_inputs["patient_lat"] = payload.latitude
+            agent_inputs["patient_lng"] = payload.longitude
+
+        # Gather data for agent types that need DB context
+
+        if agent_type in ("hospital_search", "emergency") and payload.latitude is not None:
+            db = get_db()
+            repo = MongoRepository(db, HOSPITALS)
+            hospitals_for_agents = await repo.find_many({}, limit=200)
+
+        if agent_type in ("donor_match", "emergency") and payload.latitude is not None:
+            db = get_db()
+            user_repo = MongoRepository(db, USERS)
+            donors_for_agents = await user_repo.find_many(
+                {"role": "public"},
+                projection={"name": 1, "location": 1, "phone": 1, "publicProfile": 1},
+                limit=120,
+            )
+
+        # Run the multi-agent analysis (synchronous)
+        try:
+            agent_analysis = run_multi_agent_analysis(
+                request_type=agent_type,
+                inputs=agent_inputs,
+                hospitals=hospitals_for_agents,
+                donor_pool=donors_for_agents,
+            )
+        except Exception as agent_err:
+            agent_analysis = {
+                "status": "error",
+                "summary": f"Agent analysis failed: {agent_err}",
+                "confidence": 0.0,
+                "agent_outputs": {},
+                "warnings": [str(agent_err)],
+            }
+
+        # If the multi-agent system produced meaningful output with
+        # adequate confidence, prefer the agent-generated answer
+        if (
+            agent_analysis
+            and agent_analysis.get("status") != "no_data"
+            and agent_analysis.get("confidence", 0) >= 0.45
+            and agent_analysis.get("summary")
+        ):
+            agent_summary = agent_analysis["summary"]
+            answer = agent_summary
+
+            # Convert agent recommendations into actionable items
+            for rec in agent_analysis.get("recommendations", []):
+                actions.append({"type": "recommendation", "detail": rec})
+
+            # Add risk signals context
+            risk = agent_analysis.get("risk_signals", {})
+            if risk:
+                actions.append({"type": "risk_signals", "signals": risk})
+
+    # ════════════════════════════════════════════════════════════
+    # Legacy fallback: simple intent matching (kept for backward
+    # compatibility when coordinates are unavailable or the agent
+    # pipeline didn't return usable results)
+
+    if answer is None and _hospital_intent(question) and payload.latitude is not None and payload.longitude is not None:
+        # Reuse agent-fetched data if available, otherwise query DB
+        if hospitals_for_agents is not None:
+            hospitals = hospitals_for_agents
+        else:
+            db = get_db()
+            repo = MongoRepository(db, HOSPITALS)
+            hospitals = await repo.find_many({}, limit=200)
         candidates = []
         for doc in hospitals:
             coords = _extract_coords(doc)
@@ -429,13 +670,17 @@ async def ask(
             actions.append({"type": "hospital_rank", "best": best, "ranked": ranked[:5]})
 
     if answer is None and _donor_intent(question):
-        db = get_db()
-        user_repo = MongoRepository(db, USERS)
-        donors = await user_repo.find_many(
-            {"role": "public"},
-            projection={"name": 1, "location": 1, "phone": 1, "publicProfile": 1},
-            limit=120,
-        )
+        # Reuse agent-fetched data if available, otherwise query DB
+        if donors_for_agents is not None:
+            donors = donors_for_agents
+        else:
+            db = get_db()
+            user_repo = MongoRepository(db, USERS)
+            donors = await user_repo.find_many(
+                {"role": "public"},
+                projection={"name": 1, "location": 1, "phone": 1, "publicProfile": 1},
+                limit=120,
+            )
         candidates = []
         for donor in donors:
             health = (donor.get("publicProfile") or {}).get("healthRecords") or {}
@@ -510,7 +755,7 @@ async def ask(
 
     if answer is None:
         try:
-            answer = generate_text(
+            answer = await generate_response_async(
                 prompt=(
                     f"Question: {question}\n"
                     f"Module focus: {module}\n"
@@ -585,7 +830,7 @@ async def ask(
             "attachments": attachment_summaries,
             "execute": False,
         }
-        workflow = run_decision_workflow(event_payload, memory_id=session["id"])
+        workflow = await asyncio.to_thread(run_decision_workflow, event_payload, memory_id=session["id"])
         orchestration = {
             "mode": "supervised",
             "notes": workflow.get("notes", []),
@@ -598,6 +843,15 @@ async def ask(
         reasoning.append("Used indexed LifeLink context relevant to the query.")
     if web_results:
         reasoning.append("Referenced available public web sources for additional evidence.")
+    if agent_analysis and agent_analysis.get("status") not in ("error", "no_data"):
+        agent_names = list(agent_analysis.get("agent_outputs", {}).keys())
+        if agent_names:
+            reasoning.append(f"Routed through LifeLink multi-agent system ({', '.join(agent_names)}).")
+        if agent_analysis.get("confidence", 0) >= 0.5:
+            reasoning.append(f"Agent confidence: {round(agent_analysis['confidence'] * 100)}%.")
+        conflicts = agent_analysis.get("conflicts", [])
+        if conflicts:
+            reasoning.append(f"Agent conflict noted: {conflicts[0]}")
     if not reasoning:
         reasoning.append("Answered using available LifeLink context and metadata.")
 
@@ -652,6 +906,7 @@ async def ask(
         "contextUsed": contexts,
         "web_results": web_results,
         "actions": actions,
+        "agent_analysis": agent_analysis,
         "metadata": metadata,
         "report": report,
         "charts": charts,

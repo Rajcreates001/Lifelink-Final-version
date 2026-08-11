@@ -10,7 +10,6 @@ const ICON_COLORS = {
     donations: 'text-cyan-500',
     notifications: 'text-amber-500',
     ai: 'text-purple-400',
-    switch_role: 'text-indigo-400',
     profile: 'text-blue-400',
 };
 
@@ -21,6 +20,7 @@ const Sidebar = ({
     user,
     onProfile,
     onNotifications,
+    onHistory,
     onLogout,
     onSwitchRole,
     hasUnread,
@@ -29,6 +29,7 @@ const Sidebar = ({
 }) => {
     const isNotificationsActive = activeKey === 'notifications';
     const isProfileActive = activeKey === 'profile';
+    const isHistoryActive = activeKey === 'history';
 
     return (
         <aside className={`w-full lg:w-72 lg:h-screen lg:overflow-y-auto lg:sticky lg:top-0 bg-white/70 backdrop-blur-xl border-b lg:border-b-0 lg:border-r border-[#E5E7EB] flex flex-col transition-all duration-300 ${className}`}
@@ -37,7 +38,7 @@ const Sidebar = ({
             <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-transparent to-white/20 pointer-events-none" aria-hidden="true"></div>
 
             {/* ─── Logo Section ─────────────────────────────── */}
-            <div className="relative px-5 py-6 border-b border-[#E5E7EB] animate-fade-in shrink-0">
+            <div className="relative px-5 py-5 border-b border-[#E5E7EB] animate-fade-in shrink-0">
                 <button onClick={onLogoClick} className="flex items-center gap-3.5 text-left group w-full">
                     <div className="bg-gradient-to-br from-[#2563EB] to-[#7C3AED] text-white p-2.5 rounded-[14px] shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300" style={{ boxShadow: '0 4px 14px rgba(37,99,235,0.25)' }}>
                         <i className="fas fa-heartbeat text-xl"></i>
@@ -51,8 +52,9 @@ const Sidebar = ({
                 </button>
             </div>
 
-            {/* ─── Primary Navigation (flex-1 centers this vertically) ── */}
-            <nav className="relative flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+            {/* ─── Primary Navigation ── vertically centered flex region ── */}
+            <nav className="relative flex-1 flex flex-col px-3 overflow-y-auto" style={{ minHeight: 0 }}>
+                <div className="flex flex-col gap-5 py-8 mt-auto mb-auto">
                 {items.map((item, index) => {
                     const isActive = activeKey === item.key;
                     const iconColor = ICON_COLORS[item.key] || 'text-gray-500';
@@ -63,10 +65,10 @@ const Sidebar = ({
                             type="button"
                             onClick={() => onSelect?.(item.key)}
                             style={{ animationDelay: `${index * 40}ms` }}
-                            className={`w-full flex items-center gap-3.5 px-4 h-[50px] rounded-[14px] text-sm font-semibold text-left transition-all duration-200 ease-out animate-fade-in-up relative overflow-hidden group ${
+                            className={`w-full flex items-center gap-3.5 px-4 h-[56px] rounded-[14px] text-sm font-semibold text-left transition-all duration-200 ease-out animate-fade-in-up relative overflow-hidden group ${
                                 isActive
                                     ? 'bg-gradient-to-r from-[#2563EB] to-[#7C3AED] text-white shadow-lg hover:from-[#1D4ED8] hover:to-[#6D28D9] shadow-[0_0_12px_rgba(37,99,235,0.3)]'
-                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80 hover:-translate-y-1 hover:scale-[1.02]'
+                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80 hover:-translate-y-0.5 hover:scale-[1.02]'
                             } active:scale-[0.98]`}
                             aria-current={isActive ? 'page' : undefined}
                         >
@@ -89,12 +91,13 @@ const Sidebar = ({
                         </button>
                     );
                 })}
+                </div>
             </nav>
 
             {/* ─── Bottom Section ──────────────────────────── */}
-            <div className="relative px-3 py-4 border-t border-[#E5E7EB] space-y-1 shrink-0">
+            <div className="relative px-3 py-3 border-t border-[#E5E7EB] space-y-1 shrink-0">
                 {/* Quick Actions separator */}
-                <div className="px-4 pb-2">
+                <div className="px-4 pb-1.5">
                     <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-[0.1em]">Quick Actions</p>
                 </div>
 
@@ -121,13 +124,19 @@ const Sidebar = ({
                     </button>
                 )}
 
-                {onSwitchRole && (
+                {onHistory && (
                     <button
-                        onClick={onSwitchRole}
-                        className="w-full flex items-center gap-3 px-4 h-[42px] rounded-[12px] text-sm font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-100/80 transition-all duration-200 ease-out active:scale-[0.98] group"
+                        onClick={onHistory}
+                        className={`w-full flex items-center gap-3 px-4 h-[42px] rounded-[12px] text-sm font-semibold transition-all duration-200 ease-out active:scale-[0.98] group ${
+                            isHistoryActive
+                                ? 'bg-gradient-to-r from-[#2563EB] to-[#7C3AED] text-white shadow-md'
+                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                        }`}
                     >
-                        <i className="fas fa-arrows-rotate text-[16px] w-5 text-center text-indigo-400 group-hover:rotate-180 transition-transform duration-500 group-hover:scale-110"></i>
-                        Switch Role
+                        <i className={`fas fa-history text-[16px] w-5 text-center transition-all duration-300 ${
+                            isHistoryActive ? 'text-white' : 'text-indigo-500 group-hover:scale-110'
+                        }`}></i>
+                        Life Timeline
                     </button>
                 )}
 
@@ -153,7 +162,7 @@ const Sidebar = ({
                 {onLogout && (
                     <button
                         onClick={onLogout}
-                        className="w-full flex items-center gap-3 px-4 h-[42px] rounded-[12px] text-sm font-semibold text-[#DC2626] bg-red-50/60 hover:bg-red-100/80 transition-all duration-200 ease-out active:scale-[0.98] group"
+                        className="w-full flex items-center gap-3 px-4 h-[42px] rounded-[12px] text-sm font-semibold text-[#DC2626] bg-red-50/60 hover:bg-red-100/80 transition-all duration-200 ease-out active:scale-[0.98] group mt-1"
                     >
                         <i className="fas fa-sign-out-alt text-[16px] w-5 text-center text-red-500 group-hover:translate-x-0.5 transition-transform duration-200 group-hover:scale-110"></i>
                         Logout

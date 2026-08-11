@@ -1,0 +1,17 @@
+// AI Resource Intelligence Center - barrel exports
+export { default as ResourceHeroCommandCenter } from './ResourceHeroCommandCenter';
+export { default as ResourceHealthEngine } from './ResourceHealthEngine';
+export { default as ResourceInventoryBrain } from './ResourceInventoryBrain';
+export { default as ResourcePredictiveInventory } from './ResourcePredictiveInventory';
+export { default as ResourceSmartProcurement } from './ResourceSmartProcurement';
+export { default as ResourceSupplierIntelligence } from './ResourceSupplierIntelligence';
+export { default as ResourceEquipmentDigitalTwin } from './ResourceEquipmentDigitalTwin';
+export { default as ResourcePredictiveMaintenance } from './ResourcePredictiveMaintenance';
+export { default as ResourceCriticalWatch } from './ResourceCriticalWatch';
+export { default as ResourceAllocationEngine } from './ResourceAllocationEngine';
+export { default as ResourceCostOptimization } from './ResourceCostOptimization';
+export { default as ResourceWasteDetection } from './ResourceWasteDetection';
+export { default as ResourceSupplyChainMap } from './ResourceSupplyChainMap';
+export { default as ResourceTimeline } from './ResourceTimeline';
+export { default as ResourceKnowledgeGraph } from './ResourceKnowledgeGraph';
+export { default as ResourceScenarioSimulator } from './ResourceScenarioSimulator';

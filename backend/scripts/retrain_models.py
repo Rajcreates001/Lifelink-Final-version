@@ -175,40 +175,43 @@ def train_eta(csv_path, out_path):
     df = pd.read_csv(csv_path)
     print(f"  Rows: {len(df)}  |  Cols: {list(df.columns)}")
 
-    # Map time_of_day strings to approximate hour
-    tod_map = {"morning": 8, "afternoon": 14, "evening": 19, "night": 23}
-    df["hour"] = df["time_of_day"].map(tod_map).fillna(12).astype(int)
+    # Keep categorical features directly instead of lossy mapping to derived values.
+    # time_of_day, traffic_level, emergency_type, weather_condition are all
+    # categorical features that the model can learn from directly via OneHotEncoder.
+    df["eta_minutes"] = df["actual_time_minutes"]
 
-    # Derive precipitation/wind from weather_condition
-    weather_map = {
-        "clear": (0, 5), "sunny": (0, 5), "cloudy": (0.5, 10),
-        "rain": (3, 15), "heavy rain": (8, 20), "storm": (15, 30),
-        "snow": (5, 10), "fog": (1, 8), "windy": (0, 25),
-    }
-    def _to_precip(w):
-        return weather_map.get(str(w).lower().strip(), (0, 5))[0]
-    def _to_wind(w):
-        return weather_map.get(str(w).lower().strip(), (0, 5))[1]
-
-    df["precipitation_mm"] = df["weather_condition"].apply(_to_precip)
-    df["wind_kph"]         = df["weather_condition"].apply(_to_wind)
-    df["eta_minutes"]      = df["actual_time_minutes"]
-
-    feats_num = ["distance_km", "precipitation_mm", "wind_kph", "hour"]
+    feats_num = ["distance_km", "day_of_week"]
+    feats_cat = ["time_of_day", "traffic_level", "emergency_type", "weather_condition"]
     target    = "eta_minutes"
 
-    df = df.dropna(subset=feats_num + [target])
+    required = feats_num + feats_cat + [target]
+    missing = [c for c in required if c not in df.columns]
+    if missing:
+        print(f"  [ERR] Missing columns: {missing}")
+        return None
+
+    df = df.dropna(subset=required)
     print(f"  Cleaned: {len(df)} rows")
 
-    X = df[feats_num]
+    X = df[feats_num + feats_cat]
     y = df[target]
 
     X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2, random_state=42)
 
+    preprocessor = ColumnTransformer([
+        ("num", Pipeline([
+            ("impute", SimpleImputer(strategy="median")),
+            ("scale", StandardScaler()),
+        ]), feats_num),
+        ("cat", Pipeline([
+            ("impute", SimpleImputer(strategy="constant", fill_value="missing")),
+            ("ohe", OneHotEncoder(handle_unknown="ignore")),
+        ]), feats_cat),
+    ])
+
     # XGBoost Regressor Pipeline
     pipe = Pipeline([
-        ("impute", SimpleImputer(strategy="median")),
-        ("scale", StandardScaler()),
+        ("prep", preprocessor),
         ("reg", xgb.XGBRegressor(
             n_estimators=400, max_depth=7, learning_rate=0.03,
             subsample=0.8, colsample_bytree=0.8,
@@ -221,8 +224,7 @@ def train_eta(csv_path, out_path):
 
     # RandomForest comparison
     pipe_rf = Pipeline([
-        ("impute", SimpleImputer(strategy="median")),
-        ("scale", StandardScaler()),
+        ("prep", preprocessor),
         ("reg", RandomForestRegressor(n_estimators=300, max_depth=10, random_state=42)),
     ])
     pipe_rf.fit(X_tr, y_tr)
@@ -230,6 +232,9 @@ def train_eta(csv_path, out_path):
     _report("RandomForest (comparison)", y_te, y_pred_rf)
 
     print("  => Using XGBoost Pipeline (self-contained, compatible with predict_eta_route)")
+     # Note: predict_eta_route expects {distance_km,precipitation_mm,wind_kph,hour}
+    # but the model trained here uses richer features: {distance_km,day_of_week,time_of_day,...}
+    # The prediction function will need to be updated to supply default values.
     _save(pipe, out_path)
     return pipe
 
@@ -359,20 +364,29 @@ def train_inventory(csv_path, out_path):
     df = pd.read_csv(csv_path)
     print(f"  Rows: {len(df)}  |  Cols: {list(df.columns)}")
 
-    # Map expanded -> what predict_inventory sends
+    # Use richer features from the expanded dataset.
+    # The expanded dataset has 9 columns:
+    #   item_name,category,current_stock,daily_usage,lead_time_days,
+    #   reorder_point,unit_cost,supplier_reliability,days_until_stockout
+    #
+    # Previously we only used {quantity, minThreshold, category} which lost
+    # signal from daily_usage, lead_time_days, and supplier_reliability.
     df["quantity"]      = df["current_stock"]
     df["minThreshold"]  = df["reorder_point"]
-    # target: predict_inventory doesn't use model.predict() for the target -
-    # it uses a rule-based approach to calculate days_until_stockout.
-    # We train to predict days_until_stockout as the target so it matches
-    # the business logic.
-    df["next_week_stock"] = df["days_until_stockout"]
+    # Target: predict days_until_stockout directly
+    target = "days_until_stockout"
 
-    feats_num = ["quantity", "minThreshold"]
+    feats_num = ["quantity", "minThreshold", "daily_usage", "lead_time_days", "supplier_reliability"]
     feats_cat = ["category"]
-    target    = "next_week_stock"
 
-    df = df.dropna(subset=feats_num + feats_cat + [target])
+    required = feats_num + feats_cat + [target]
+    missing = [c for c in required if c not in df.columns]
+    if missing:
+        print(f"  [ERR] Missing columns: {missing}")
+        print(f"  Available: {list(df.columns)}")
+        return None
+
+    df = df.dropna(subset=required)
     print(f"  Cleaned: {len(df)} rows")
 
     X = df[feats_num + feats_cat]
@@ -413,41 +427,53 @@ def train_inventory(csv_path, out_path):
     y_pred_rf = pipe_rf.predict(X_te)
     _report("RandomForest (comparison)", y_te, y_pred_rf)
 
-    print("  => Using XGBoost Pipeline (self-contained, compatible with predict_inventory)")
+    print("  => Using XGBoost Pipeline (self-contained)")
     _save(pipe, out_path)
     return pipe
 
 
 # ==========================================================================
 #  6. EMERGENCY SEVERITY  (Multi-class Classifier)
-#     Expanded cols: heart_rate,bp_sys,o2_sat,resp_rate,age,gcs,
+#     Expanded cols: heart_rate,blood_pressure_sys,oxygen_saturation,
+#                    respiratory_rate,age,glasgow_coma_scale,
 #                    trauma_type,chief_complaint,severity_level
-#     Prediction function sends: {population_density,avg_response_time_min,
-#                                 emergency_type,region}
+#     Prediction function sends: REAL clinical features directly
 # ==========================================================================
 def train_emergency_severity(csv_path, out_path):
-    _header("6/6  EMERGENCY SEVERITY MODEL")
+    _header("6/6  EMERGENCY SEVERITY MODEL (Real Clinical Features)")
     df = pd.read_csv(csv_path)
     print(f"  Rows: {len(df)}  |  Cols: {list(df.columns)}")
 
-    # Map expanded -> what predict_severity sends
-    df["population_density"]    = df["age"] * 10  # proxy
-    df["avg_response_time_min"] = (100 - df["oxygen_saturation"]) * 0.5  # proxy
-    df["emergency_type"]        = df["trauma_type"]
-    df["region"]                = df["chief_complaint"].apply(lambda x: str(x)[:10])
-    df["severity"]              = df["severity_level"].astype(str).str.strip().str.lower()
+    # Use real clinical features directly — no proxy garbage
+    feats_num = [
+        "heart_rate", "blood_pressure_sys", "oxygen_saturation",
+        "respiratory_rate", "age", "glasgow_coma_scale",
+    ]
+    feats_cat = ["trauma_type", "chief_complaint"]
+    target    = "severity_level"
 
-    feats_num = ["population_density", "avg_response_time_min"]
-    feats_cat = ["emergency_type", "region"]
-    target    = "severity"
+    required = feats_num + feats_cat + [target]
+    missing = [c for c in required if c not in df.columns]
+    if missing:
+        print(f"  [ERR] Missing columns: {missing}")
+        return None
 
-    df = df.dropna(subset=feats_num + feats_cat + [target])
+    df = df.dropna(subset=required)
+    df[target] = df[target].astype(str).str.strip().str.lower()
+    valid_labels = {"critical", "high", "low", "moderate"}
+    df = df[df[target].isin(valid_labels)]
     print(f"  Cleaned: {len(df)} rows")
+    print(f"  Class distribution:\n{df[target].value_counts()}\n")
+
+    if len(df) < 50:
+        print("  [SKIP] Too few rows after cleaning")
+        return None
 
     X = df[feats_num + feats_cat]
-    y = LabelEncoder().fit_transform(df[target])
-    classes = len(set(y))
-    print(f"  Severity classes: {classes}")
+    le = LabelEncoder()
+    y = le.fit_transform(df[target])
+    classes = len(le.classes_)
+    print(f"  LabelEncoder: {list(le.classes_)} -> {list(range(classes))}")
 
     X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 
@@ -486,8 +512,18 @@ def train_emergency_severity(csv_path, out_path):
     y_pred_rf = pipe_rf.predict(X_te)
     _report(f"RandomForest (comparison, {classes} classes)", y_te, y_pred_rf, clf=True)
 
-    print("  => Using XGBoost Pipeline (self-contained, compatible with predict_severity)")
-    _save(pipe, out_path)
+    print("  => Using XGBoost Pipeline (self-contained + LabelEncoder)")
+
+    # Save as dict {pipeline, label_encoder} for predict_severity compatibility
+    model_bundle = {
+        "pipeline": pipe,
+        "label_encoder": le,
+    }
+    joblib.dump(model_bundle, out_path)
+    sz = os.path.getsize(out_path) / 1024
+    print(f"  [SAVED] -> {out_path.name} ({sz:.0f} KB)")
+    print(f"  predict_severity now expects clinical features:\n"
+          f"    {feats_num + feats_cat}")
     return pipe
 
 

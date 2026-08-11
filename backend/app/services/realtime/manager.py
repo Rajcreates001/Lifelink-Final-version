@@ -13,6 +13,10 @@ class ConnectionManager:
         await websocket.accept()
         self.active.setdefault(channel, set()).add(websocket)
 
+    def register(self, channel: str, websocket: WebSocket) -> None:
+        """Register an already-accepted WebSocket without calling accept() again."""
+        self.active.setdefault(channel, set()).add(websocket)
+
     def disconnect(self, channel: str, websocket: WebSocket) -> None:
         if channel in self.active:
             self.active[channel].discard(websocket)

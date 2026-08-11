@@ -21,44 +21,44 @@ EXTRA_HOSPITALS = [
     {
         "reg_number": "y-002",
         "password": "y",
-        "email": "admin.oakridge@lifelink.local",
-        "name": "Oakridge Multi-Specialty Hospital",
+        "email": "admin.kmc@lifelink.local",
+        "name": "KMC Hospital Attavar",
         "sub_role": "ceo",
-        "location": "Mysuru, Karnataka",
-        "phone": "0821-2412200",
-        "city": "Mysuru",
+        "location": "Mangaluru, Karnataka",
+        "phone": "0824-2445858",
+        "city": "Mangaluru",
         "state": "Karnataka",
-        "address": "27 Chamundi Road",
-        "lat": 12.2958,
-        "lng": 76.6394,
+        "address": "Attavar, Mangaluru",
+        "lat": 12.8578,
+        "lng": 74.8519,
     },
     {
         "reg_number": "y-003",
         "password": "y",
-        "email": "admin.sunrise@lifelink.local",
-        "name": "Sunrise Heart Institute",
+        "email": "admin.wenlock@lifelink.local",
+        "name": "Wenlock District Hospital",
         "sub_role": "ceo",
         "location": "Mangaluru, Karnataka",
         "phone": "0824-2444590",
         "city": "Mangaluru",
         "state": "Karnataka",
-        "address": "18 Marina Avenue",
-        "lat": 12.9141,
-        "lng": 74.8560,
+        "address": "Hampankatta, Mangaluru",
+        "lat": 12.8676,
+        "lng": 74.8420,
     },
     {
         "reg_number": "y-004",
         "password": "y",
-        "email": "admin.riverdale@lifelink.local",
-        "name": "Riverdale Regional Medical Center",
+        "email": "admin.fathermuller@lifelink.local",
+        "name": "Father Muller Medical College Hospital",
         "sub_role": "ceo",
-        "location": "Hubballi, Karnataka",
-        "phone": "0836-2373348",
-        "city": "Hubballi",
+        "location": "Mangaluru, Karnataka",
+        "phone": "0824-2206510",
+        "city": "Mangaluru",
         "state": "Karnataka",
-        "address": "42 Station Road",
-        "lat": 15.3647,
-        "lng": 75.1240,
+        "address": "Kankanady, Mangaluru",
+        "lat": 12.8761,
+        "lng": 74.8826,
     },
 ]
 
@@ -85,7 +85,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--reg-number", type=str, default="y", help="Hospital registration ID")
     parser.add_argument("--password", type=str, default="y", help="Hospital login password")
     parser.add_argument("--email", type=str, default="demo.hospital@lifelink.local", help="Hospital admin email")
-    parser.add_argument("--name", type=str, default="Y Central Hospital", help="Hospital display name")
+    parser.add_argument("--name", type=str, default="Mangaluru Central Hospital", help="Hospital display name")
     parser.add_argument("--sub-role", type=str, default="ceo", help="Hospital sub-role")
     parser.add_argument("--location", type=str, default="Bengaluru, Karnataka", help="User location string")
     parser.add_argument("--phone", type=str, default="080-45678910", help="Hospital contact number")

@@ -3,13 +3,14 @@ from uuid import uuid4
 
 import bcrypt
 import jwt
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.config import get_settings
 from app.db.mongo import get_db
 from app.schemas.user import LoginRequest, SignupRequest
 from app.db.models import GovVerificationRequest
 from app.services.collections import HOSPITALS, USERS
+from app.services.rate_limiter import rate_limit_login, rate_limit_signup
 from app.services.repository import MongoRepository
 
 router = APIRouter(tags=["auth"])
@@ -26,7 +27,10 @@ def _create_token(user_id: str, role: str) -> str:
 
 
 @router.post("/signup", status_code=201)
-async def signup(payload: SignupRequest):
+async def signup(
+    payload: SignupRequest,
+    _: None = Depends(rate_limit_signup.dependency()),
+):
     db = get_db()
     user_repo = MongoRepository(db, USERS)
     hospital_repo = MongoRepository(db, HOSPITALS)
@@ -98,7 +102,10 @@ async def signup(payload: SignupRequest):
 
 
 @router.post("/login")
-async def login(payload: LoginRequest):
+async def login(
+    payload: LoginRequest,
+    _: None = Depends(rate_limit_login.dependency()),
+):
     db = get_db()
     user_repo = MongoRepository(db, USERS)
 

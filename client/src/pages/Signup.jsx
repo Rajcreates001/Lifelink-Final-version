@@ -2,12 +2,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config/api';
+import PremiumRoleSelector from '../components/PremiumRoleSelector';
 
 // ─── Identical Design Token System from Login ──────────
 const ROLE_META = {
     public: {
         icon: 'fa-user', label: 'Public',
-        hex: '#2563EB',
+        hex: '#2563EB', rgb: '37,99,235',
         hexLight: 'rgba(37,99,235,0.08)',
         hexFlow: 'rgba(37,99,235,0.22)',
         hexBorder: 'rgba(37,99,235,0.13)',
@@ -16,7 +17,7 @@ const ROLE_META = {
     },
     hospital: {
         icon: 'fa-hospital', label: 'Hospital',
-        hex: '#059669',
+        hex: '#059669', rgb: '5,150,105',
         hexLight: 'rgba(5,150,105,0.08)',
         hexFlow: 'rgba(5,150,105,0.22)',
         hexBorder: 'rgba(5,150,105,0.13)',
@@ -25,7 +26,7 @@ const ROLE_META = {
     },
     ambulance: {
         icon: 'fa-ambulance', label: 'Ambulance',
-        hex: '#DC2626',
+        hex: '#DC2626', rgb: '220,38,38',
         hexLight: 'rgba(220,38,38,0.08)',
         hexFlow: 'rgba(220,38,38,0.22)',
         hexBorder: 'rgba(220,38,38,0.13)',
@@ -34,7 +35,7 @@ const ROLE_META = {
     },
     government: {
         icon: 'fa-landmark', label: 'Government',
-        hex: '#7C3AED',
+        hex: '#7C3AED', rgb: '124,58,237',
         hexLight: 'rgba(124,58,237,0.08)',
         hexFlow: 'rgba(124,58,237,0.22)',
         hexBorder: 'rgba(124,58,237,0.13)',
@@ -51,22 +52,21 @@ const Signup = () => {
         role: 'public', subRole: '', regNumber: '', hospitalType: 'General',
         departmentRole: '', governmentLevel: '', ambulanceBase: '', vehicleId: ''
     });
+    const [mounted, setMounted] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const currentRole = ROLE_META[formData.role] || ROLE_META.public;
+    const transitioningRef = useRef(false);
 
-    // Cross-fade: track previous role's hexFlow so old wave layer fades out smoothly
-    const [fadingHexFlow, setFadingHexFlow] = useState(null);
-    const prevHexFlowRef = useRef(currentRole.hexFlow);
-    useEffect(() => {
-        const prev = prevHexFlowRef.current;
-        if (prev !== currentRole.hexFlow) {
-            setFadingHexFlow(prev);
-            prevHexFlowRef.current = currentRole.hexFlow;
-            const timer = setTimeout(() => setFadingHexFlow(null), 550);
-            return () => clearTimeout(timer);
-        }
-    }, [currentRole.hexFlow]);
+    useEffect(() => { const t = setTimeout(() => setMounted(true), 10); return () => clearTimeout(t); }, []);
+
+    // Debounced role switch — ignore clicks during 400ms transition
+    const switchRole = (r) => {
+        if (transitioningRef.current || r === formData.role) return;
+        transitioningRef.current = true;
+        setFormData((prev) => ({ ...prev, role: r, subRole: '' }));
+        setTimeout(() => { transitioningRef.current = false; }, 400);
+    };
 
     const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
@@ -102,7 +102,7 @@ const Signup = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center px-4 py-4 font-sans relative overflow-hidden bg-gradient-to-br from-[#f0f5ff] via-[#faf5ff] to-[#f5f0ff]">
+        <div className={`min-h-screen flex items-center justify-center px-4 py-4 font-sans relative overflow-hidden bg-gradient-to-br from-[#f0f5ff] via-[#faf5ff] to-[#f5f0ff] transition-opacity duration-200 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
             {/* ─── Flowing Role-Color Gradient (from LandingPage) ── */}
             <div className="absolute inset-0 animate-role-gradient-flow pointer-events-none" aria-hidden="true"
                 style={{
@@ -132,49 +132,54 @@ const Signup = () => {
             </svg>
 
             {/* ─── Glass Card Container ─────────────────────────── */}
-            <div className="w-full max-w-[720px] animate-fade-in-up z-10 overflow-hidden relative backdrop-blur-[var(--glass-blur)]"
-                style={{ borderRadius: 'var(--radius-card)', animationDuration: '0.7s', '--auth-focus': currentRole.hex }}>
+            <div className="auth-accent-container w-full max-w-[720px] animate-fade-in-up z-10 relative"
+                style={{
+                    animationDuration: '0.7s',
+                    '--accent-hex': currentRole.hex,
+                    '--accent-rgb': currentRole.rgb,
+                    '--accent-light': currentRole.hexLight,
+                    '--accent-flow': currentRole.hexFlow,
+                    '--accent-border': currentRole.hexBorder,
+                    '--accent-glow': currentRole.shadowColor,
+                    '--accent-ring': currentRole.ring,
+                }}>
                 
-                {/* Card body with glass + animated role-colored wave + pulsing border glow */}
+                {/* Layer 1: Outer shadow + flowing gradient border */}
+                <div className="auth-card-shadow" aria-hidden="true" />
+
+                {/* Layer 3: Floating glow behind the card */}
                 <div
-                    className="relative rounded-[var(--radius-card)] overflow-hidden animate-border-glow-pulse"
+                    className="auth-floating-glow"
+                    style={{ background: `radial-gradient(circle, ${currentRole.hex} 0%, transparent 70%)` }}
+                    aria-hidden="true"
+                />
+
+                {/* Layer 5: Card body with glass + animated role-colored tint + premium border */}
+                <div
+                    className="relative rounded-[var(--radius-card)] overflow-hidden auth-accent-card"
                     style={{
-                        background: 'linear-gradient(135deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.85) 50%, rgba(255,255,255,0.9) 100%)',
-                        backdropFilter: 'blur(16px)',
-                        border: '1.5px solid',
-                        borderColor: currentRole.hexBorder,
-                        transition: 'border-color 0.6s cubic-bezier(0.4,0,0.2,1), box-shadow 0.6s cubic-bezier(0.4,0,0.2,1)',
+                        background: `linear-gradient(135deg, rgba(255,255,255,0.93) 0%, color-mix(in srgb, ${currentRole.hex} 3%, rgba(255,255,255,0.88)) 50%, rgba(255,255,255,0.92) 100%)`,
+                        backdropFilter: 'blur(24px)',
+                        WebkitBackdropFilter: 'blur(24px)',
                     }}
                 >
-                    {/* Cross-fade wave overlays — old layer fades out while new layer appears */}
-                    {/* Layer 1: deep flow (current) */}
+                    {/* Layer 2: Inner glass highlight */}
+                    <div className="auth-inner-highlight" aria-hidden="true" />
+
+                    {/* Layer 4: Animated neon border */}
+                    <div className="auth-neon-border" aria-hidden="true" />
+
+                    {/* Role-colored wave overlays */}
                     <div className="absolute inset-0 pointer-events-none animate-color-flow"
                         style={{
-                            background: `radial-gradient(ellipse at 30% 20%, ${currentRole.hexFlow} 0%, transparent 55%), radial-gradient(ellipse at 70% 80%, ${currentRole.hexFlow} 0%, transparent 55%)`,
+                            background: `radial-gradient(ellipse at 30% 20%, var(--accent-flow) 0%, transparent 55%), radial-gradient(ellipse at 70% 80%, var(--accent-flow) 0%, transparent 55%)`,
                         }}
-                    ></div>
-                    {/* Layer 1: deep flow (previous — fading out) */}
-                    {fadingHexFlow && (
-                        <div className="absolute inset-0 pointer-events-none animate-color-flow animate-color-fade-out"
-                            style={{
-                                background: `radial-gradient(ellipse at 30% 20%, ${fadingHexFlow} 0%, transparent 55%), radial-gradient(ellipse at 70% 80%, ${fadingHexFlow} 0%, transparent 55%)`,
-                            }}
-                        ></div>
-                    )}
-                    {/* Layer 2: breathing accent pulse (current) */}
+                    />
                     <div className="absolute inset-0 pointer-events-none animate-color-breathe"
                         style={{
-                            background: `radial-gradient(ellipse at 50% 50%, ${currentRole.hexFlow} 0%, transparent 60%)`,
+                            background: `radial-gradient(ellipse at 50% 50%, var(--accent-flow) 0%, transparent 60%)`,
                         }}
-                    ></div>
-                    {/* Layer 2: breathing accent pulse (previous — fading out) */}
-                    {fadingHexFlow && (
-                        <div className="absolute inset-0 pointer-events-none animate-color-breathe animate-color-fade-out"
-                            style={{
-                                background: `radial-gradient(ellipse at 50% 50%, ${fadingHexFlow} 0%, transparent 60%)`,
-                            }}
-                        ></div>
-                    )}
+                    />
 
                     <div className="relative p-7 sm:p-8">
                         {/* ─── Back Button Row ─────────────────────── */}
@@ -198,11 +203,10 @@ const Signup = () => {
                         {/* ─── Header ─────────────────────────────── */}
                         <div className="text-center mb-5 animate-fade-in-up delay-150">
                             <div
-                                className="w-[72px] h-[72px] mx-auto mb-4 rounded-[20px] flex items-center justify-center text-white text-[30px] animate-heartbeat relative"
+                                className="w-[72px] h-[72px] mx-auto mb-4 rounded-[20px] flex items-center justify-center text-white text-[30px] animate-heartbeat relative auth-accent-icon"
                                 style={{
-                                    background: `linear-gradient(135deg, ${currentRole.hex}, ${currentRole.hex}dd)`,
-                                    boxShadow: `0 12px 32px ${currentRole.shadowColor}`,
-                                    transition: 'background 0.6s cubic-bezier(0.4,0,0.2,1), box-shadow 0.6s cubic-bezier(0.4,0,0.2,1)',
+                                    background: 'linear-gradient(135deg, var(--accent-hex), color-mix(in srgb, var(--accent-hex) 87%, black))',
+                                    boxShadow: '0 12px 32px var(--accent-glow)',
                                 }}
                                 aria-hidden="true"
                             >
@@ -221,34 +225,15 @@ const Signup = () => {
                             </div>
                         )}
 
-                        {/* ─── Icon-First Portal Selector (identical to Login) ── */}
+                        {/* ─── Premium Role Selector (identical to Login) ── */}
                         <div className="mb-5 animate-fade-in-up delay-200">
-                            <label className="auth-label">I am a...</label>
-                            <div className="flex items-center gap-2.5" role="radiogroup" aria-label="Select role">
-                                {['public', 'hospital', 'ambulance', 'government'].map((r) => {
-                                    const role = ROLE_META[r];
-                                    const isActive = formData.role === r;
-                                    return (
-                                        <button
-                                            key={r}
-                                            type="button"
-                                            role="radio"
-                                            aria-checked={isActive}
-                                            onClick={() => setFormData({ ...formData, role: r, subRole: '' })}
-                                            className={`portal-pill capitalize ${isActive ? 'shadow-md' : 'hover:shadow-sm'}`}
-                                            style={{
-                                                backgroundColor: isActive ? `${role.hexLight}` : 'rgba(255,255,255,0.9)',
-                                                borderColor: isActive ? role.hex : '#E5E7EB',
-                                                color: isActive ? role.hex : '#6B7280',
-                                            }}
-                                            aria-label={`Sign up as ${role.label}`}
-                                        >
-                                            <i className={`fas ${role.icon} text-[18px]`}></i>
-                                            <span className="text-[13px] font-semibold">{role.label}</span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
+                          <label className="auth-label">I am a...</label>
+                          <PremiumRoleSelector
+                            selectedRole={formData.role}
+                            onSelect={(r) => switchRole(r)}
+                            transitioningRef={transitioningRef}
+                            ariaLabel="Select your role to sign up"
+                          />
                         </div>
 
                         {/* ─── Form Grid ─────────────────────────── */}
@@ -258,8 +243,8 @@ const Signup = () => {
                                 <div>
                                     <label className="auth-label">{formData.role === 'hospital' ? 'Hospital Name' : 'Full Name'}</label>
                                     <div className="relative">
-                                        <i className="fas fa-user absolute left-[16px] top-1/2 -translate-y-1/2 text-[16px] w-[18px] text-center pointer-events-none"
-                                            style={{ color: currentRole.hex }}></i>
+                                        <i className="fas fa-user absolute left-[16px] top-1/2 -translate-y-1/2 text-[16px] w-[18px] text-center pointer-events-none auth-accent-input-icon"
+                                            style={{ color: 'var(--accent-hex)' }}></i>
                                         <input name="name" type="text" required className="auth-input"
                                             placeholder={formData.role === 'hospital' ? "e.g. City General" : "e.g. John Doe"}
                                             value={formData.name} onChange={handleChange} aria-label="Full name" />
@@ -271,8 +256,8 @@ const Signup = () => {
                                     <div>
                                         <label className="auth-label">{formData.role === 'government' ? 'Authority Level' : 'Ambulance Role'}</label>
                                         <div className="relative">
-                                            <i className="fas fa-tag absolute left-[16px] top-1/2 -translate-y-1/2 text-[16px] w-[18px] text-center pointer-events-none"
-                                                style={{ color: currentRole.hex }}></i>
+                                            <i className="fas fa-tag absolute left-[16px] top-1/2 -translate-y-1/2 text-[16px] w-[18px] text-center pointer-events-none auth-accent-input-icon"
+                                                style={{ color: 'var(--accent-hex)' }}></i>
                                             <select name="subRole" value={formData.subRole} onChange={handleChange}
                                                 className="auth-input appearance-none cursor-pointer">
                                                 <option value="">Select role</option>
@@ -290,8 +275,8 @@ const Signup = () => {
                                     <div>
                                         <label className="auth-label">Phone</label>
                                         <div className="relative">
-                                            <i className="fas fa-phone absolute left-[16px] top-1/2 -translate-y-1/2 text-[16px] w-[18px] text-center pointer-events-none"
-                                                style={{ color: currentRole.hex }}></i>
+                                            <i className="fas fa-phone absolute left-[16px] top-1/2 -translate-y-1/2 text-[16px] w-[18px] text-center pointer-events-none auth-accent-input-icon"
+                                                style={{ color: 'var(--accent-hex)' }}></i>
                                             <input name="phone" type="text" className="auth-input" placeholder="+91..."
                                                 value={formData.phone} onChange={handleChange} aria-label="Phone number" />
                                         </div>
@@ -302,8 +287,8 @@ const Signup = () => {
                                 <div>
                                     <label className="auth-label">Email Address</label>
                                     <div className="relative">
-                                        <i className="fas fa-envelope absolute left-[16px] top-1/2 -translate-y-1/2 text-[16px] w-[18px] text-center pointer-events-none"
-                                            style={{ color: currentRole.hex }}></i>
+                                        <i className="fas fa-envelope absolute left-[16px] top-1/2 -translate-y-1/2 text-[16px] w-[18px] text-center pointer-events-none auth-accent-input-icon"
+                                            style={{ color: 'var(--accent-hex)' }}></i>
                                         <input name="email" type="email" required className="auth-input" placeholder="name@example.com"
                                             value={formData.email} onChange={handleChange} aria-label="Email address" />
                                     </div>
@@ -313,8 +298,8 @@ const Signup = () => {
                                 <div>
                                     <label className="auth-label">Location</label>
                                     <div className="relative">
-                                        <i className="fas fa-location-dot absolute left-[16px] top-1/2 -translate-y-1/2 text-[16px] w-[18px] text-center pointer-events-none"
-                                            style={{ color: currentRole.hex }}></i>
+                                        <i className="fas fa-location-dot absolute left-[16px] top-1/2 -translate-y-1/2 text-[16px] w-[18px] text-center pointer-events-none auth-accent-input-icon"
+                                            style={{ color: 'var(--accent-hex)' }}></i>
                                         <input name="location" type="text" className="auth-input" placeholder="City"
                                             value={formData.location} onChange={handleChange} aria-label="Location" />
                                     </div>
@@ -325,8 +310,8 @@ const Signup = () => {
                                     <div className="sm:col-span-2">
                                         <label className="auth-label">Password</label>
                                         <div className="relative">
-                                            <i className="fas fa-lock absolute left-[16px] top-1/2 -translate-y-1/2 text-[16px] w-[18px] text-center pointer-events-none"
-                                                style={{ color: currentRole.hex }}></i>
+                                            <i className="fas fa-lock absolute left-[16px] top-1/2 -translate-y-1/2 text-[16px] w-[18px] text-center pointer-events-none auth-accent-input-icon"
+                                                style={{ color: 'var(--accent-hex)' }}></i>
                                             <input name="password" type="password" required className="auth-input" placeholder="••••••••"
                                                 value={formData.password} onChange={handleChange} aria-label="Password" />
                                         </div>
@@ -336,12 +321,12 @@ const Signup = () => {
 
                             {/* ─── Conditional Panels (role-specific) ── */}
                             {formData.role === 'hospital' && (
-                                <div className="mt-4 p-4 rounded-[var(--radius-input)] border animate-fade-in"
+                                <div className="mt-4 p-4 rounded-[var(--radius-input)] border animate-fade-in auth-accent-panel"
                                     style={{
-                                        backgroundColor: currentRole.hexLight,
-                                        borderColor: currentRole.hex + '44',
+                                        backgroundColor: 'var(--accent-light)',
+                                        borderColor: 'color-mix(in srgb, var(--accent-hex) 27%, transparent)',
                                     }}>
-                                    <h4 className="text-xs font-bold uppercase mb-3" style={{ color: currentRole.hex }}>Facility Details</h4>
+                                    <h4 className="text-xs font-bold uppercase mb-3 auth-accent-link" style={{ color: 'var(--accent-hex)' }}>Facility Details</h4>
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                         <div>
                                             <label className="auth-label">Registration Number</label>
@@ -368,12 +353,12 @@ const Signup = () => {
                             )}
 
                             {formData.role === 'government' && (
-                                <div className="mt-4 p-4 rounded-[var(--radius-input)] border animate-fade-in"
+                                <div className="mt-4 p-4 rounded-[var(--radius-input)] border animate-fade-in auth-accent-panel"
                                     style={{
-                                        backgroundColor: currentRole.hexLight,
-                                        borderColor: currentRole.hex + '44',
+                                        backgroundColor: 'var(--accent-light)',
+                                        borderColor: 'color-mix(in srgb, var(--accent-hex) 27%, transparent)',
                                     }}>
-                                    <h4 className="text-xs font-bold uppercase mb-3" style={{ color: currentRole.hex }}>Government Details</h4>
+                                    <h4 className="text-xs font-bold uppercase mb-3 auth-accent-link" style={{ color: 'var(--accent-hex)' }}>Government Details</h4>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         <div>
                                             <label className="auth-label">Government Level</label>
@@ -394,12 +379,12 @@ const Signup = () => {
                             )}
 
                             {formData.role === 'ambulance' && (
-                                <div className="mt-4 p-4 rounded-[var(--radius-input)] border animate-fade-in"
+                                <div className="mt-4 p-4 rounded-[var(--radius-input)] border animate-fade-in auth-accent-panel"
                                     style={{
-                                        backgroundColor: currentRole.hexLight,
-                                        borderColor: currentRole.hex + '44',
+                                        backgroundColor: 'var(--accent-light)',
+                                        borderColor: 'color-mix(in srgb, var(--accent-hex) 27%, transparent)',
                                     }}>
-                                    <h4 className="text-xs font-bold uppercase mb-3" style={{ color: currentRole.hex }}>Ambulance Details</h4>
+                                    <h4 className="text-xs font-bold uppercase mb-3 auth-accent-link" style={{ color: 'var(--accent-hex)' }}>Ambulance Details</h4>
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                         <div>
                                             <label className="auth-label">Base Location</label>
@@ -427,16 +412,15 @@ const Signup = () => {
                             {/* ─── Create Account Button ───────────── */}
                             <div className="mt-5">
                                 <button type="submit" disabled={loading}
-                                    className="relative w-full h-[52px] overflow-hidden rounded-[var(--radius-button)] flex items-center justify-center gap-2 transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:active:scale-100 group"
+                                    className="relative w-full h-[52px] overflow-hidden rounded-[var(--radius-button)] flex items-center justify-center gap-2 transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:active:scale-100 group auth-accent-button"
                                     style={{
-                                        background: `linear-gradient(135deg, ${currentRole.hex}, ${currentRole.hex}dd)`,
-                                        boxShadow: `0 4px 14px ${currentRole.shadowColor}`,
-                                        transition: 'background 0.6s cubic-bezier(0.4,0,0.2,1), box-shadow 0.6s cubic-bezier(0.4,0,0.2,1), transform 0.2s cubic-bezier(0.4,0,0.2,1)',
+                                        background: 'linear-gradient(135deg, var(--accent-hex), color-mix(in srgb, var(--accent-hex) 87%, black))',
+                                        boxShadow: '0 4px 14px var(--accent-glow)',
                                     }}
                                     aria-label={loading ? 'Creating account' : 'Create account'}>
                                     <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out pointer-events-none"></span>
                                     <span className="absolute inset-0 rounded-[var(--radius-button)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-                                        style={{ boxShadow: `inset 0 0 0 1px ${currentRole.ring}` }}
+                                        style={{ boxShadow: 'inset 0 0 0 1px var(--accent-ring)' }}
                                     ></span>
                                     {loading ? (
                                         <><i className="fas fa-spinner fa-spin text-white"></i> <span className="text-white text-[16px] font-semibold">Creating Account...</span></>
@@ -452,8 +436,8 @@ const Signup = () => {
                         <div className="mt-5 text-center pt-4 border-t border-[#E5E7EB]/60 animate-fade-in delay-500">
                             <p className="text-[14px] text-gray-500">
                                 Already have an account?{' '}
-                                <Link to="/login" className="font-semibold hover:underline transition-all duration-200"
-                                    style={{ color: currentRole.hex }}>
+                                <Link to="/login" className="font-semibold hover:underline transition-all duration-200 auth-accent-link"
+                                    style={{ color: 'var(--accent-hex)' }}>
                                     Login here <i className="fas fa-arrow-right text-xs ml-0.5"></i>
                                 </Link>
                             </p>

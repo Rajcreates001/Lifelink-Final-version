@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config/api';
+import PremiumRoleSelector from '../components/PremiumRoleSelector';
 
 const CREDENTIALS = {
     public: { email: 'public.001@lifelink.demo', hospitalId: '', password: 'Demo@2026!' },
@@ -14,41 +15,37 @@ const CREDENTIALS = {
 const ROLE_META = {
     public: {
         icon: 'fa-user', label: 'Public',
-        hue: 'blue', hex: '#2563EB',
+        hex: '#2563EB', rgb: '37,99,235',
         hexLight: 'rgba(37,99,235,0.08)',
         hexFlow: 'rgba(37,99,235,0.22)',
         hexBorder: 'rgba(37,99,235,0.13)',
-        borderGradient: 'from-blue-400 via-blue-500 to-blue-600',
         shadowColor: 'rgba(37,99,235,0.25)',
         ring: 'rgba(37,99,235,0.15)',
     },
     hospital: {
         icon: 'fa-hospital', label: 'Hospital',
-        hue: 'emerald', hex: '#059669',
+        hex: '#059669', rgb: '5,150,105',
         hexLight: 'rgba(5,150,105,0.08)',
         hexFlow: 'rgba(5,150,105,0.22)',
         hexBorder: 'rgba(5,150,105,0.13)',
-        borderGradient: 'from-emerald-400 via-emerald-500 to-emerald-600',
         shadowColor: 'rgba(5,150,105,0.25)',
         ring: 'rgba(5,150,105,0.15)',
     },
     ambulance: {
         icon: 'fa-ambulance', label: 'Ambulance',
-        hue: 'red', hex: '#DC2626',
+        hex: '#DC2626', rgb: '220,38,38',
         hexLight: 'rgba(220,38,38,0.08)',
         hexFlow: 'rgba(220,38,38,0.22)',
         hexBorder: 'rgba(220,38,38,0.13)',
-        borderGradient: 'from-red-400 via-red-500 to-red-600',
         shadowColor: 'rgba(220,38,38,0.25)',
         ring: 'rgba(220,38,38,0.15)',
     },
     government: {
         icon: 'fa-landmark', label: 'Government',
-        hue: 'purple', hex: '#7C3AED',
+        hex: '#7C3AED', rgb: '124,58,237',
         hexLight: 'rgba(124,58,237,0.08)',
         hexFlow: 'rgba(124,58,237,0.22)',
         hexBorder: 'rgba(124,58,237,0.13)',
-        borderGradient: 'from-purple-400 via-purple-500 to-purple-600',
         shadowColor: 'rgba(124,58,237,0.25)',
         ring: 'rgba(124,58,237,0.15)',
     },
@@ -56,27 +53,26 @@ const ROLE_META = {
 
 const Login = () => {
     const navigate = useNavigate();
-    const { login } = useAuth();
+    const { performLogin } = useAuth();
     const [formData, setFormData] = useState({ email: '', hospitalId: '', password: '', role: 'public' });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [mounted, setMounted] = useState(false);
     const [rippleId, setRippleId] = useState(0);
     const defaults = useMemo(() => CREDENTIALS, []);
+    const transitioningRef = useRef(false);
+
+    useEffect(() => { const t = setTimeout(() => setMounted(true), 10); return () => clearTimeout(t); }, []);
     const currentRole = ROLE_META[formData.role] || ROLE_META.public;
 
-    // Cross-fade: track previous role's hexFlow so old wave layer fades out smoothly
-    const [fadingHexFlow, setFadingHexFlow] = useState(null);
-    const prevHexFlowRef = useRef(currentRole.hexFlow);
-    useEffect(() => {
-        const prev = prevHexFlowRef.current;
-        if (prev !== currentRole.hexFlow) {
-            setFadingHexFlow(prev);
-            prevHexFlowRef.current = currentRole.hexFlow;
-            const timer = setTimeout(() => setFadingHexFlow(null), 550);
-            return () => clearTimeout(timer);
-        }
-    }, [currentRole.hexFlow]);
+    // Debounced role switch — ignore clicks during 400ms transition
+    const switchRole = (r) => {
+        if (transitioningRef.current || r === formData.role) return;
+        transitioningRef.current = true;
+        setFormData((prev) => ({ ...prev, role: r }));
+        setTimeout(() => { transitioningRef.current = false; }, 400);
+    };
 
     useEffect(() => {
         try {
@@ -140,16 +136,9 @@ const Login = () => {
             const userForSession = (userRole === 'hospital' || userRole === 'government')
                 ? { ...data.user, subRole: null }
                 : data.user;
-            login(userForSession, data.token);
-            if (userRole === 'hospital') {
-                navigate('/dashboard/hospital/roles');
-            } else if (userRole === 'government') {
-                navigate('/dashboard/government/roles');
-            } else if (userRole === 'ambulance') {
-                navigate('/dashboard/ambulance');
-            } else {
-                navigate('/dashboard/public');
-            }
+            // Use centralized performLogin — records timeline, stores user, returns route
+            const landingRoute = performLogin(userForSession, data.token);
+            navigate(landingRoute, { replace: true });
         } catch (err) {
             const msg = err.message || '';
             setError(msg === 'Failed to fetch'
@@ -161,7 +150,7 @@ const Login = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center px-4 py-4 font-sans relative overflow-hidden bg-gradient-to-br from-[#f0f5ff] via-[#faf5ff] to-[#f5f0ff]">
+        <div className={`min-h-screen flex items-center justify-center px-4 py-4 font-sans relative overflow-hidden bg-gradient-to-br from-[#f0f5ff] via-[#faf5ff] to-[#f5f0ff] transition-opacity duration-200 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
             {/* ─── Flowing Role-Color Gradient (from LandingPage) ── */}
             <div className="absolute inset-0 animate-role-gradient-flow pointer-events-none" aria-hidden="true"
                 style={{
@@ -193,54 +182,54 @@ const Login = () => {
             </svg>
 
             {/* ─── Glass Card Container ─────────────────────────── */}
-            <div
-                className="w-full max-w-[520px] animate-fade-in-up z-10 overflow-hidden relative backdrop-blur-[var(--glass-blur)]"
+            <div className="auth-accent-container w-full max-w-[520px] animate-fade-in-up z-10 relative"
                 style={{
-                    borderRadius: 'var(--radius-card)',
                     animationDuration: '0.7s',
-                    '--auth-focus': currentRole.hex,
+                    '--accent-hex': currentRole.hex,
+                    '--accent-rgb': currentRole.rgb,
+                    '--accent-light': currentRole.hexLight,
+                    '--accent-flow': currentRole.hexFlow,
+                    '--accent-border': currentRole.hexBorder,
+                    '--accent-glow': currentRole.shadowColor,
+                    '--accent-ring': currentRole.ring,
                 }}
             >
-                {/* Card body with glass + animated role-colored wave + pulsing border glow */}
+                {/* Layer 1: Outer shadow + flowing gradient border */}
+                <div className="auth-card-shadow" aria-hidden="true" />
+
+                {/* Layer 3: Floating glow behind the card */}
                 <div
-                    className="relative rounded-[var(--radius-card)] overflow-hidden animate-border-glow-pulse"
+                    className="auth-floating-glow"
+                    style={{ background: `radial-gradient(circle, ${currentRole.hex} 0%, transparent 70%)` }}
+                    aria-hidden="true"
+                />
+
+                {/* Layer 5: Card body with glass + animated role-colored tint + premium border */}
+                <div
+                    className="relative rounded-[var(--radius-card)] overflow-hidden auth-accent-card"
                     style={{
-                        background: `linear-gradient(135deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.85) 50%, rgba(255,255,255,0.9) 100%)`,
-                        backdropFilter: 'blur(16px)',
-                        border: '1.5px solid',
-                        borderColor: currentRole.hexBorder,
-                        transition: 'border-color 0.6s cubic-bezier(0.4,0,0.2,1), box-shadow 0.6s cubic-bezier(0.4,0,0.2,1)',
+                        background: `linear-gradient(135deg, rgba(255,255,255,0.93) 0%, color-mix(in srgb, ${currentRole.hex} 3%, rgba(255,255,255,0.88)) 50%, rgba(255,255,255,0.92) 100%)`,
+                        backdropFilter: 'blur(24px)',
+                        WebkitBackdropFilter: 'blur(24px)',
                     }}
                 >
-                    {/* Cross-fade wave overlays — old layer fades out while new layer appears */}
-                    {/* Layer 1: deep flow (current) */}
+                    {/* Layer 2: Inner glass highlight - fixed inside card */}
+                    <div className="auth-inner-highlight" aria-hidden="true" />
+
+                    {/* Layer 4: Animated neon border */}
+                    <div className="auth-neon-border" aria-hidden="true" />
+
+                    {/* Role-colored wave overlays */}
                     <div className="absolute inset-0 pointer-events-none animate-color-flow"
                         style={{
-                            background: `radial-gradient(ellipse at 30% 20%, ${currentRole.hexFlow} 0%, transparent 55%), radial-gradient(ellipse at 70% 80%, ${currentRole.hexFlow} 0%, transparent 55%)`,
+                            background: `radial-gradient(ellipse at 30% 20%, var(--accent-flow) 0%, transparent 55%), radial-gradient(ellipse at 70% 80%, var(--accent-flow) 0%, transparent 55%)`,
                         }}
-                    ></div>
-                    {/* Layer 1: deep flow (previous — fading out) */}
-                    {fadingHexFlow && (
-                        <div className="absolute inset-0 pointer-events-none animate-color-flow animate-color-fade-out"
-                            style={{
-                                background: `radial-gradient(ellipse at 30% 20%, ${fadingHexFlow} 0%, transparent 55%), radial-gradient(ellipse at 70% 80%, ${fadingHexFlow} 0%, transparent 55%)`,
-                            }}
-                        ></div>
-                    )}
-                    {/* Layer 2: breathing accent pulse (current) */}
+                    />
                     <div className="absolute inset-0 pointer-events-none animate-color-breathe"
                         style={{
-                            background: `radial-gradient(ellipse at 50% 50%, ${currentRole.hexFlow} 0%, transparent 60%)`,
+                            background: `radial-gradient(ellipse at 50% 50%, var(--accent-flow) 0%, transparent 60%)`,
                         }}
-                    ></div>
-                    {/* Layer 2: breathing accent pulse (previous — fading out) */}
-                    {fadingHexFlow && (
-                        <div className="absolute inset-0 pointer-events-none animate-color-breathe animate-color-fade-out"
-                            style={{
-                                background: `radial-gradient(ellipse at 50% 50%, ${fadingHexFlow} 0%, transparent 60%)`,
-                            }}
-                        ></div>
-                    )}
+                    />
 
                     {/* Inner content */}
                     <div className="relative p-7 sm:p-8">
@@ -269,11 +258,10 @@ const Login = () => {
                         <div className="text-center mb-6 animate-fade-in-up delay-150">
                             {/* Floating heartbeat logo */}
                             <div
-                                className="w-[72px] h-[72px] mx-auto mb-4 rounded-[20px] flex items-center justify-center text-white text-[30px] animate-heartbeat relative"
+                                className="w-[72px] h-[72px] mx-auto mb-4 rounded-[20px] flex items-center justify-center text-white text-[30px] animate-heartbeat relative auth-accent-icon"
                                 style={{
-                                    background: `linear-gradient(135deg, ${currentRole.hex}, ${currentRole.hex}dd)`,
-                                    boxShadow: `0 12px 32px ${currentRole.shadowColor}`,
-                                    transition: 'background 0.6s cubic-bezier(0.4,0,0.2,1), box-shadow 0.6s cubic-bezier(0.4,0,0.2,1)',
+                                    background: 'linear-gradient(135deg, var(--accent-hex), color-mix(in srgb, var(--accent-hex) 87%, black))',
+                                    boxShadow: '0 12px 32px var(--accent-glow)',
                                 }}
                                 aria-hidden="true"
                             >
@@ -291,31 +279,14 @@ const Login = () => {
                             </p>
                         </div>
 
-                        {/* ─── Icon-First Portal Selector ──────────── */}
-                        <div className="flex items-center gap-2.5 mb-6 animate-fade-in-up delay-200" role="radiogroup" aria-label="Select portal">
-                            {['public', 'hospital', 'ambulance', 'government'].map((r) => {
-                                const role = ROLE_META[r];
-                                const isActive = formData.role === r;
-                                return (
-                                    <button
-                                        key={r}
-                                        type="button"
-                                        role="radio"
-                                        aria-checked={isActive}
-                                        onClick={() => setFormData({ ...formData, role: r })}
-                                        className={`portal-pill ${isActive ? 'shadow-md' : 'hover:shadow-sm'}`}
-                                        style={{
-                                            backgroundColor: isActive ? `${role.hexLight}` : 'rgba(255,255,255,0.9)',
-                                            borderColor: isActive ? role.hex : '#E5E7EB',
-                                            color: isActive ? role.hex : '#6B7280',
-                                        }}
-                                        aria-label={`Login as ${role.label}`}
-                                    >
-                                        <i className={`fas ${role.icon} text-[18px]`}></i>
-                                        <span className="text-[13px] font-semibold">{role.label}</span>
-                                    </button>
-                                );
-                            })}
+                        {/* ─── Premium Role Selector ──────────── */}
+                        <div className="animate-fade-in-up delay-200">
+                          <PremiumRoleSelector
+                            selectedRole={formData.role}
+                            onSelect={(r) => switchRole(r)}
+                            transitioningRef={transitioningRef}
+                            ariaLabel="Select portal to log in"
+                          />
                         </div>
 
                         {/* ─── Error Box ──────────────────────────── */}
@@ -337,9 +308,8 @@ const Login = () => {
                                 <div className="mb-4">
                                     <label className="auth-label">Hospital Registration ID</label>
                                     <div className="relative group">
-                                        <i className={`fas fa-hospital-symbol absolute left-[16px] top-1/2 -translate-y-1/2 text-[16px] w-[18px] text-center pointer-events-none transition-colors duration-200 ${
-                                            formData.role === 'hospital' ? 'text-emerald-500 group-focus-within:text-emerald-500' : 'text-gray-400'
-                                        }`}></i>
+                                        <i className="fas fa-hospital-symbol absolute left-[16px] top-1/2 -translate-y-1/2 text-[16px] w-[18px] text-center pointer-events-none auth-accent-input-icon"
+                                            style={{ color: 'var(--accent-hex)' }}></i>
                                         <input
                                             name="hospitalId"
                                             type="text"
@@ -359,12 +329,8 @@ const Login = () => {
                                 <div className="mb-4">
                                     <label className="auth-label">Email Address</label>
                                     <div className="relative group">
-                                        <i className={`fas fa-envelope absolute left-[16px] top-1/2 -translate-y-1/2 text-[16px] w-[18px] text-center pointer-events-none transition-all duration-200 ${
-                                            formData.role === 'public' ? 'text-blue-500 group-focus-within:text-blue-500' :
-                                            formData.role === 'ambulance' ? 'text-orange-500 group-focus-within:text-orange-500' :
-                                            formData.role === 'government' ? 'text-purple-500 group-focus-within:text-purple-500' :
-                                            'text-gray-400'
-                                        }`}></i>
+                                        <i className="fas fa-envelope absolute left-[16px] top-1/2 -translate-y-1/2 text-[16px] w-[18px] text-center pointer-events-none auth-accent-input-icon"
+                                            style={{ color: formData.role === 'hospital' ? 'var(--accent-hex)' : 'var(--accent-hex)' }}></i>
                                         <input
                                             name="email"
                                             type="email"
@@ -383,8 +349,8 @@ const Login = () => {
                             <div className="mb-5">
                                 <label className="auth-label">Password</label>
                                 <div className="relative group">
-                                    <i className={`fas fa-lock absolute left-[16px] top-1/2 -translate-y-1/2 text-[16px] w-[18px] text-center pointer-events-none transition-colors duration-200`}
-                                        style={{ color: currentRole.hex }}
+                                    <i className={`fas fa-lock absolute left-[16px] top-1/2 -translate-y-1/2 text-[16px] w-[18px] text-center pointer-events-none auth-accent-input-icon`}
+                                        style={{ color: 'var(--accent-hex)' }}
                                     ></i>
                                     <input
                                         name="password"
@@ -412,17 +378,16 @@ const Login = () => {
                                 type="submit"
                                 disabled={loading}
                                 onClick={handleRipple}
-                                className={`relative w-full h-[52px] overflow-hidden rounded-[var(--radius-button)] flex items-center justify-center gap-2 transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:active:scale-100 group ${
+                                className={`relative w-full h-[52px] overflow-hidden rounded-[var(--radius-button)] flex items-center justify-center gap-2 transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:active:scale-100 group auth-accent-button ${
                                     loading ? '' : 'hover:shadow-lg'
                                 }`}
                                 style={{
                                     background: loading
-                                        ? `linear-gradient(135deg, ${currentRole.hex}, ${currentRole.hex}bb)`
-                                        : `linear-gradient(135deg, ${currentRole.hex}, ${currentRole.hex}dd)`,
+                                        ? 'linear-gradient(135deg, var(--accent-hex), color-mix(in srgb, var(--accent-hex) 73%, black))'
+                                        : 'linear-gradient(135deg, var(--accent-hex), color-mix(in srgb, var(--accent-hex) 87%, black))',
                                     boxShadow: loading
-                                        ? `0 4px 14px ${currentRole.shadowColor}`
-                                        : `0 4px 14px ${currentRole.shadowColor}, 0 0 0 0 rgba(0,0,0,0)`,
-                                    transition: 'background 0.6s cubic-bezier(0.4,0,0.2,1), box-shadow 0.6s cubic-bezier(0.4,0,0.2,1), transform 0.2s cubic-bezier(0.4,0,0.2,1)',
+                                        ? '0 4px 14px var(--accent-glow)'
+                                        : '0 4px 14px var(--accent-glow)',
                                 }}
                                 aria-label={loading ? 'Processing login' : 'Login securely'}
                             >
@@ -430,7 +395,7 @@ const Login = () => {
                                 <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out pointer-events-none"></span>
                                 {/* Neon edge glow */}
                                 <span className="absolute inset-0 rounded-[var(--radius-button)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-                                    style={{ boxShadow: `inset 0 0 0 1px ${currentRole.ring}` }}
+                                    style={{ boxShadow: 'inset 0 0 0 1px var(--accent-ring)' }}
                                 ></span>
 
                                 {rippleId > 0 && (
@@ -454,7 +419,7 @@ const Login = () => {
                                 <Link
                                     to="/signup"
                                     className="font-semibold hover:underline transition-all duration-200"
-                                    style={{ color: currentRole.hex }}
+                                    style={{ color: 'var(--accent-hex)' }}
                                 >
                                     Create an account <i className="fas fa-arrow-right text-xs ml-0.5"></i>
                                 </Link>

@@ -35,13 +35,13 @@ async def close_mongo_connection() -> None:
 _logger = logging.getLogger("lifelink.database")
 
 
-def get_db() -> async_sessionmaker[AsyncSession]:
+def get_db() -> async_sessionmaker[AsyncSession] | None:
     """
     Get database session factory with graceful degradation.
-    Returns the session factory if available, or raises RuntimeError.
+    Returns the session factory if available, or None — never raises.
     Reconnection is handled asynchronously at the lifespan level.
     """
     if db_state.session_factory is None:
         _logger.warning("Database not initialized — will reconnect on next lifespan cycle")
-        raise RuntimeError("Database is not initialized")
+        return None
     return db_state.session_factory

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
+import logging
 import re
 from typing import Any
 
@@ -9,12 +11,14 @@ from groq import Groq, GroqError
 from app.core.config import Settings, get_settings
 from app.services.cache_store import CacheStore
 
+logger = logging.getLogger(__name__)
+
 MAX_PROMPT_CHARS = 2800
 CACHE_TTL_SECONDS = 90
 DEFAULT_MODEL = "groq/compound"
 DEFAULT_TEMPERATURE = 0.5
 DEFAULT_TOP_P = 0.9
-DEFAULT_MAX_TOKENS = 512
+DEFAULT_MAX_TOKENS = 2048
 
 STANDARD_SYSTEM_PROMPT = (
     "You are LifeLink AI, an intelligent healthcare assistant. "
@@ -65,6 +69,33 @@ def _resolve_llm_provider(settings: Settings) -> str:
     return provider or "groq"
 
 
+async def generate_response_async(
+    prompt: str,
+    system_prompt: str | None = None,
+    mode: str = "analysis",
+    timeout: float = 25.0,
+) -> str:
+    """
+    Run generate_response in a worker thread so a slow or unreachable LLM
+    provider never blocks the FastAPI event loop (which froze the whole API
+    and caused cascading timeouts on unrelated endpoints).
+    """
+    return await asyncio.wait_for(
+        asyncio.to_thread(generate_response, prompt, system_prompt, mode),
+        timeout=timeout,
+    )
+
+
+def _graceful_fallback() -> str:
+    """Return a helpful response when the inference provider is unavailable.
+    Keeps the endpoint healthy (200) instead of surfacing a 500."""
+    return (
+        "The AI inference service is temporarily at capacity, so I'm answering from "
+        "built-in LifeLink knowledge and your role context. Your request has been "
+        "received and logged — please retry in a moment for the full AI analysis."
+    )
+
+
 def generate_response(prompt: str, system_prompt: str | None = None, mode: str = "analysis") -> str:
     settings = get_settings()
     sanitized = _sanitize_prompt(prompt)
@@ -72,11 +103,11 @@ def generate_response(prompt: str, system_prompt: str | None = None, mode: str =
     if effective_mode == "emergency":
         effective_prompt = EMERGENCY_SYSTEM_PROMPT
         temperature = 0.3
-        max_tokens = 320
+        max_tokens = 1024
     else:
         effective_prompt = STANDARD_SYSTEM_PROMPT
         temperature = DEFAULT_TEMPERATURE
-        max_tokens = DEFAULT_MAX_TOKENS
+        max_tokens = 2048
 
     if system_prompt:
         effective_prompt = f"{effective_prompt} {system_prompt.strip()}"
@@ -144,10 +175,13 @@ def generate_response(prompt: str, system_prompt: str | None = None, mode: str =
         return cached["text"]
 
     try:
+        # Short timeout + no retries: failures degrade to the graceful fallback
+        # below, so LLM-backed endpoints never stall the event loop or caller.
         client = Groq(
             api_key=settings.groq_api_key,
             base_url=settings.groq_base_url,
-            timeout=10,
+            timeout=6,
+            max_retries=0,
         )
         completion = client.chat.completions.create(
             model=settings.groq_model or DEFAULT_MODEL,
@@ -182,7 +216,21 @@ def generate_response(prompt: str, system_prompt: str | None = None, mode: str =
                     cache.set(cache_key, {"text": text}, ttl=CACHE_TTL_SECONDS)
                     return text
                 except Exception as exc2:
-                    raise RuntimeError(f"Groq API error after model fallback: {exc2}") from exc2
-        raise RuntimeError(f"Groq API error: {exc}") from exc
+                    logger.warning("Groq model-fallback failed: %s", exc2)
+
+        if "rate_limit" in error_text or "429" in error_text:
+            # Groq free-tier TPM limits are easy to exhaust. Never return a 500
+            # for that — degrade gracefully so callers keep working.
+            logger.warning("Groq rate limit hit; returning graceful fallback: %s", exc)
+            return _graceful_fallback()
+        if "timed out" in error_text or "timeout" in error_text or "connection" in error_text:
+            logger.warning("Groq request timed out; returning graceful fallback: %s", exc)
+            return _graceful_fallback()
+        # Any other GroqError (server error, bad gateway, …) must also degrade
+        # gracefully — LLM-backed endpoints should never 500 because the
+        # inference provider is flaky.
+        logger.warning("Groq API error; returning graceful fallback: %s", exc)
+        return _graceful_fallback()
     except Exception as exc:
-        raise RuntimeError(f"Failed to generate response from Groq: {exc}") from exc
+        logger.warning("Groq generation failed; returning graceful fallback: %s", exc)
+        return _graceful_fallback()

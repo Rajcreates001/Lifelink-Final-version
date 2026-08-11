@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import ProfileModal from '../../components/ProfileModal';
-import NotificationMenu from '../../components/NotificationMenu';
+import NotificationHub from '../../components/NotificationHub';
 import MobileDrawer from '../../components/layout/MobileDrawer';
 import PublicShell from './PublicShell';
 import HomeScreen from './HomeScreen';
@@ -140,7 +140,7 @@ const MobilePublicDashboard = () => {
             >
               <i className="fas fa-times"></i>
             </button>
-            <NotificationMenu variant="panel" onClose={() => setShowNotifications(false)} />
+            <NotificationHub variant="panel" onClose={() => setShowNotifications(false)} />
           </div>
         </div>
       )}

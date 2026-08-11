@@ -1,0 +1,16 @@
+// AI Bed Intelligence Center - barrel exports
+export { default as BedHeroCommandCenter } from './BedHeroCommandCenter';
+export { default as BedDigitalMap } from './BedDigitalMap';
+export { default as BedDigitalTwinCard } from './BedDigitalTwinCard';
+export { default as BedAllocationEngine } from './BedAllocationEngine';
+export { default as BedOccupancyForecast } from './BedOccupancyForecast';
+export { default as BedPatientFlowEngine } from './BedPatientFlowEngine';
+export { default as BedTransferEngine } from './BedTransferEngine';
+export { default as CleaningIntelligence } from './BedCleaningIntelligence';
+export { default as BedBottleneckDetector } from './BedBottleneckDetector';
+export { default as BedHealthScore } from './BedHealthScore';
+export { default as BedWaitlistAI } from './BedWaitlistAI';
+export { default as BedResourceCoordinator } from './BedResourceCoordinator';
+export { default as BedScenarioSimulator } from './BedScenarioSimulator';
+export { default as BedKnowledgeGraph } from './BedKnowledgeGraph';
+export { default as BedTimeline } from './BedTimeline';

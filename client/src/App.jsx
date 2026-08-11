@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider, useAuth, getLoginRoute, getWorkspaceRoute } from './context/AuthContext';
 import { getAuthToken } from './config/api';
 
 // Pages
@@ -35,18 +35,23 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     }
     
     // 2. If session check is done and no user exists
+    //    Redirect to workspace (if org selected) or login
     if (!user) {
-        return <Navigate to="/login" replace />;
+        return <WorkspaceRedirect />;
     }
 
     // 3. If there is no auth token, force login again
     if (!getAuthToken()) {
-        return <Navigate to="/login" replace />;
+        return <WorkspaceRedirect />;
     }
 
     // 4. Check for role authorization (normalized to lowercase)
     if (allowedRoles && !allowedRoles.includes(user.role.toLowerCase())) {
-        return <Navigate to="/" replace />;
+        // Cross-role access — redirect to the user's own workspace gateway
+        // instead of the landing page. An ambulance user typing /dashboard/government
+        // will be redirected to /ambulance, not the home page.
+        const targetRoute = getWorkspaceRoute(user);
+        return <Navigate to={targetRoute} replace />;
     }
 
     return children;
@@ -54,19 +59,27 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
 const DashboardRedirect = () => {
     const { user } = useAuth();
-    const role = user?.role?.toLowerCase();
-    const hasSubRole = Boolean(user?.subRole);
+    // Use centralized getLoginRoute — single source of truth for sign-in landing
+    const landingRoute = getLoginRoute(user);
+    return <Navigate to={landingRoute} replace />;
+};
 
-    if (role === 'hospital') {
-        return <Navigate to={hasSubRole ? '/dashboard/hospital' : '/dashboard/hospital/roles'} replace />;
-    }
-    if (role === 'government') {
-        return <Navigate to={hasSubRole ? '/dashboard/government' : '/dashboard/government/roles'} replace />;
-    }
-    if (role === 'ambulance') {
-        return <Navigate to="/dashboard/ambulance" replace />;
-    }
-    return <Navigate to="/dashboard/public" replace />;
+// ─── Workspace-aware redirect — role-based via pure function ──
+const WorkspaceRedirect = () => {
+    // Read the last known user from storage to determine the correct
+    // workspace redirect. When a user has no active session but has
+    // stored data, redirect to their workspace gateway.
+    // When there's no stored data at all, redirect to /login.
+    let redirectRoute = '/login';
+    try {
+        const stored = sessionStorage.getItem('lifelink_user') || localStorage.getItem('lifelink_user');
+        if (stored) {
+            const lastUser = JSON.parse(stored);
+            // Use getWorkspaceRoute to find the correct gateway
+            redirectRoute = getWorkspaceRoute(lastUser);
+        }
+    } catch { /* fall through */ }
+    return <Navigate to={redirectRoute} replace />;
 };
 
 // ... keep rest of App component as provided
@@ -118,6 +131,12 @@ const App = () => {
                             </ProtectedRoute>
                         }
                     />
+
+                    {/* ── Public Organization Gateway ── */}
+                    <Route path="/government" element={<GovernmentRoleSelect />} />
+                    <Route path="/government/:orgKey" element={<GovernmentRoleSelect />} />
+                    <Route path="/hospital" element={<HospitalRoleSelect />} />
+                    <Route path="/hospital/:orgKey" element={<HospitalRoleSelect />} />
 
                     {/* Protected: Hospital Dashboard */}
                     <Route 

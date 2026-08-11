@@ -47,6 +47,10 @@ from app.routes.v2.search import router as search_v2_router
 from app.routes.v2.users import router as users_v2_router
 from app.routes.v2.system import router as system_v2_router
 from app.routes.v2.simulation import router as simulation_v2_router
+from app.routes.v2.history import router as history_v2_router
+from app.routes.v2.enterprise_auth import router as enterprise_auth_v2_router
+from app.routes.v2.lifelink_ai import router as lifelink_ai_v2_router
+from app.routes.v2.government_auth import router as government_auth_v2_router
 from app.routes.reports.reports import router as reports_router
 
 # ─── Structured JSON Logging ───────────────────────────────
@@ -161,6 +165,21 @@ app.include_router(system_v2_router, prefix="/v2/system")
 # Report generation & simulation routes
 app.include_router(reports_router, prefix="/api/reports")
 app.include_router(simulation_v2_router, prefix="/v2/government")
+
+# History / Activity Timeline routes
+app.include_router(history_v2_router, prefix="/v2")
+
+# Enterprise Auth routes (workspace RBAC)
+app.include_router(enterprise_auth_v2_router, prefix="/v2")
+
+# LifeLink AI — dedicated chat system (completely isolated from public AI)
+app.include_router(lifelink_ai_v2_router, prefix="/v2")
+
+# Government Auth routes (enterprise-grade authentication for government organizations)
+app.include_router(government_auth_v2_router, prefix="/v2")
+
+
+@app.exception_handler(RequestValidationError)
 
 
 @app.exception_handler(RequestValidationError)

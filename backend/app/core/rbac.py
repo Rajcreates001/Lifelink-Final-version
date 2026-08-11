@@ -24,8 +24,14 @@ HOSPITAL_SUBROLES = {
 
 GOVERNMENT_SUBROLES = {
     "national_admin",
+    "national_officer",
     "state_admin",
+    "state_officer",
     "district_admin",
+    "district_officer",
+    "department_head",
+    "department_officer",
+    "field_staff",
     "supervisory_authority",
 }
 
@@ -70,7 +76,9 @@ BASE_SCOPES = {
         "analytics:read",
         "policy:write",
         "resources:read",
+        "routes:read",
         "ai:ask",
+        "emergency:trigger",
     },
 }
 
@@ -85,9 +93,46 @@ HOSPITAL_SCOPES = {
 }
 
 GOVERNMENT_SCOPES = {
-    "national_admin": {"gov:admin", "policy:write"},
-    "state_admin": {"gov:admin"},
-    "district_admin": {"gov:ops"},
+    "national_admin": {
+        "gov:admin", "policy:write", "emergency:trigger", "emergency:national_mode",
+        "emergency:override", "users:create", "users:delete", "organization:suspend",
+        "simulation:launch", "simulation:control", "ai:manage", "ai:override",
+        "audit:view", "audit:export", "password:reset", "emergency:declare",
+        "dashboard:national", "analytics:realtime", "resources:national",
+        "export:data", "reports:approve",
+    },
+    "national_officer": {
+        "gov:admin", "emergency:trigger", "emergency:dispatch",
+        "ai:query", "simulation:launch", "policy:write",
+        "dashboard:national", "analytics:view", "resources:national",
+    },
+    "state_admin": {
+        "gov:admin", "emergency:trigger", "emergency:dispatch",
+        "ai:query", "dashboard:state", "analytics:view",
+        "resources:state", "simulation:launch",
+    },
+    "state_officer": {
+        "gov:ops", "emergency:dispatch", "emergency:coordinate",
+        "ai:query", "dashboard:state", "resources:state",
+    },
+    "district_admin": {
+        "gov:ops", "emergency:trigger", "emergency:dispatch",
+        "ai:query", "dashboard:district", "resources:district",
+    },
+    "district_officer": {
+        "gov:ops", "emergency:dispatch", "emergency:coordinate",
+        "ai:query", "dashboard:district",
+    },
+    "department_head": {
+        "gov:ops", "emergency:coordinate", "ai:query",
+        "dashboard:view", "resources:view",
+    },
+    "department_officer": {
+        "ai:query", "dashboard:view", "resources:view",
+    },
+    "field_staff": {
+        "ai:query", "dashboard:view",
+    },
     "supervisory_authority": {"hospital:oversight"},
 }
 
