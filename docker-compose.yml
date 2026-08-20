@@ -1,6 +1,8 @@
+version: "3.9"
+
 # ============================================================
-# LifeLink - Complete Docker Compose Configuration
-# Persistent data volumes are local Docker named volumes.
+# LifeLink - Docker Compose (Docker CE in WSL2)
+# All persistent data stored on D: drive
 # ============================================================
 
 # ─── Shared Configuration ─────────────────────────────────
@@ -15,24 +17,18 @@ x-backend-env: &backend-env
   FRONTEND_URL: http://localhost:5000
   HOST: "0.0.0.0"
   PORT: 3001
-  LLM_PROVIDER: groq
-  GROQ_API_KEY: ${GROQ_API_KEY:-}
-  GROQ_BASE_URL: https://api.groq.com
-  GROQ_MODEL: llama3-8b-8192
+  LLM_PROVIDER: openai
   OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-  EMBEDDING_MODEL: sentence-transformers/all-MiniLM-L6-v2
-  SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
-  SENDGRID_FROM_EMAIL: noreply@lifelink.ai
-  WEAVIATE_URL: http://weaviate:8080
+  GROQ_API_KEY: ${GROQ_API_KEY:-}
 
-x-healthy-pg: &healthy-pg
+x-healthy-postgres: &healthy-pg
   condition: service_healthy
 
 x-healthy-redis: &healthy-redis
   condition: service_healthy
 
 services:
-  # ─── PostgreSQL ───────────────────────────────────────────────
+  # ─── PostgreSQL ─────────────────────────────────────────────
   postgres:
     image: postgres:15
     container_name: lifelink-postgres
@@ -46,13 +42,12 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d lifelink_db"]
-      interval: 10s
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 5s
       timeout: 5s
       retries: 5
-      start_period: 15s
 
-  # ─── Redis ────────────────────────────────────────────────────
+  # ─── Redis ──────────────────────────────────────────────────
   redis:
     image: redis:7
     container_name: lifelink-redis
@@ -63,20 +58,18 @@ services:
       - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
+      interval: 5s
+      timeout: 5s
       retries: 5
-      start_period: 5s
 
-  # ─── Weaviate (Vector Database) ──────────────────────────────
+  # ─── Weaviate ───────────────────────────────────────────────
   weaviate:
     image: semitechnologies/weaviate:1.25.0
     container_name: lifelink-weaviate
     restart: unless-stopped
     environment:
-      QUERY_DEFAULTS_LIMIT: 25
-      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
-      PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
+      QDRANT__SERVICE__API_KEY: "lifelink-vector-db"
+      WEAVIATE__CLEANUP_INTERVAL: "30s"
       DEFAULT_VECTORIZER_MODULE: "none"
       CLUSTER_HOSTNAME: "node1"
     volumes:
@@ -85,20 +78,22 @@ services:
       - "8080:8080"
       - "50051:50051"
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/v1/.well-known/ready"]
-      interval: 15s
-      timeout: 10s
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/v1/.well-known/ready"]
+      interval: 10s
+      timeout: 5s
       retries: 5
-      start_period: 30s
 
   # ─── Backend API ──────────────────────────────────────────────
   backend:
-    image: lifelink-backend:latest
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: lifelink-backend
     restart: unless-stopped
     volumes:
       - ./backend:/app
       - ./scripts:/app/scripts
+      - backend_node_modules:/app/node_modules
     environment:
       <<: *backend-env
     command: ["api"]
@@ -111,92 +106,30 @@ services:
       test: ["CMD", "python", "-c", "import urllib.request; print(urllib.request.urlopen('http://localhost:3001/health').status)"]
       interval: 15s
       timeout: 5s
-      retries: 3
-      start_period: 40s
-
-  # ─── Database Migration (runs once, then exits) ──────────────
-  db-migrate:
-    image: lifelink-backend:latest
-    container_name: lifelink-db-migrate
-    volumes:
-      - ./backend:/app
-      - ./backend/scripts:/app/scripts
-    environment:
-      <<: *backend-env
-    command: ["migrate"]
-    depends_on:
-      postgres: *healthy-pg
-      backend:
-        condition: service_started
-    restart: "no"
-
-  # ─── Celery Worker ────────────────────────────────────────────
-  celery-worker:
-    image: lifelink-backend:latest
-    container_name: lifelink-celery-worker
-    restart: unless-stopped
-    volumes:
-      - ./backend:/app
-      - ./scripts:/app/scripts
-    environment:
-      <<: *backend-env
-    command: ["worker"]
-    depends_on:
-      backend:
-        condition: service_started
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
-  # ─── Celery Beat (Scheduled Tasks) ────────────────────────────
-  celery-beat:
-    image: lifelink-backend:latest
-    container_name: lifelink-celery-beat
-    restart: unless-stopped
-    volumes:
-      - ./backend:/app
-      - ./scripts:/app/scripts
-      - celery_beat_data:/app/celerybeat-schedule
-    environment:
-      <<: *backend-env
-    command: ["beat"]
-    depends_on:
-      - postgres
-      - redis
+      retries: 10
 
   # ─── Frontend ─────────────────────────────────────────────────
   frontend:
-    image: lifelink-frontend:latest
+    build:
+      context: .
+      dockerfile: client/Dockerfile
     container_name: lifelink-frontend
     restart: unless-stopped
     volumes:
       - ./client:/app
-      - node_modules:/app/node_modules
+      - frontend_node_modules:/app/node_modules
     environment:
-      VITE_API_URL: http://localhost:3001
+      - VITE_API_URL=http://localhost:3001
+    command: ["sh", "-c", "npm install && npm run dev -- --host 0.0.0.0 --port 5000"]
     ports:
       - "5000:5000"
-    command:
-      - sh
-      - -c
-      - |
-        echo 'Starting frontend dev server...'
-        npm run dev -- --host 0.0.0.0 --port 5000
     depends_on:
-      backend:
-        condition: service_started
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
+      - backend
 
 # ─── Named Volumes ───────────────────────────────────────────
 volumes:
   postgres_data:
   redis_data:
   weaviate_data:
-  node_modules:
-  celery_beat_data:
+  backend_node_modules:
+  frontend_node_modules:
