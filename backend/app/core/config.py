@@ -45,7 +45,6 @@ class Settings(BaseSettings):
     sendgrid_api_key: str = ""
     sendgrid_from_email: str = "noreply@lifelink.ai"
 
-
     @property
     def cors_origins(self) -> list[str]:
         # Keep behavior close to existing Express setup.
