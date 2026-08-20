@@ -1,6 +1,6 @@
 # ============================================================
-# LifeLink — Complete Docker Compose Configuration
-# All persistent data stored on D:/Docker to save C: drive space
+# LifeLink - Complete Docker Compose Configuration
+# Persistent data volumes are local Docker named volumes.
 # ============================================================
 
 # ─── Shared Configuration ─────────────────────────────────
@@ -39,10 +39,10 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: "postgres"
       POSTGRES_DB: lifelink_db
     volumes:
-      - D:/Docker/postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
@@ -58,7 +58,7 @@ services:
     container_name: lifelink-redis
     restart: unless-stopped
     volumes:
-      - D:/Docker/redis_data:/data
+      - redis_data:/data
     ports:
       - "6379:6379"
     healthcheck:
@@ -80,7 +80,7 @@ services:
       DEFAULT_VECTORIZER_MODULE: "none"
       CLUSTER_HOSTNAME: "node1"
     volumes:
-      - D:/Docker/weaviate_data:/var/lib/weaviate
+      - weaviate_data:/var/lib/weaviate
     ports:
       - "8080:8080"
       - "50051:50051"
@@ -93,23 +93,20 @@ services:
 
   # ─── Backend API ──────────────────────────────────────────────
   backend:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
+    image: lifelink-backend:latest
     container_name: lifelink-backend
     restart: unless-stopped
     volumes:
       - ./backend:/app
       - ./scripts:/app/scripts
-      - D:/Docker/rag_index:/app/.rag
     environment:
       <<: *backend-env
     command: ["api"]
     ports:
       - "3001:3001"
     depends_on:
-      postgres: *healthy-pg
-      redis: *healthy-redis
+      - postgres
+      - redis
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; print(urllib.request.urlopen('http://localhost:3001/health').status)"]
       interval: 15s
@@ -119,24 +116,23 @@ services:
 
   # ─── Database Migration (runs once, then exits) ──────────────
   db-migrate:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
+    image: lifelink-backend:latest
     container_name: lifelink-db-migrate
     volumes:
       - ./backend:/app
+      - ./backend/scripts:/app/scripts
     environment:
       <<: *backend-env
     command: ["migrate"]
     depends_on:
       postgres: *healthy-pg
+      backend:
+        condition: service_started
     restart: "no"
 
   # ─── Celery Worker ────────────────────────────────────────────
   celery-worker:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
+    image: lifelink-backend:latest
     container_name: lifelink-celery-worker
     restart: unless-stopped
     volumes:
@@ -146,34 +142,32 @@ services:
       <<: *backend-env
     command: ["worker"]
     depends_on:
-      postgres: *healthy-pg
-      redis: *healthy-redis
       backend:
         condition: service_started
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   # ─── Celery Beat (Scheduled Tasks) ────────────────────────────
   celery-beat:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
+    image: lifelink-backend:latest
     container_name: lifelink-celery-beat
     restart: unless-stopped
     volumes:
       - ./backend:/app
       - ./scripts:/app/scripts
-      - D:/Docker/celery_beat_data:/app/celerybeat-schedule
+      - celery_beat_data:/app/celerybeat-schedule
     environment:
       <<: *backend-env
     command: ["beat"]
     depends_on:
-      postgres: *healthy-pg
-      redis: *healthy-redis
+      - postgres
+      - redis
 
   # ─── Frontend ─────────────────────────────────────────────────
   frontend:
-    build:
-      context: .
-      dockerfile: client/Dockerfile
+    image: lifelink-frontend:latest
     container_name: lifelink-frontend
     restart: unless-stopped
     volumes:
@@ -187,9 +181,7 @@ services:
       - sh
       - -c
       - |
-        echo '📦 Installing frontend dependencies...'
-        npm install
-        echo '🚀 Starting frontend dev server...'
+        echo 'Starting frontend dev server...'
         npm run dev -- --host 0.0.0.0 --port 5000
     depends_on:
       backend:
@@ -203,4 +195,8 @@ services:
 
 # ─── Named Volumes ───────────────────────────────────────────
 volumes:
+  postgres_data:
+  redis_data:
+  weaviate_data:
   node_modules:
+  celery_beat_data:

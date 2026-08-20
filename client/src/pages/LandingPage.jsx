@@ -2000,7 +2000,6 @@ const PortalSection = () => {
                         );
                     })}
                 </div>
-            </div>
         </section>
     );
 };

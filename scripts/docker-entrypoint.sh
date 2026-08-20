@@ -39,7 +39,15 @@ print(asyncio.run(check()))
 # ─── Run Database Migration ───────────────────────────────
 run_migration() {
     echo "📦 Applying schema (SQL schema.sql)..."
-    python scripts/bootstrap_database.py
+    # Try root-level scripts first, then backend/scripts (Docker layout: backend/ -> /app/)
+    if [ -f "scripts/bootstrap_database.py" ]; then
+        python scripts/bootstrap_database.py
+    elif [ -f "backend/scripts/bootstrap_database.py" ]; then
+        python backend/scripts/bootstrap_database.py
+    else
+        echo "❌ bootstrap_database.py not found"
+        exit 1
+    fi
 
     echo "📦 Stamping Alembic head..."
     cd /app && alembic stamp head
