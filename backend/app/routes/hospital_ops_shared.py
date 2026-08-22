@@ -100,6 +100,9 @@ __all__ = [
     "SEED_VERSION",
     "UUID_HEX_RE",
     "UUID_CANON_RE",
+    # Re-exported from stdlib so sub-modules get them via `import *`
+    "datetime",
+    "timedelta",
     # Private helpers (included explicitly so sub-module `import *` works)
     "_as_object_id",
     "_normalize_hospital_id",
