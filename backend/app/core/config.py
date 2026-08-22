@@ -85,17 +85,23 @@ def get_settings() -> Settings:
 
 
 def validate_jwt_secret() -> None:
-    """Call at startup to fail hard if JWT secret is weak."""
+    """Call at startup to warn (dev) or fail hard (prod) if JWT secret is weak."""
     settings = get_settings()
     if settings.jwt_secret in _WEAK_JWT_SECRETS:
-        raise RuntimeError(
+        msg = (
             f"JWT_SECRET is set to a known weak value. "
             f"Set JWT_SECRET to a cryptographically random string "
             f"(e.g. 64 hex chars from `openssl rand -hex 32`). "
             f"Current value starts with: {settings.jwt_secret[:4]}***"
         )
-    if len(settings.jwt_secret) < 16:
-        raise RuntimeError(
+        if settings.app_env == "production":
+            raise RuntimeError(msg)
+        logger.warning(msg)
+    elif len(settings.jwt_secret) < 16:
+        msg = (
             f"JWT_SECRET is too short ({len(settings.jwt_secret)} chars). "
             f"Minimum recommended length is 32 characters."
         )
+        if settings.app_env == "production":
+            raise RuntimeError(msg)
+        logger.warning(msg)

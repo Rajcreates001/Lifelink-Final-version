@@ -9,7 +9,7 @@ from tests.utils.logger import log_test
 from tests.utils.result_writer import save_result
 
 
-BASE_URL = os.getenv("LIFELINK_BASE_URL", "http://localhost:3010")
+BASE_URL = os.getenv("LIFELINK_BASE_URL", "http://localhost:3001")
 RESULT_FILE = "performance_results.json"
 
 

@@ -18,4 +18,5 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:5000/ || exit 1
 
+# Default CMD — overridden by docker-compose command to include npm install
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5000"]
