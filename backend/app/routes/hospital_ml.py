@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Body, HTTPException
+from fastapi import APIRouter, Body, HTTPException, Depends
+from app.core.auth import get_current_user, AuthContext
 
 from app.core.celery_app import celery_app
 from app.services.ml_runner import run_ml_model
@@ -47,71 +48,99 @@ async def _run(command: str, payload: dict):
 
 
 @router.post("/triage")
-async def triage(payload: dict = Body(default_factory=dict)):
+async def triage(payload: dict = Body(default_factory=dict),
+    ctx: AuthContext = Depends(get_current_user)
+):
     return await _run("predict_hosp_severity", payload)
 
 
 @router.post("/eta")
-async def eta(payload: dict = Body(default_factory=dict)):
+async def eta(payload: dict = Body(default_factory=dict),
+    ctx: AuthContext = Depends(get_current_user)
+):
     return await _run("predict_eta", payload)
 
 
 @router.post("/bed_forecast")
-async def bed_forecast(payload: dict = Body(default_factory=dict)):
+async def bed_forecast(payload: dict = Body(default_factory=dict),
+    ctx: AuthContext = Depends(get_current_user)
+):
     body = {**payload, "hospital_id": 1}
     return await _run("predict_bed_forecast", body)
 
 
 @router.post("/staff")
-async def staff(payload: dict = Body(default_factory=dict)):
+async def staff(payload: dict = Body(default_factory=dict),
+    ctx: AuthContext = Depends(get_current_user)
+):
     return await _run("predict_staff_alloc", payload)
 
 
 @router.post("/donors")
-async def donors(payload: dict = Body(default_factory=dict)):
+async def donors(payload: dict = Body(default_factory=dict),
+    ctx: AuthContext = Depends(get_current_user)
+):
     return await _run("predict_compat", payload)
 
 
 @router.post("/performance")
-async def performance(payload: dict = Body(default_factory=dict)):
+async def performance(payload: dict = Body(default_factory=dict),
+    ctx: AuthContext = Depends(get_current_user)
+):
     return await _run("predict_hosp_perf", payload)
 
 
 @router.post("/predict_eta")
-async def predict_eta(payload: dict = Body(default_factory=dict)):
+async def predict_eta(payload: dict = Body(default_factory=dict),
+    ctx: AuthContext = Depends(get_current_user)
+):
     return await _run("predict_eta", payload)
 
 
 @router.post("/predict_bed_forecast")
-async def predict_bed_forecast(payload: dict = Body(default_factory=dict)):
+async def predict_bed_forecast(payload: dict = Body(default_factory=dict),
+    ctx: AuthContext = Depends(get_current_user)
+):
     return await _run("predict_bed_forecast", payload)
 
 
 @router.post("/predict_staff_allocation")
-async def predict_staff_allocation(payload: dict = Body(default_factory=dict)):
+async def predict_staff_allocation(payload: dict = Body(default_factory=dict),
+    ctx: AuthContext = Depends(get_current_user)
+):
     return await _run("predict_staff_alloc", payload)
 
 
 @router.post("/predict_disease_forecast")
-async def predict_disease_forecast(payload: dict = Body(default_factory=dict)):
+async def predict_disease_forecast(payload: dict = Body(default_factory=dict),
+    ctx: AuthContext = Depends(get_current_user)
+):
     return await _run("predict_hosp_disease", payload)
 
 
 @router.post("/predict_recovery")
-async def predict_recovery(payload: dict = Body(default_factory=dict)):
+async def predict_recovery(payload: dict = Body(default_factory=dict),
+    ctx: AuthContext = Depends(get_current_user)
+):
     return await _run("predict_recovery", payload)
 
 
 @router.post("/predict_stay_duration")
-async def predict_stay_duration(payload: dict = Body(default_factory=dict)):
+async def predict_stay_duration(payload: dict = Body(default_factory=dict),
+    ctx: AuthContext = Depends(get_current_user)
+):
     return await _run("predict_stay", payload)
 
 
 @router.post("/predict_performance")
-async def predict_performance(payload: dict = Body(default_factory=dict)):
+async def predict_performance(payload: dict = Body(default_factory=dict),
+    ctx: AuthContext = Depends(get_current_user)
+):
     return await _run("predict_hosp_perf", payload)
 
 
 @router.post("/inventory")
-async def inventory(payload: dict = Body(default_factory=dict)):
+async def inventory(payload: dict = Body(default_factory=dict),
+    ctx: AuthContext = Depends(get_current_user)
+):
     return await _run("predict_inventory", payload)

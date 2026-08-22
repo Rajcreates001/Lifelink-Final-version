@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Body, HTTPException, Query
+from fastapi import APIRouter, Body, HTTPException, Query, Depends
+from app.core.auth import get_current_user, AuthContext
 from fastapi.responses import PlainTextResponse
 
 from app.db.mongo import get_db
@@ -37,7 +38,7 @@ from app.services.collections import (
     RADIOLOGY_REPORTS,
     RADIOLOGY_REQUESTS,
     RESOURCES,
-    VENDOR_LEAD_TIMES,
+    VENDOR_LEAD_TIMES
 )
 from app.core.celery_app import celery_app
 from app.services.prediction_store import get_latest_prediction
@@ -49,7 +50,9 @@ router = APIRouter(tags=["hospital-ops"])
 
 
 @router.get("/reports")
-async def list_reports(hospitalId: str = Query(...)):
+async def list_reports(hospitalId: str = Query(...),
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     await _ensure_seeded(db, hospitalId)
     hospital_oid = _require_hospital_id(hospitalId)
@@ -84,6 +87,7 @@ async def list_ingested_reports(
     status: str | None = Query(None),
     sort_by: str | None = Query(None),
     sort_dir: str | None = Query(None),
+    ctx: AuthContext = Depends(get_current_user)
 ):
     db = get_db()
     await _ensure_seeded(db, hospitalId)
@@ -103,7 +107,9 @@ async def list_ingested_reports(
 
 
 @router.post("/reports/ingest", status_code=201)
-async def ingest_report(payload: ReportIngestCreate):
+async def ingest_report(payload: ReportIngestCreate,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     hospital_oid = _require_hospital_id(payload.hospitalId)
     repo = MongoRepository(db, HOSPITAL_REPORTS)
@@ -127,7 +133,9 @@ async def ingest_report(payload: ReportIngestCreate):
 
 
 @router.post("/reports/generate")
-async def generate_report(payload: HospitalReportGenerate):
+async def generate_report(payload: HospitalReportGenerate,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     hospital_oid = _require_hospital_id(payload.hospitalId)
     template = next((t for t in _report_templates() if t["key"] == payload.reportKey), None)
@@ -159,7 +167,9 @@ async def generate_report(payload: HospitalReportGenerate):
 
 
 @router.get("/reports/{report_id}/download")
-async def download_report(report_id: str):
+async def download_report(report_id: str,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, HOSPITAL_REPORTS)
     oid = _as_object_id(report_id)
@@ -174,7 +184,9 @@ async def download_report(report_id: str):
 
 
 @router.get("/reports/{report_id}/summary")
-async def report_summary(report_id: str):
+async def report_summary(report_id: str,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, HOSPITAL_REPORTS)
     oid = _as_object_id(report_id)

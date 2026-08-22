@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Body, HTTPException, Query
+from fastapi import APIRouter, Body, HTTPException, Query, Depends
+from app.core.auth import get_current_user, AuthContext
 from fastapi.responses import PlainTextResponse
 
 from app.db.mongo import get_db
@@ -37,7 +38,7 @@ from app.services.collections import (
     RADIOLOGY_REPORTS,
     RADIOLOGY_REQUESTS,
     RESOURCES,
-    VENDOR_LEAD_TIMES,
+    VENDOR_LEAD_TIMES
 )
 from app.core.celery_app import celery_app
 from app.services.prediction_store import get_latest_prediction
@@ -49,7 +50,9 @@ router = APIRouter(tags=["hospital-ops"])
 
 
 @router.get("/ceo/global-metrics")
-async def ceo_global_metrics(hospitalId: str = Query(...)):
+async def ceo_global_metrics(hospitalId: str = Query(...),
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     await _ensure_seeded(db, hospitalId)
     hospital_oid = _require_hospital_id(hospitalId)
@@ -114,9 +117,8 @@ async def ceo_global_metrics(hospitalId: str = Query(...)):
             "disease_case_count": len(patients),
             "current_bed_occupancy": beds["occupied"],
             "hospital_id": 1,
-        },
+        }
     )
-
     anomalies = []
     if beds["total"] and beds["occupied"] / max(1, beds["total"]) > 0.9:
         anomalies.append("Bed occupancy above 90%")
@@ -199,7 +201,9 @@ async def ceo_global_metrics(hospitalId: str = Query(...)):
 
 
 @router.post("/ceo/benchmarks", status_code=201)
-async def create_benchmark(payload: BenchmarkCreate):
+async def create_benchmark(payload: BenchmarkCreate,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, HOSPITAL_BENCHMARKS)
     doc = {
@@ -219,6 +223,7 @@ async def list_benchmarks(
     search: str | None = Query(None),
     sort_by: str | None = Query(None),
     sort_dir: str | None = Query(None),
+    ctx: AuthContext = Depends(get_current_user)
 ):
     db = get_db()
     repo = MongoRepository(db, HOSPITAL_BENCHMARKS)
@@ -232,7 +237,9 @@ async def list_benchmarks(
 
 
 @router.get("/ceo/ai-insights")
-async def ceo_ai_insights(hospitalId: str = Query(...)):
+async def ceo_ai_insights(hospitalId: str = Query(...),
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     await _ensure_seeded(db, hospitalId)
     hospital_oid = _require_hospital_id(hospitalId)
@@ -267,7 +274,7 @@ async def ceo_ai_insights(hospitalId: str = Query(...)):
             "disease_case_count": len(patients),
             "current_bed_occupancy": max(1, len(patients)),
             "hospital_id": 1,
-        },
+        }
     )
     forecast_meta = forecast.get("meta") if isinstance(forecast, dict) else None
 
@@ -305,9 +312,8 @@ async def ceo_ai_insights(hospitalId: str = Query(...)):
         ],
         forecast_meta.get("references") if isinstance(forecast_meta, dict) else [
             {"title": "Model", "detail": "ml/bed_forecast_model.joblib"},
-        ],
+        ]
     )
-
     return {
         "predicted_inflow": forecast.get("predicted_bed_demand") if isinstance(forecast, dict) else None,
         "overloaded_departments": overloaded,
@@ -324,7 +330,9 @@ async def ceo_ai_insights(hospitalId: str = Query(...)):
 
 
 @router.post("/ceo/ai-insights/simulate")
-async def ceo_ai_insights_simulate(payload: dict = Body(default_factory=dict)):
+async def ceo_ai_insights_simulate(payload: dict = Body(default_factory=dict),
+    ctx: AuthContext = Depends(get_current_user)
+):
     hospital_id = payload.get("hospitalId")
     if not hospital_id:
         raise HTTPException(status_code=400, detail="hospitalId is required")
@@ -363,9 +371,8 @@ async def ceo_ai_insights_simulate(payload: dict = Body(default_factory=dict)):
             "Simulation adjusts emergency load, staff availability, and discharges.",
             "Outputs estimate operational strain under the provided scenario.",
         ],
-        [{"title": "Scenario", "detail": "CEO AI insights simulation"}],
+        [{"title": "Scenario", "detail": "CEO AI insights simulation"}]
     )
-
     return {
         "predicted_inflow": predicted_inflow,
         "overloaded_departments": ["Emergency"] if active_emergencies > 6 else [],
@@ -380,7 +387,9 @@ async def ceo_ai_insights_simulate(payload: dict = Body(default_factory=dict)):
 
 
 @router.get("/ceo/department-performance")
-async def ceo_department_performance(hospitalId: str = Query(...)):
+async def ceo_department_performance(hospitalId: str = Query(...),
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     await _ensure_seeded(db, hospitalId)
     hospital_oid = _require_hospital_id(hospitalId)
@@ -441,7 +450,9 @@ async def ceo_department_performance(hospitalId: str = Query(...)):
 
 
 @router.post("/ceo/department-performance/logs", status_code=201)
-async def create_department_log(payload: DepartmentLogCreate):
+async def create_department_log(payload: DepartmentLogCreate,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, DEPARTMENT_LOGS)
     hospital_oid = _require_hospital_id(payload.hospitalId)
@@ -463,7 +474,9 @@ async def create_department_log(payload: DepartmentLogCreate):
 
 
 @router.get("/ceo/resources")
-async def ceo_resource_overview(hospitalId: str = Query(...)):
+async def ceo_resource_overview(hospitalId: str = Query(...),
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     await _ensure_seeded(db, hospitalId)
     hospital_oid = _require_hospital_id(hospitalId)
@@ -517,7 +530,9 @@ async def ceo_resource_overview(hospitalId: str = Query(...)):
 
 
 @router.post("/ceo/resources/vendors", status_code=201)
-async def create_vendor_lead_time(payload: VendorLeadTimeCreate):
+async def create_vendor_lead_time(payload: VendorLeadTimeCreate,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, VENDOR_LEAD_TIMES)
     hospital_oid = _require_hospital_id(payload.hospitalId)
@@ -535,7 +550,9 @@ async def create_vendor_lead_time(payload: VendorLeadTimeCreate):
 
 
 @router.get("/ceo/beds/forecast")
-async def ceo_bed_forecast(hospitalId: str = Query(...)):
+async def ceo_bed_forecast(hospitalId: str = Query(...),
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     await _ensure_seeded(db, hospitalId)
     hospital_oid = _require_hospital_id(hospitalId)
@@ -568,9 +585,8 @@ async def ceo_bed_forecast(hospitalId: str = Query(...)):
             "disease_case_count": len(patients),
             "current_bed_occupancy": len(patients),
             "hospital_id": 1,
-        },
+        }
     )
-
     return {
         "expectedDischarges24h": discharge_candidates,
         "allocationCount": len(allocations),
@@ -580,7 +596,9 @@ async def ceo_bed_forecast(hospitalId: str = Query(...)):
 
 
 @router.get("/ceo/ambulance/coordination")
-async def ceo_ambulance_coordination(hospitalId: str = Query(...)):
+async def ceo_ambulance_coordination(hospitalId: str = Query(...),
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     assignment_repo = MongoRepository(db, AMBULANCE_ASSIGNMENTS)
     ambulance_repo = MongoRepository(db, AMBULANCES)

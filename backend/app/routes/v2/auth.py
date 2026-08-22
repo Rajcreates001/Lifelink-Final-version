@@ -19,7 +19,7 @@ async def list_portals(service: AuthService = Depends(get_auth_service)) -> dict
 async def signup(
     payload: PortalSignupRequest,
     service: AuthService = Depends(get_auth_service),
-    _: None = Depends(rate_limit_signup.dependency()),
+    _: None = Depends(rate_limit_signup.dependency())
 ) -> dict:
     return await service.signup(payload)
 
@@ -28,7 +28,7 @@ async def signup(
 async def login(
     payload: PortalLoginRequest,
     service: AuthService = Depends(get_auth_service),
-    _: None = Depends(rate_limit_login.dependency()),
+    _: None = Depends(rate_limit_login.dependency())
 ) -> dict:
     return await service.login(payload)
 
@@ -38,7 +38,7 @@ async def select_role(
     payload: dict,
     ctx: AuthContext = Depends(get_current_user),
     service: AuthService = Depends(get_auth_service),
-    _: None = Depends(rate_limit_auth.dependency()),
+    _: None = Depends(rate_limit_auth.dependency())
 ) -> dict:
     sub_role = payload.get("subRole")
     if not sub_role:

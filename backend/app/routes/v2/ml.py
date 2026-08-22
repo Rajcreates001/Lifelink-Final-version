@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 from bson import ObjectId
@@ -33,10 +34,8 @@ from app.services.medical_knowledge import (
     classify_severity as _classify_severity,
     compute_risk_score as _compute_risk_score,
     estimate_confidence as _est_conf,
-    validate_health_payload as _validate_payload,
+    validate_health_payload as _validate_payload
 )
-
-
 def _fast_health_risk(payload: dict) -> dict:
     # Use medical_knowledge compute_risk_score for evidence-based, transparent scoring
 
@@ -44,13 +43,13 @@ def _fast_health_risk(payload: dict) -> dict:
     try:
         age_val = int(float(str(payload.get("age", 0)))) if payload.get("age") else None
     except (TypeError, ValueError):
-        pass
+        logger.debug("Suppressed (TypeError, ValueError) in %s", __name__)
 
     bmi_val = None
     try:
         bmi_val = float(str(payload.get("bmi", 0))) if payload.get("bmi") else None
     except (TypeError, ValueError):
-        pass
+        logger.debug("Suppressed (TypeError, ValueError) in %s", __name__)
 
     bp_val = None
     bp_raw = payload.get("blood_pressure")
@@ -62,7 +61,7 @@ def _fast_health_risk(payload: dict) -> dict:
             else:
                 bp_val = int(float(bp_str))
         except (TypeError, ValueError):
-            pass
+            logger.debug("Suppressed (TypeError, ValueError) in %s", __name__)
 
     hr_val = None
     hr_raw = payload.get("heart_rate")
@@ -70,7 +69,7 @@ def _fast_health_risk(payload: dict) -> dict:
         try:
             hr_val = int(float(str(hr_raw)))
         except (TypeError, ValueError):
-            pass
+            logger.debug("Suppressed (TypeError, ValueError) in %s", __name__)
 
     oxygen_val = None
     o2_raw = payload.get("oxygen")
@@ -78,7 +77,7 @@ def _fast_health_risk(payload: dict) -> dict:
         try:
             oxygen_val = int(float(str(o2_raw)))
         except (TypeError, ValueError):
-            pass
+            logger.debug("Suppressed (TypeError, ValueError) in %s", __name__)
 
     has_condition = payload.get("has_condition") in {"1", 1, True}
     lifestyle = payload.get("lifestyle_factor") or payload.get("lifestyle")
@@ -90,9 +89,8 @@ def _fast_health_risk(payload: dict) -> dict:
         heart_rate=hr_val,
         oxygen=oxygen_val,
         has_condition=has_condition,
-        lifestyle=lifestyle,
+        lifestyle=lifestyle
     )
-
     risk_level = result.get("risk_level", "Low")
     risk_score = result.get("risk_score", 0) or 50
 
@@ -130,9 +128,8 @@ def _fast_health_risk(payload: dict) -> dict:
             "oxygen": o2_raw is not None,
         },
         model_confidence=None,
-        critical_inputs=["age", "blood_pressure"],
+        critical_inputs=["age", "blood_pressure"]
     )
-
     return {
         "risk_level": risk_level,
         "risk_score": risk_score,
@@ -263,9 +260,8 @@ async def health_risk(payload: dict = Body(default_factory=dict), ctx: AuthConte
             detail={
                 "error": "Input validation failed: impossible values detected.",
                 "warnings": hard_reject,
-            },
+            }
         )
-
     # Build clean payload from validated values, preserving unhandled fields
     clean_payload = {}
     for k in ["age", "bmi", "blood_pressure_systolic", "blood_pressure_diastolic", "heart_rate", "lifestyle"]:
@@ -391,7 +387,7 @@ async def eta_prediction(
     payload: dict = Body(default_factory=dict),
     ctx: AuthContext = Depends(require_scopes("routes:read")),
     routing: RoutingService = Depends(get_routing_service),
-    weather: WeatherService = Depends(get_weather_service),
+    weather: WeatherService = Depends(get_weather_service)
 ):
     distance_km = payload.get("distance_km")
     if distance_km is None and all(key in payload for key in ("start_lat", "start_lng", "end_lat", "end_lng")):
@@ -400,7 +396,7 @@ async def eta_prediction(
             float(payload["start_lng"]),
             float(payload["end_lat"]),
             float(payload["end_lng"]),
-            include_geometry=False,
+            include_geometry=False
         )
         distance_km = (route.get("distance_meters") or 0) / 1000
     weather_now = None
@@ -432,7 +428,7 @@ async def eta_prediction_async(
     payload: dict = Body(default_factory=dict),
     ctx: AuthContext = Depends(require_scopes("routes:read")),
     routing: RoutingService = Depends(get_routing_service),
-    weather: WeatherService = Depends(get_weather_service),
+    weather: WeatherService = Depends(get_weather_service)
 ):
     distance_km = payload.get("distance_km")
     if distance_km is None and all(key in payload for key in ("start_lat", "start_lng", "end_lat", "end_lng")):
@@ -441,7 +437,7 @@ async def eta_prediction_async(
             float(payload["start_lng"]),
             float(payload["end_lat"]),
             float(payload["end_lng"]),
-            include_geometry=False,
+            include_geometry=False
         )
         distance_km = (route.get("distance_meters") or 0) / 1000
     weather_now = None

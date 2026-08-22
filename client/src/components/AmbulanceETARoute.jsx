@@ -403,7 +403,6 @@ const AmbulanceETARoute = ({ currentHospitalId, currentHospitalName, hospitalLoc
 
             if (nearest) {
                 setAutoSelectedAmbulance(nearest);
-                console.log(`Selected nearest ambulance: ${nearest.ambulanceId} (${minDistance.toFixed(2)}km away)`);
             } else {
                 setError('No valid ambulances found with location data');
             }

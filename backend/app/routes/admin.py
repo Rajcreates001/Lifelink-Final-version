@@ -1,8 +1,9 @@
 from bson import ObjectId
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.db.mongo import get_db
+from app.core.auth import get_current_user, AuthContext
 from app.services.collections import USERS
 from app.services.repository import MongoRepository
 
@@ -21,7 +22,7 @@ def _as_object_id(value: str) -> ObjectId:
 
 
 @router.post("/users/verify")
-async def verify_hospital(payload: VerifyHospitalRequest):
+async def verify_hospital(payload: VerifyHospitalRequest, ctx: AuthContext = Depends(get_current_user)):
     db = get_db()
     user_repo = MongoRepository(db, USERS)
 
@@ -29,9 +30,8 @@ async def verify_hospital(payload: VerifyHospitalRequest):
     updated = await user_repo.update_one(
         {"_id": oid},
         {"$set": {"isVerified": True}},
-        return_new=True,
+        return_new=True
     )
-
     if not updated:
         raise HTTPException(status_code=404, detail="Hospital user not found")
 

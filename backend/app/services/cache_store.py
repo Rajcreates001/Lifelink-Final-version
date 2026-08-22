@@ -6,6 +6,8 @@ from typing import Any
 
 import redis
 
+logger = logging.getLogger(__name__)
+
 
 class CacheStore:
     def __init__(self, redis_url: str, namespace: str) -> None:
@@ -33,7 +35,7 @@ class CacheStore:
                 if cached:
                     return json.loads(cached)
             except Exception:
-                pass
+                logger.debug("Suppressed Exception in %s", __name__)
 
         entry = self._memory_cache.get(namespaced)
         if not entry:
@@ -50,5 +52,5 @@ class CacheStore:
                 self._redis.setex(namespaced, ttl, json.dumps(value))
                 return
             except Exception:
-                pass
+                logger.debug("Suppressed Exception in %s", __name__)
         self._memory_cache[namespaced] = {"value": value, "expires_at": time.time() + ttl}

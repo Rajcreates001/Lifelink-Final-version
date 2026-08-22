@@ -26,6 +26,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+logger = logging.getLogger(__name__)
+
 # ═══════════════════════════════════════════════════════════════════
 # CLINICAL REFERENCE RANGES
 # ═══════════════════════════════════════════════════════════════════
@@ -363,7 +365,7 @@ def validate_blood_pressure(systolic: Any, diastolic: Any | None = None) -> tupl
                 sys_val = int(float(parts[0].strip()))
                 dia_val = int(float(parts[1].strip()))
             except (TypeError, ValueError):
-                pass
+                logger.debug("Suppressed (TypeError, ValueError) in %s", __name__)
             return validate_blood_pressure(sys_val, dia_val)
 
     if systolic is not None:
@@ -413,12 +415,12 @@ def validate_blood_pressure(systolic: Any, diastolic: Any | None = None) -> tupl
         try:
             sys_val = int(float(str(systolic)))
         except (TypeError, ValueError):
-            pass
+            logger.debug("Suppressed (TypeError, ValueError) in %s", __name__)
     if dia_val is None and diastolic is not None:
         try:
             dia_val = int(float(str(diastolic)))
         except (TypeError, ValueError):
-            pass
+            logger.debug("Suppressed (TypeError, ValueError) in %s", __name__)
 
     return sys_val, dia_val
 
@@ -751,7 +753,7 @@ def assess_vitals(
             if result.get("critical"):
                 critical_count += 1
         except (TypeError, ValueError):
-            pass
+            logger.debug("Suppressed (TypeError, ValueError) in %s", __name__)
 
     # BMI
     validated_bmi = validate_bmi(bmi)
@@ -788,7 +790,7 @@ def assess_vitals(
             if result.get("critical"):
                 critical_count += 1
         except (TypeError, ValueError):
-            pass
+            logger.debug("Suppressed (TypeError, ValueError) in %s", __name__)
 
     # Overall status
     if critical_count > 0:
@@ -1467,7 +1469,7 @@ def validate_health_payload(payload: dict[str, Any]) -> dict[str, Any]:
         try:
             parsed_bp_sys, _ = validate_blood_pressure(payload["blood_pressure"])
         except MedicalValidationError:
-            pass
+            logger.debug("Suppressed MedicalValidationError in %s", __name__)
 
     # Check for impossible combinations
     if (validated.get("blood_pressure_systolic") is not None

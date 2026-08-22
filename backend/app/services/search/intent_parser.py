@@ -11,6 +11,8 @@ ambiguous or complex queries.
 
 from __future__ import annotations
 
+import logging
+
 import re
 from typing import Any
 
@@ -141,7 +143,7 @@ def _extract_age(text: str) -> int | None:
                 if 0 < age < 130:
                     return age
             except (ValueError, IndexError):
-                pass
+                logger.debug("Suppressed (ValueError, IndexError) in %s", __name__)
     return None
 
 

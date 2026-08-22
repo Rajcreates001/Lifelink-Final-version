@@ -56,7 +56,7 @@ async def verify_ambulance(user_id: str, ctx: AuthContext = Depends(require_role
 @router.get("/modules")
 async def list_modules(
     ctx: AuthContext = Depends(require_roles("government")),
-    service: GovernmentService = Depends(get_government_service),
+    service: GovernmentService = Depends(get_government_service)
 ) -> dict:
     return service.list_modules(ctx.sub_role)
 
@@ -65,6 +65,6 @@ async def list_modules(
 async def get_module(
     module_key: str,
     ctx: AuthContext = Depends(require_roles("government")),
-    service: GovernmentService = Depends(get_government_service),
+    service: GovernmentService = Depends(get_government_service)
 ) -> dict:
     return service.get_module(ctx.sub_role, module_key)

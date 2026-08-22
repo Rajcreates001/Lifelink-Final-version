@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Body, HTTPException, Query
+from fastapi import APIRouter, Body, HTTPException, Query, Depends
+from app.core.auth import get_current_user, AuthContext
 from fastapi.responses import PlainTextResponse
 
 from app.db.mongo import get_db
@@ -37,7 +38,7 @@ from app.services.collections import (
     RADIOLOGY_REPORTS,
     RADIOLOGY_REQUESTS,
     RESOURCES,
-    VENDOR_LEAD_TIMES,
+    VENDOR_LEAD_TIMES
 )
 from app.core.celery_app import celery_app
 from app.services.prediction_store import get_latest_prediction
@@ -55,6 +56,7 @@ async def list_icu_patients(
     status: str | None = Query(None),
     sort_by: str | None = Query(None),
     sort_dir: str | None = Query(None),
+    ctx: AuthContext = Depends(get_current_user)
 ):
     db = get_db()
     await _ensure_seeded(db, hospitalId)
@@ -70,14 +72,16 @@ async def list_icu_patients(
         sort_by,
         sort_dir,
         {"createdAt", "updatedAt", "name", "oxygen", "heartRate", "status"},
-        "createdAt",
+        "createdAt"
     )
     records = await repo.find_many(query, sort=sort, limit=200)
     return {"count": len(records), "data": records}
 
 
 @router.post("/icu/patients", status_code=201)
-async def create_icu_patient(payload: IcuPatientCreate):
+async def create_icu_patient(payload: IcuPatientCreate,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, ICU_PATIENTS)
     oid = _require_hospital_id(payload.hospitalId)
@@ -96,7 +100,9 @@ async def create_icu_patient(payload: IcuPatientCreate):
 
 
 @router.patch("/icu/patients/{patient_id}")
-async def update_icu_patient(patient_id: str, payload: IcuPatientUpdate):
+async def update_icu_patient(patient_id: str, payload: IcuPatientUpdate,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, ICU_PATIENTS)
     oid = _as_object_id(patient_id)
@@ -115,6 +121,7 @@ async def list_icu_alerts(
     severity: str | None = Query(None),
     sort_by: str | None = Query(None),
     sort_dir: str | None = Query(None),
+    ctx: AuthContext = Depends(get_current_user)
 ):
     db = get_db()
     await _ensure_seeded(db, hospitalId)
@@ -134,7 +141,9 @@ async def list_icu_alerts(
 
 
 @router.post("/icu/alerts", status_code=201)
-async def create_icu_alert(payload: IcuAlertCreate):
+async def create_icu_alert(payload: IcuAlertCreate,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, ICU_ALERTS)
     oid = _require_hospital_id(payload.hospitalId)
@@ -151,7 +160,9 @@ async def create_icu_alert(payload: IcuAlertCreate):
 
 
 @router.patch("/icu/alerts/{alert_id}")
-async def update_icu_alert(alert_id: str, payload: IcuAlertUpdate):
+async def update_icu_alert(alert_id: str, payload: IcuAlertUpdate,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, ICU_ALERTS)
     oid = _as_object_id(alert_id)
@@ -163,7 +174,9 @@ async def update_icu_alert(alert_id: str, payload: IcuAlertUpdate):
 
 
 @router.get("/icu/vitals")
-async def icu_vitals(hospitalId: str = Query(...)):
+async def icu_vitals(hospitalId: str = Query(...),
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     await _ensure_seeded(db, hospitalId)
     repo = MongoRepository(db, ICU_PATIENTS)
@@ -205,7 +218,9 @@ async def icu_vitals(hospitalId: str = Query(...)):
 
 
 @router.post("/icu/risk")
-async def icu_risk(payload: dict = Body(default_factory=dict)):
+async def icu_risk(payload: dict = Body(default_factory=dict),
+    ctx: AuthContext = Depends(get_current_user)
+):
     oxygen = int(payload.get("oxygen") or 0)
     heart_rate = int(payload.get("heartRate") or 0)
     risk = 0
@@ -227,7 +242,7 @@ async def icu_risk(payload: dict = Body(default_factory=dict)):
             "Risk computed from oxygen saturation and heart rate thresholds.",
             "Higher risk escalates when oxygen drops or heart rate spikes.",
         ],
-        [{"title": "Rule set", "detail": "ICU triage thresholds"}],
+        [{"title": "Rule set", "detail": "ICU triage thresholds"}]
     )
     return {
         "riskScore": risk,

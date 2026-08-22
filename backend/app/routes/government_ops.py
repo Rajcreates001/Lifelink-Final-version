@@ -3,17 +3,18 @@ from datetime import datetime
 from typing import Any
 
 from bson import ObjectId
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from app.db.mongo import get_db
+from app.core.auth import get_current_user, AuthContext
 from app.services.collections import (
     ALERTS,
     AMBULANCES,
     GOVERNMENT_COMPLIANCE,
     GOVERNMENT_REPORTS,
     HOSPITALS,
-    USERS,
+    USERS
 )
 from app.services.repository import MongoRepository
 
@@ -89,6 +90,7 @@ async def list_hospitals(
     search: str | None = Query(None),
     sort_by: str | None = Query(None),
     sort_dir: str | None = Query(None),
+    ctx: AuthContext = Depends(get_current_user)
 ):
     db = get_db()
     hospital_repo = MongoRepository(db, HOSPITALS)
@@ -150,6 +152,7 @@ async def list_emergencies(
     severity: str | None = Query(None),
     sort_by: str | None = Query(None),
     sort_dir: str | None = Query(None),
+    ctx: AuthContext = Depends(get_current_user)
 ):
     db = get_db()
     repo = MongoRepository(db, ALERTS)
@@ -172,6 +175,7 @@ async def list_ambulances(
     status: str | None = Query(None),
     sort_by: str | None = Query(None),
     sort_dir: str | None = Query(None),
+    ctx: AuthContext = Depends(get_current_user)
 ):
     db = get_db()
     repo = MongoRepository(db, AMBULANCES)
@@ -192,7 +196,7 @@ async def list_ambulances(
             "metrics": 1,
             "activeRoute": 1,
         },
-        sort=sort,
+        sort=sort
     )
     return {"count": len(docs), "data": docs}
 
@@ -204,6 +208,7 @@ async def list_reports(
     status: str | None = Query(None),
     sort_by: str | None = Query(None),
     sort_dir: str | None = Query(None),
+    ctx: AuthContext = Depends(get_current_user)
 ):
     db = get_db()
     repo = MongoRepository(db, GOVERNMENT_REPORTS)
@@ -221,7 +226,7 @@ async def list_reports(
 
 
 @router.post("/reports", status_code=201)
-async def create_report(payload: GovernmentReportCreate):
+async def create_report(payload: GovernmentReportCreate, ctx: AuthContext = Depends(get_current_user)):
     db = get_db()
     repo = MongoRepository(db, GOVERNMENT_REPORTS)
 
@@ -245,6 +250,7 @@ async def list_compliance(
     owner: str | None = Query(None),
     sort_by: str | None = Query(None),
     sort_dir: str | None = Query(None),
+    ctx: AuthContext = Depends(get_current_user)
 ):
     db = get_db()
     repo = MongoRepository(db, GOVERNMENT_COMPLIANCE)
@@ -262,7 +268,7 @@ async def list_compliance(
 
 
 @router.post("/compliance", status_code=201)
-async def create_compliance(payload: GovernmentComplianceCreate):
+async def create_compliance(payload: GovernmentComplianceCreate, ctx: AuthContext = Depends(get_current_user)):
     db = get_db()
     repo = MongoRepository(db, GOVERNMENT_COMPLIANCE)
 
@@ -280,7 +286,7 @@ async def create_compliance(payload: GovernmentComplianceCreate):
 
 
 @router.patch("/compliance/{item_id}")
-async def update_compliance(item_id: str, payload: GovernmentComplianceUpdate):
+async def update_compliance(item_id: str, payload: GovernmentComplianceUpdate, ctx: AuthContext = Depends(get_current_user)):
     db = get_db()
     repo = MongoRepository(db, GOVERNMENT_COMPLIANCE)
 

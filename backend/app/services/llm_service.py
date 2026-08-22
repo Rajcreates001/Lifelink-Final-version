@@ -124,7 +124,11 @@ def generate_response(prompt: str, system_prompt: str | None = None, mode: str =
                 "OPENAI_API_KEY is not configured. Set it in the backend environment or switch LLM_PROVIDER to groq."
             )
         model = settings.openai_model or "qwen3.6-27b"
-        base_url = settings.openai_base_url or "http://144.79.62.242:8000/v1"
+        base_url = settings.openai_base_url
+        if not base_url:
+            raise RuntimeError(
+                "OPENAI_BASE_URL is not configured. Set it in the backend environment."
+            )
         cache_key = _make_cache_key(messages, model, effective_mode)
         cache = CacheStore(settings.redis_url, namespace="llm")
         try:

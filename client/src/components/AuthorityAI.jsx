@@ -37,7 +37,6 @@ const AuthorityAI = () => {
                 console.error(`API Error [${endpoint}]: Status ${status}`);
                 throw new Error(`API Error: ${status}`);
             }
-            console.log(`API Success [${endpoint}]:`, data);
             
             if (data.error) {
                 throw new Error(data.error);

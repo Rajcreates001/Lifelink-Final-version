@@ -129,11 +129,7 @@ export function useWebSocket(channel, options = {}) {
           reconnectAttemptRef.current += 1;
           const delay = calculateBackoff(reconnectAttemptRef.current);
           const maxAttempts = MAX_RECONNECT_ATTEMPTS;
-          console.log(
-            `[WS] Disconnected (code=${event.code}). ` +
-            `Reconnecting in ${delay}ms ` +
-            `(attempt ${reconnectAttemptRef.current}/${maxAttempts})`
-          );
+
           reconnectTimerRef.current = setTimeout(connect, delay);
         } else {
           console.error(`[WS] Max reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Giving up.`);

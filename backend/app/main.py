@@ -9,7 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.core.config import get_settings
+from app.core.config import get_settings, validate_jwt_secret
 from app.db.mongo import close_mongo_connection, connect_to_mongo
 from app.db.asyncpg_pool import close_asyncpg, connect_asyncpg
 from app.routes.admin import router as admin_router
@@ -88,6 +88,7 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    validate_jwt_secret()
     logger.info("Starting %s in %s mode", settings.app_name, settings.app_env)
     await connect_to_mongo()
     await connect_asyncpg()
@@ -177,9 +178,6 @@ app.include_router(lifelink_ai_v2_router, prefix="/v2")
 
 # Government Auth routes (enterprise-grade authentication for government organizations)
 app.include_router(government_auth_v2_router, prefix="/v2")
-
-
-@app.exception_handler(RequestValidationError)
 
 
 @app.exception_handler(RequestValidationError)

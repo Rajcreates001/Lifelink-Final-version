@@ -22,9 +22,8 @@ from app.services.llm_service import generate_response_async
 from app.services.simulation.emergency_model import (
     SCENARIOS,
     run_simulation,
-    run_comparative_simulation,
+    run_comparative_simulation
 )
-
 logger = logging.getLogger("lifelink.simulation.api")
 router = APIRouter(prefix="/government/simulation", tags=["Simulation"])
 

@@ -21,7 +21,7 @@ from app.services.ai_platform import (
     RetrievalIndex,
     SyntheticDataService,
     redact_payload,
-    scan_payload,
+    scan_payload
 )
 from app.services.ai_platform.insight_catalog import build_insights
 from app.services.cache_store import CacheStore
@@ -67,7 +67,7 @@ from app.services.collections import (
     EMERGENCY_EVENTS,
     HOSPITAL_BENCHMARKS,
     HOSPITAL_NETWORK_AGREEMENTS,
-    VENDOR_LEAD_TIMES,
+    VENDOR_LEAD_TIMES
 )
 from app.services.repository import MongoRepository
 from app.core.celery_app import celery_app
@@ -135,7 +135,7 @@ async def insights(
     role: str = Query("public"),
     module_key: str = Query("overview"),
     sub_role: str | None = Query(None),
-    ctx: AuthContext = Depends(require_scopes("dashboard:read")),
+    ctx: AuthContext = Depends(require_scopes("dashboard:read"))
 ) -> dict:
     settings = get_settings()
     cache = CacheStore(settings.redis_url, namespace="ai:insights")
@@ -146,7 +146,7 @@ async def insights(
             "module_key": module_key,
             "sub_role": sub_role,
             "user_id": ctx.user_id,
-        },
+        }
     )
     cached = cache.get(cache_key)
     if cached:
@@ -419,7 +419,7 @@ async def _module_data_summary(
     role: str,
     module_key: str,
     sub_role: str | None,
-    user_id: str,
+    user_id: str
 ) -> tuple[list[dict[str, Any]], list[str]]:
     db = get_db()
     summary: list[dict[str, Any]] = []
@@ -556,7 +556,7 @@ async def _module_data_summary(
                 agreements = await _count(
                     db,
                     HOSPITAL_NETWORK_AGREEMENTS,
-                    {"$or": [{"hospital": hospital_oid}, {"partner": hospital_oid}]},
+                    {"$or": [{"hospital": hospital_oid}, {"partner": hospital_oid}]}
                 )
             summary.extend([
                 {"label": "Network Messages", "value": messages, "source": HOSPITAL_MESSAGES},
@@ -726,7 +726,7 @@ async def _module_data_summary(
 @router.post("/events/publish")
 async def publish_event(
     payload: PublishEvent,
-    ctx: AuthContext = Depends(require_scopes("dashboard:read")),
+    ctx: AuthContext = Depends(require_scopes("dashboard:read"))
 ) -> dict:
     settings = get_settings()
     stream = EventStream(settings.redis_url)
@@ -736,9 +736,8 @@ async def publish_event(
     realtime = get_realtime_service()
     await realtime.broadcast(
         "ai",
-        {"type": "ai_event", "stream": payload.stream, "payload": redacted},
+        {"type": "ai_event", "stream": payload.stream, "payload": redacted}
     )
-
     repo = MongoRepository(get_db(), AI_EVENTS)
     record = await repo.insert_one({
         "stream": payload.stream,
@@ -754,7 +753,7 @@ async def publish_event(
 @router.post("/infer")
 async def infer(
     payload: InferenceRequest,
-    ctx: AuthContext = Depends(require_scopes("ai:ask")),
+    ctx: AuthContext = Depends(require_scopes("ai:ask"))
 ) -> dict:
     model_map = {
         "health-risk": "predict_risk",
@@ -784,7 +783,7 @@ async def infer(
             "entity_type": payload.entity_type,
             "entity_id": payload.entity_id,
             "payload": merged_payload,
-        },
+        }
     )
     if payload.cache_ttl and payload.cache_ttl > 0:
         cached = cache.get(cache_key)
@@ -835,9 +834,8 @@ async def infer(
         quality_score=confidence,
         drift_score=drift_score,
         data_freshness_hours=data_freshness,
-        explanation_quality=0.8,
+        explanation_quality=0.8
     )
-
     if payload.cache_ttl and payload.cache_ttl > 0:
         cache.set(cache_key, response, ttl=payload.cache_ttl)
 
@@ -864,7 +862,7 @@ async def infer(
 async def infer_task(
     task_key: str,
     payload: TaskInferenceRequest,
-    ctx: AuthContext = Depends(require_scopes("ai:ask")),
+    ctx: AuthContext = Depends(require_scopes("ai:ask"))
 ) -> dict:
     settings = get_settings()
     cache = CacheStore(settings.redis_url, namespace="ai:tasks")
@@ -880,7 +878,7 @@ async def infer_task(
             "sub_role": sub_role,
             "module_key": module_key,
             "payload": task_payload,
-        },
+        }
     )
     if payload.cache_ttl and payload.cache_ttl > 0:
         cached = cache.get(cache_key)
@@ -921,9 +919,8 @@ async def infer_task(
         payload=task_payload,
         response=result,
         quality_score=confidence,
-        explanation_quality=0.75,
+        explanation_quality=0.75
     )
-
     if payload.cache_ttl and payload.cache_ttl > 0:
         cache.set(cache_key, response, ttl=payload.cache_ttl)
 
@@ -950,7 +947,7 @@ async def infer_task(
 async def read_events(
     stream: str,
     count: int = Query(50, ge=1, le=200),
-    ctx: AuthContext = Depends(require_scopes("dashboard:read")),
+    ctx: AuthContext = Depends(require_scopes("dashboard:read"))
 ) -> dict:
     settings = get_settings()
     reader = EventStream(settings.redis_url)
@@ -963,7 +960,7 @@ async def upsert_features(
     entity_type: str,
     entity_id: str,
     payload: dict = Body(default_factory=dict),
-    ctx: AuthContext = Depends(require_scopes("dashboard:read")),
+    ctx: AuthContext = Depends(require_scopes("dashboard:read"))
 ) -> dict:
     store = FeatureStore()
     data = await store.upsert(entity_type, entity_id, payload)
@@ -974,7 +971,7 @@ async def upsert_features(
 async def get_features(
     entity_type: str,
     entity_id: str,
-    ctx: AuthContext = Depends(require_scopes("dashboard:read")),
+    ctx: AuthContext = Depends(require_scopes("dashboard:read"))
 ) -> dict:
     store = FeatureStore()
     data = await store.get(entity_type, entity_id)
@@ -987,7 +984,7 @@ async def get_features(
 async def list_features(
     entity_type: str,
     limit: int = Query(100, ge=1, le=500),
-    ctx: AuthContext = Depends(require_scopes("dashboard:read")),
+    ctx: AuthContext = Depends(require_scopes("dashboard:read"))
 ) -> dict:
     store = FeatureStore()
     data = await store.list(entity_type, limit=limit)
@@ -997,7 +994,7 @@ async def list_features(
 @router.post("/registry")
 async def register_model(
     payload: RegisterModel,
-    ctx: AuthContext = Depends(require_scopes("ai:ask")),
+    ctx: AuthContext = Depends(require_scopes("ai:ask"))
 ) -> dict:
     registry = ModelRegistry()
     record = await registry.register(payload.name, payload.version, payload.metadata or {})
@@ -1007,7 +1004,7 @@ async def register_model(
 @router.get("/registry")
 async def list_registry(
     name: str | None = Query(None),
-    ctx: AuthContext = Depends(require_scopes("ai:ask")),
+    ctx: AuthContext = Depends(require_scopes("ai:ask"))
 ) -> dict:
     registry = ModelRegistry()
     records = await registry.list(name)
@@ -1017,7 +1014,7 @@ async def list_registry(
 @router.post("/retrieval/ingest")
 async def ingest_retrieval(
     payload: RetrievalIngestRequest,
-    ctx: AuthContext = Depends(require_scopes("ai:ask")),
+    ctx: AuthContext = Depends(require_scopes("ai:ask"))
 ) -> dict:
     if payload.reset:
         reset_retrieval_index()
@@ -1031,7 +1028,7 @@ async def ingest_retrieval(
 @router.post("/retrieval/search")
 async def search_retrieval(
     payload: RetrievalSearchRequest,
-    ctx: AuthContext = Depends(require_scopes("ai:ask")),
+    ctx: AuthContext = Depends(require_scopes("ai:ask"))
 ) -> dict:
     query = payload.query.strip()
     if not query:
@@ -1049,7 +1046,7 @@ async def search_retrieval(
 @router.get("/observability")
 async def observability_summary(
     hours: int = Query(24, ge=1, le=168),
-    ctx: AuthContext = Depends(require_scopes("dashboard:read")),
+    ctx: AuthContext = Depends(require_scopes("dashboard:read"))
 ) -> dict:
     service = ObservabilityService()
     summary = await service.summary(hours=hours)
@@ -1059,7 +1056,7 @@ async def observability_summary(
 @router.post("/synthetic/bootstrap")
 async def bootstrap_synthetic(
     payload: SyntheticRequest,
-    ctx: AuthContext = Depends(require_scopes("dashboard:read")),
+    ctx: AuthContext = Depends(require_scopes("dashboard:read"))
 ) -> dict:
     service = SyntheticDataService()
     result = await service.bootstrap(payload.role, payload.module_key, payload.count or 25)
@@ -1069,7 +1066,7 @@ async def bootstrap_synthetic(
 @router.post("/privacy/redact")
 async def redact_text(
     payload: dict = Body(default_factory=dict),
-    ctx: AuthContext = Depends(require_scopes("dashboard:read")),
+    ctx: AuthContext = Depends(require_scopes("dashboard:read"))
 ) -> dict:
     return {"status": "ok", "redacted": redact_payload(payload)}
 
@@ -1077,6 +1074,6 @@ async def redact_text(
 @router.post("/privacy/scan")
 async def scan_text(
     payload: dict = Body(default_factory=dict),
-    ctx: AuthContext = Depends(require_scopes("dashboard:read")),
+    ctx: AuthContext = Depends(require_scopes("dashboard:read"))
 ) -> dict:
     return {"status": "ok", "scan": scan_payload(payload)}

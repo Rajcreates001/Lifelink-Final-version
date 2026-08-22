@@ -1,10 +1,11 @@
 from datetime import datetime
 
 from bson import ObjectId
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.db.mongo import get_db
+from app.core.auth import get_current_user, AuthContext
 from app.services.collections import RESOURCE_REQUESTS
 from app.services.repository import MongoRepository
 
@@ -26,7 +27,7 @@ def _as_object_id(value: str) -> ObjectId:
 
 
 @router.post("/requests", status_code=201)
-async def create_request(payload: ResourceRequestCreate):
+async def create_request(payload: ResourceRequestCreate, ctx: AuthContext = Depends(get_current_user)):
     db = get_db()
     repo = MongoRepository(db, RESOURCE_REQUESTS)
 

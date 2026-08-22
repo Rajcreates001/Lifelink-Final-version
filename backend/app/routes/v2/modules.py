@@ -72,7 +72,7 @@ async def list_items(
     owner_id: str | None = Query(None),
     sort_by: str | None = Query(None),
     sort_dir: str | None = Query(None),
-    ctx=Depends(require_scopes("dashboard:read")),
+    ctx=Depends(require_scopes("dashboard:read"))
 ) -> dict:
     db = get_db()
     repo = MongoRepository(db, MODULE_ITEMS)
@@ -97,7 +97,7 @@ async def list_items(
 async def create_item(
     module_key: str,
     payload: dict,
-    ctx=Depends(require_scopes("dashboard:read")),
+    ctx=Depends(require_scopes("dashboard:read"))
 ) -> dict:
     title = payload.get("title")
     if not title:
@@ -138,7 +138,7 @@ async def update_item(
     module_key: str,
     item_id: str,
     payload: dict,
-    ctx=Depends(require_scopes("dashboard:read")),
+    ctx=Depends(require_scopes("dashboard:read"))
 ) -> dict:
     db = get_db()
     repo = MongoRepository(db, MODULE_ITEMS)
@@ -168,7 +168,7 @@ async def update_item(
 async def delete_item(
     module_key: str,
     item_id: str,
-    ctx=Depends(require_scopes("dashboard:read")),
+    ctx=Depends(require_scopes("dashboard:read"))
 ) -> dict:
     db = get_db()
     repo = MongoRepository(db, MODULE_ITEMS)
@@ -197,7 +197,7 @@ async def list_alerts(
     severity: str | None = Query(None),
     sort_by: str | None = Query(None),
     sort_dir: str | None = Query(None),
-    ctx=Depends(require_scopes("dashboard:read")),
+    ctx=Depends(require_scopes("dashboard:read"))
 ) -> dict:
     db = get_db()
     repo = MongoRepository(db, MODULE_ALERTS)
@@ -218,7 +218,7 @@ async def list_alerts(
 async def create_alert(
     module_key: str,
     payload: dict,
-    ctx=Depends(require_scopes("dashboard:read")),
+    ctx=Depends(require_scopes("dashboard:read"))
 ) -> dict:
     if not payload.get("message"):
         raise HTTPException(status_code=400, detail="message is required")
@@ -253,7 +253,7 @@ async def update_alert(
     module_key: str,
     alert_id: str,
     payload: dict,
-    ctx=Depends(require_scopes("dashboard:read")),
+    ctx=Depends(require_scopes("dashboard:read"))
 ) -> dict:
     db = get_db()
     repo = MongoRepository(db, MODULE_ALERTS)
@@ -286,7 +286,7 @@ async def list_automations(
     enabled: bool | None = Query(None),
     sort_by: str | None = Query(None),
     sort_dir: str | None = Query(None),
-    ctx=Depends(require_scopes("dashboard:read")),
+    ctx=Depends(require_scopes("dashboard:read"))
 ) -> dict:
     db = get_db()
     repo = MongoRepository(db, MODULE_AUTOMATIONS)
@@ -305,7 +305,7 @@ async def list_automations(
 async def create_automation(
     module_key: str,
     payload: dict,
-    ctx=Depends(require_scopes("dashboard:read")),
+    ctx=Depends(require_scopes("dashboard:read"))
 ) -> dict:
     name = payload.get("name")
     if not name:
@@ -343,7 +343,7 @@ async def update_automation(
     module_key: str,
     automation_id: str,
     payload: dict,
-    ctx=Depends(require_scopes("dashboard:read")),
+    ctx=Depends(require_scopes("dashboard:read"))
 ) -> dict:
     db = get_db()
     repo = MongoRepository(db, MODULE_AUTOMATIONS)
@@ -372,7 +372,7 @@ async def update_automation(
 @router.get("/{module_key}/analytics")
 async def analytics(
     module_key: str,
-    ctx=Depends(require_scopes("dashboard:read")),
+    ctx=Depends(require_scopes("dashboard:read"))
 ) -> dict:
     db = get_db()
     repo = MongoRepository(db, MODULE_ITEMS)
@@ -422,7 +422,7 @@ async def analytics(
 async def ai_insights(
     module_key: str,
     payload: dict,
-    ctx=Depends(require_scopes("ai:ask")),
+    ctx=Depends(require_scopes("ai:ask"))
 ) -> dict:
     text = " ".join(
         str(payload.get(k) or "")

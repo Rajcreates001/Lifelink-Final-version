@@ -158,3 +158,25 @@ rate_limit_signup = RateLimiter("auth:signup", max_requests=10, window_seconds=3
 
 # General auth (select-role, etc): 10 requests per 60 seconds
 rate_limit_auth = RateLimiter("auth:general", max_requests=10, window_seconds=60)
+
+# ── Pre-built rate limiters for ML / prediction endpoints ─────────────
+
+# ML predictions: 30 requests per 60 seconds per IP.  ML models are
+# compute-intensive — this caps abuse while giving dashboards headroom.
+rate_limit_ml = RateLimiter("ml:predict", max_requests=30, window_seconds=60)
+
+# Heavy ML (report analysis / OCR): 8 requests per 60 seconds per IP.
+# PDF/image OCR + LLM calls are expensive — tighter cap.
+rate_limit_ml_heavy = RateLimiter("ml:heavy", max_requests=8, window_seconds=60)
+
+# ── Pre-built rate limiters for write operations ─────────────────────
+
+# SOS alerts: 5 requests per 60 seconds per IP — enough for genuine
+# emergencies but stops abuse of the critical-alert pipeline.
+rate_limit_alerts = RateLimiter("ops:alerts", max_requests=5, window_seconds=60)
+
+# Ambulance write ops (location updates, route start): 20 per 60s.
+rate_limit_ambulance_write = RateLimiter("ops:ambulance_write", max_requests=20, window_seconds=60)
+
+# Hospital ops writes (bed allocation, patient admit, etc.): 20 per 60s.
+rate_limit_hospital_ops = RateLimiter("ops:hospital_ops", max_requests=20, window_seconds=60)

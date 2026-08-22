@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Body, HTTPException, Query
+from fastapi import APIRouter, Body, HTTPException, Query, Depends
+from app.core.auth import get_current_user, AuthContext
 from fastapi.responses import PlainTextResponse
 
 from app.db.mongo import get_db
@@ -37,7 +38,7 @@ from app.services.collections import (
     RADIOLOGY_REPORTS,
     RADIOLOGY_REQUESTS,
     RESOURCES,
-    VENDOR_LEAD_TIMES,
+    VENDOR_LEAD_TIMES
 )
 from app.core.celery_app import celery_app
 from app.services.prediction_store import get_latest_prediction
@@ -58,6 +59,7 @@ async def list_staff(
     shift: str | None = Query(None),
     sort_by: str | None = Query(None),
     sort_dir: str | None = Query(None),
+    ctx: AuthContext = Depends(get_current_user)
 ):
     db = get_db()
     await _ensure_seeded(db, hospitalId)
@@ -81,7 +83,9 @@ async def list_staff(
 
 
 @router.get("/staff/skills/summary")
-async def staff_skill_summary(hospitalId: str = Query(...)):
+async def staff_skill_summary(hospitalId: str = Query(...),
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     await _ensure_seeded(db, hospitalId)
     repo = MongoRepository(db, HOSPITAL_STAFF)
@@ -107,7 +111,9 @@ async def staff_skill_summary(hospitalId: str = Query(...)):
 
 
 @router.get("/staff/optimizer")
-async def staff_optimizer(hospitalId: str = Query(...)):
+async def staff_optimizer(hospitalId: str = Query(...),
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     await _ensure_seeded(db, hospitalId)
     staff_repo = MongoRepository(db, HOSPITAL_STAFF)
@@ -133,7 +139,9 @@ async def staff_optimizer(hospitalId: str = Query(...)):
 
 
 @router.post("/staff", status_code=201)
-async def create_staff(payload: StaffMemberCreate):
+async def create_staff(payload: StaffMemberCreate,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, HOSPITAL_STAFF)
     oid = _require_hospital_id(payload.hospitalId)
@@ -155,7 +163,9 @@ async def create_staff(payload: StaffMemberCreate):
 
 
 @router.patch("/staff/{staff_id}")
-async def update_staff(staff_id: str, payload: StaffMemberUpdate):
+async def update_staff(staff_id: str, payload: StaffMemberUpdate,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, HOSPITAL_STAFF)
     oid = _as_object_id(staff_id)
@@ -167,7 +177,9 @@ async def update_staff(staff_id: str, payload: StaffMemberUpdate):
 
 
 @router.delete("/staff/{staff_id}")
-async def delete_staff(staff_id: str):
+async def delete_staff(staff_id: str,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, HOSPITAL_STAFF)
     deleted = await repo.delete_by_id(staff_id)

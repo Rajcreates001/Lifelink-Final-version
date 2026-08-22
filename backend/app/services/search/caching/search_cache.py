@@ -20,7 +20,7 @@ class SearchCache:
         try:
             self._redis = CacheStore(namespace="search")
         except Exception:
-            pass
+            logger.debug("Suppressed Exception in %s", __name__)
 
     def get(self, key: str) -> dict[str, Any] | None:
         """Get cached result by key."""
@@ -31,7 +31,7 @@ class SearchCache:
                 if cached:
                     return cached
             except Exception:
-                pass
+                logger.debug("Suppressed Exception in %s", __name__)
         # Fallback to memory
         entry = self._memory.get(key)
         if entry and entry.get("expires_at", 0) > time.time():
@@ -46,7 +46,7 @@ class SearchCache:
             try:
                 self._redis.set(key, data, ttl=ttl)
             except Exception:
-                pass
+                logger.debug("Suppressed Exception in %s", __name__)
 
     def invalidate(self, key: str) -> None:
         """Invalidate a cached entry."""

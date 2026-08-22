@@ -92,7 +92,6 @@ const MyHospital = () => {
   const handleSaveHospital = async () => {
     try {
       setLoading(true);
-      console.log('[MyHospital] Saving hospital details for user:', user.id);
       
       // Remove temporary IDs before sending to server (MongoDB will create real ObjectIds)
       const cleanDoctors = doctors.map(d => {
@@ -111,20 +110,17 @@ const MyHospital = () => {
         resources: cleanResources
       };
 
-      console.log('[MyHospital] Payload:', payload);
 
       const { ok, status, data: updated } = await apiFetch(`/api/hospital-communication/my-hospital/${user.id}`, {
         method: 'PUT',
         body: JSON.stringify(payload)
       });
 
-      console.log('[MyHospital] Response status:', status);
 
       if (!ok) {
         console.error('[MyHospital] Error response:', updated);
         throw new Error(updated?.message || updated?.error || `Failed to save hospital details (${status})`);
       }
-      console.log('[MyHospital] Hospital updated successfully:', updated);
       setHospital(updated);
       setEditMode(false);
       alert('Hospital details updated successfully!');

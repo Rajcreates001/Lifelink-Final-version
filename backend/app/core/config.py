@@ -32,10 +32,10 @@ class Settings(BaseSettings):
 
     # OpenAI / OpenAI-compatible LLM endpoint (design.md config)
     openai_api_key: str = ""
-    openai_base_url: str = "http://144.79.62.242:8000/v1"
+    openai_base_url: str = ""
     openai_model: str = "qwen3.6-27b"
     llm_max_output_tokens: int = 8192
-    llm_endpoint: str = "http://144.79.62.242:8000/v1/chat/completions"
+    llm_endpoint: str = ""
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
 
     rag_collection: str = "knowledge_chunks"
@@ -50,7 +50,12 @@ class Settings(BaseSettings):
         # Keep behavior close to existing Express setup.
         if self.app_env == "production":
             origins = [o.strip().rstrip("/") for o in self.frontend_url.split(",") if o.strip()]
-            return origins or ["*"]
+            if not origins:
+                raise RuntimeError(
+                    "FRONTEND_URL must be set in production — "
+                    "CORS cannot fallback to wildcard origin."
+                )
+            return origins
         return [
             "http://localhost:5000",
             "http://127.0.0.1:5000",

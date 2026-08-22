@@ -60,27 +60,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # ─── Weaviate ───────────────────────────────────────────────
-  weaviate:
-    image: semitechnologies/weaviate:1.25.0
-    container_name: lifelink-weaviate
-    restart: unless-stopped
-    environment:
-      QDRANT__SERVICE__API_KEY: "lifelink-vector-db"
-      WEAVIATE__CLEANUP_INTERVAL: "30s"
-      DEFAULT_VECTORIZER_MODULE: "none"
-      CLUSTER_HOSTNAME: "node1"
-    volumes:
-      - weaviate_data:/var/lib/weaviate
-    ports:
-      - "8080:8080"
-      - "50051:50051"
-    healthcheck:
-      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/v1/.well-known/ready"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   # ─── Backend API ──────────────────────────────────────────────
   backend:
     build:
@@ -128,6 +107,5 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  weaviate_data:
   backend_node_modules:
   frontend_node_modules:

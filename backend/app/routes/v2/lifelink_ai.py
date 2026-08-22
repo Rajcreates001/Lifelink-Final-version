@@ -39,7 +39,7 @@ from app.core.dependencies import get_enterprise_ai_service, get_enterprise_rag_
 from app.services.enterprise_ai_service import (
     EnterpriseAIChatService,
     generate_conversation_title,
-    get_role_context,
+    get_role_context
 )
 from app.services.enterprise_rag_service import EnterpriseRAGService
 router = APIRouter(tags=["LifeLink AI"])
@@ -180,7 +180,7 @@ async def get_ai_context(
     current_module: str = Query("general"),
     department: str | None = Query(None),
     user: dict = Depends(_current_user_dict),
-    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service),
+    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service)
 ):
     """Load the full AI context for the current user/role/hospital."""
     auth = _get_auth_context(user)
@@ -192,7 +192,7 @@ async def get_ai_context(
         role_id=auth["role_id"],
         department=department or user.get("department"),
         current_module=current_module,
-        portal=auth["portal"],
+        portal=auth["portal"]
     )
     return {"context": context, "ok": True}
 
@@ -202,7 +202,7 @@ async def refresh_ai_context(
     current_module: str = Query("general"),
     department: str | None = Query(None),
     user: dict = Depends(_current_user_dict),
-    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service),
+    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service)
 ):
     """Force-refresh the AI context (reloads memory, conversations, role)."""
     auth = _get_auth_context(user)
@@ -214,7 +214,7 @@ async def refresh_ai_context(
         role_id=auth["role_id"],
         department=department or user.get("department"),
         current_module=current_module,
-        portal=auth["portal"],
+        portal=auth["portal"]
     )
     return {"context": context, "ok": True}
 
@@ -223,7 +223,7 @@ async def refresh_ai_context(
 async def create_ai_session(
     request: Request,
     user: dict = Depends(_current_user_dict),
-    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service),
+    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service)
 ):
     """Create a new AI session (called on login)."""
     auth = _get_auth_context(user)
@@ -238,7 +238,7 @@ async def create_ai_session(
         role_id=auth["role_id"],
         ip_address=client_ip,
         device=None,
-        user_agent=user_agent,
+        user_agent=user_agent
     )
     return {"session": session, "ok": True}
 
@@ -247,7 +247,7 @@ async def create_ai_session(
 async def close_ai_session(
     session_id: str,
     user: dict = Depends(_current_user_dict),
-    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service),
+    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service)
 ):
     """Close an AI session (called on logout)."""
     auth = _get_auth_context(user)
@@ -256,7 +256,7 @@ async def close_ai_session(
     success = await service.close_session(
         session_id=session_id,
         hospital_id=auth["org_id"],
-        user_id=auth["user_id"],
+        user_id=auth["user_id"]
     )
     if not success:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -268,7 +268,7 @@ async def list_conversations(
     limit: int = Query(20),
     offset: int = Query(0),
     user: dict = Depends(_current_user_dict),
-    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service),
+    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service)
 ):
     """List conversations for the current user — never shows other users' data."""
     auth = _get_auth_context(user)
@@ -279,7 +279,7 @@ async def list_conversations(
         user_id=auth["user_id"],
         role_id=auth["role_id"],
         limit=limit,
-        offset=offset,
+        offset=offset
     )
     return {"conversations": conversations, "ok": True}
 
@@ -288,7 +288,7 @@ async def list_conversations(
 async def create_conversation(
     body: ConversationCreateRequest,
     user: dict = Depends(_current_user_dict),
-    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service),
+    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service)
 ):
     """Create a new conversation — owned by the current user."""
     auth = _get_auth_context(user)
@@ -301,7 +301,7 @@ async def create_conversation(
         department=user.get("department") or user.get("subRole"),
         title=body.title or "New conversation",
         module=body.module,
-        mode=body.mode,
+        mode=body.mode
     )
     return {"conversation": conversation, "ok": True}
 
@@ -310,7 +310,7 @@ async def create_conversation(
 async def get_conversation(
     conversation_id: str,
     user: dict = Depends(_current_user_dict),
-    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service),
+    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service)
 ):
     """Get a single conversation with messages — validates ownership."""
     auth = _get_auth_context(user)
@@ -320,7 +320,7 @@ async def get_conversation(
         conversation_id=conversation_id,
         hospital_id=auth["org_id"],
         user_id=auth["user_id"],
-        role_id=auth["role_id"],
+        role_id=auth["role_id"]
     )
     if not conversation:
         raise HTTPException(status_code=404, detail="Conversation not found")
@@ -332,7 +332,7 @@ async def update_conversation_title(
     conversation_id: str,
     body: UpdateTitleRequest,
     user: dict = Depends(_current_user_dict),
-    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service),
+    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service)
 ):
     """Update conversation title — validates ownership."""
     auth = _get_auth_context(user)
@@ -343,7 +343,7 @@ async def update_conversation_title(
         hospital_id=auth["org_id"],
         user_id=auth["user_id"],
         role_id=auth["role_id"],
-        title=body.title,
+        title=body.title
     )
     if not success:
         raise HTTPException(status_code=404, detail="Conversation not found")
@@ -354,7 +354,7 @@ async def update_conversation_title(
 async def pin_conversation(
     conversation_id: str,
     user: dict = Depends(_current_user_dict),
-    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service),
+    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service)
 ):
     """Pin a conversation — validates ownership."""
     auth = _get_auth_context(user)
@@ -365,7 +365,7 @@ async def pin_conversation(
         hospital_id=auth["org_id"],
         user_id=auth["user_id"],
         role_id=auth["role_id"],
-        is_pinned=True,
+        is_pinned=True
     )
     if not success:
         raise HTTPException(status_code=404, detail="Conversation not found")
@@ -376,7 +376,7 @@ async def pin_conversation(
 async def unpin_conversation(
     conversation_id: str,
     user: dict = Depends(_current_user_dict),
-    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service),
+    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service)
 ):
     """Unpin a conversation — validates ownership."""
     auth = _get_auth_context(user)
@@ -387,7 +387,7 @@ async def unpin_conversation(
         hospital_id=auth["org_id"],
         user_id=auth["user_id"],
         role_id=auth["role_id"],
-        is_pinned=False,
+        is_pinned=False
     )
     if not success:
         raise HTTPException(status_code=404, detail="Conversation not found")
@@ -398,7 +398,7 @@ async def unpin_conversation(
 async def delete_conversation(
     conversation_id: str,
     user: dict = Depends(_current_user_dict),
-    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service),
+    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service)
 ):
     """Soft-delete a conversation — only the current user's copy."""
     auth = _get_auth_context(user)
@@ -408,7 +408,7 @@ async def delete_conversation(
         conversation_id=conversation_id,
         hospital_id=auth["org_id"],
         user_id=auth["user_id"],
-        role_id=auth["role_id"],
+        role_id=auth["role_id"]
     )
     if not success:
         raise HTTPException(status_code=404, detail="Conversation not found")
@@ -417,7 +417,7 @@ async def delete_conversation(
         user_id=auth["user_id"],
         role_id=auth["role_id"],
         action="delete",
-        conversation_id=conversation_id,
+        conversation_id=conversation_id
     )
     return {"ok": True}
 
@@ -426,7 +426,7 @@ async def delete_conversation(
 async def search_conversations(
     body: SearchRequest,
     user: dict = Depends(_current_user_dict),
-    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service),
+    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service)
 ):
     """Search ONLY the current user's conversations — never global."""
     auth = _get_auth_context(user)
@@ -437,7 +437,7 @@ async def search_conversations(
         user_id=auth["user_id"],
         role_id=auth["role_id"],
         query=body.query,
-        limit=body.limit,
+        limit=body.limit
     )
     return {"results": results, "ok": True}
 
@@ -446,7 +446,7 @@ async def search_conversations(
 async def ask_ai(
     body: AskRequest,
     user: dict = Depends(_current_user_dict),
-    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service),
+    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service)
 ):
     """
     Ask LifeLink AI a question.
@@ -470,7 +470,7 @@ async def ask_ai(
             conversation_id=conversation_id,
             hospital_id=auth["org_id"],
             user_id=auth["user_id"],
-            role_id=auth["role_id"],
+            role_id=auth["role_id"]
         )
         if not conversation:
             raise HTTPException(status_code=404, detail="Conversation not found")
@@ -484,7 +484,7 @@ async def ask_ai(
             department=user.get("department") or user.get("subRole"),
             title=title,
             module=body.module,
-            mode="chat",
+            mode="chat"
         )
         conversation_id = conversation["id"]
 
@@ -496,9 +496,8 @@ async def ask_ai(
         role_id=auth["role_id"],
         role="user",
         content=body.query,
-        attachments=body.attachments,
+        attachments=body.attachments
     )
-
     # 3. Retrieve relevant RAG knowledge chunks
     rag_service = EnterpriseRAGService(service._session_factory)
     rag_chunks = await rag_service.retrieve(
@@ -506,9 +505,8 @@ async def ask_ai(
         hospital_id=auth["org_id"],
         role_id=auth["role_id"],
         module=body.module,
-        top_k=5,
+        top_k=5
     )
-
     # 4. Load context for AI response
     context = await service.load_context(
         hospital_id=auth["org_id"],
@@ -516,9 +514,8 @@ async def ask_ai(
         role_id=auth["role_id"],
         department=user.get("department") or user.get("subRole"),
         current_module=body.module,
-        portal=auth["portal"],
+        portal=auth["portal"]
     )
-
     # 5. Build role-scoped system prompt with RAG context
     accessible_modules = role_context.get("accessible_modules", [])
     accessible_modules_str = (
@@ -640,9 +637,8 @@ async def ask_ai(
             f"Loaded context for {role_label} ({auth['role_id']})",
             f"Verified permissions: {accessible_modules_str}",
             f"Generated response within role scope",
-        ],
+        ]
     )
-
     # 7. Log audit
     await service.log_audit(
         hospital_id=auth["org_id"],
@@ -655,17 +651,15 @@ async def ask_ai(
         module=body.module,
         latency_ms=latency_ms,
         tokens_used=len(body.query.split()) + len(response_text.split()),
-        success=True,
+        success=True
     )
-
     # 8. Return full conversation
     updated_conversation = await service.get_conversation(
         conversation_id=conversation_id,
         hospital_id=auth["org_id"],
         user_id=auth["user_id"],
-        role_id=auth["role_id"],
+        role_id=auth["role_id"]
     )
-
     return {
         "answer": response_text,
         "conversation": updated_conversation,
@@ -680,7 +674,7 @@ async def ask_ai(
 async def set_memory(
     body: MemorySetRequest,
     user: dict = Depends(_current_user_dict),
-    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service),
+    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service)
 ):
     """Store a memory item for the current user."""
     auth = _get_auth_context(user)
@@ -694,7 +688,7 @@ async def set_memory(
         key=body.key,
         value=body.value,
         weight=body.weight,
-        context=body.context,
+        context=body.context
     )
     return {"memory": memory, "ok": True}
 
@@ -703,7 +697,7 @@ async def set_memory(
 async def get_memory(
     memory_type: str | None = Query(None),
     user: dict = Depends(_current_user_dict),
-    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service),
+    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service)
 ):
     """Get memory items for the current user only."""
     auth = _get_auth_context(user)
@@ -713,7 +707,7 @@ async def get_memory(
         hospital_id=auth["org_id"],
         user_id=auth["user_id"],
         role_id=auth["role_id"],
-        memory_type=memory_type,
+        memory_type=memory_type
     )
     return {"memory": items, "ok": True}
 
@@ -722,7 +716,7 @@ async def get_memory(
 async def delete_memory(
     memory_id: str,
     user: dict = Depends(_current_user_dict),
-    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service),
+    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service)
 ):
     """Delete a memory item — validates ownership."""
     auth = _get_auth_context(user)
@@ -731,7 +725,7 @@ async def delete_memory(
     success = await service.delete_memory(
         memory_id=memory_id,
         hospital_id=auth["org_id"],
-        user_id=auth["user_id"],
+        user_id=auth["user_id"]
     )
     if not success:
         raise HTTPException(status_code=404, detail="Memory item not found")
@@ -742,7 +736,7 @@ async def delete_memory(
 async def add_feedback(
     body: FeedbackRequest,
     user: dict = Depends(_current_user_dict),
-    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service),
+    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service)
 ):
     """Add feedback on an AI response."""
     auth = _get_auth_context(user)
@@ -755,7 +749,7 @@ async def add_feedback(
         user_id=auth["user_id"],
         role_id=auth["role_id"],
         rating=body.rating,
-        comment=body.comment,
+        comment=body.comment
     )
     if not feedback:
         raise HTTPException(status_code=400, detail="Invalid feedback (rating must be 1-5)")
@@ -765,7 +759,7 @@ async def add_feedback(
 @router.post("/lifelink-ai/demo")
 async def create_demo_conversations(
     user: dict = Depends(_current_user_dict),
-    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service),
+    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service)
 ):
     """Create demo conversations for development mode — isolated per user."""
     auth = _get_auth_context(user)
@@ -774,7 +768,7 @@ async def create_demo_conversations(
     created = await service.create_demo_conversations(
         hospital_id=auth["org_id"],
         user_id=auth["user_id"],
-        role_id=auth["role_id"],
+        role_id=auth["role_id"]
     )
     return {"created": created, "ok": True}
 
@@ -796,7 +790,7 @@ class RAGIngestRequest(BaseModel):
 async def ingest_rag_defaults(
     body: RAGIngestRequest | None = None,
     user: dict = Depends(_current_user_dict),
-    rag_service: EnterpriseRAGService = Depends(get_enterprise_rag_service),
+    rag_service: EnterpriseRAGService = Depends(get_enterprise_rag_service)
 ):
     """
     Ingest documents into the enterprise RAG index.
@@ -813,11 +807,11 @@ async def ingest_rag_defaults(
             content=body.content,
             content_type=body.content_type,
             module=body.module,
-            roles=body.roles or [auth["role_id"]],
+            roles=body.roles or [auth["role_id"]]
         )
     else:
         result = await rag_service.ingest_default_sources(
-            hospital_id=auth["org_id"],
+            hospital_id=auth["org_id"]
         )
 
     return {"result": result, "ok": True}
@@ -829,7 +823,7 @@ async def rag_search(
     top_k: int = Query(5),
     module: str | None = Query(None),
     user: dict = Depends(_current_user_dict),
-    rag_service: EnterpriseRAGService = Depends(get_enterprise_rag_service),
+    rag_service: EnterpriseRAGService = Depends(get_enterprise_rag_service)
 ):
     """Search the enterprise RAG index for relevant knowledge chunks."""
     auth = _get_auth_context(user)
@@ -840,7 +834,7 @@ async def rag_search(
         hospital_id=auth["org_id"],
         role_id=auth["role_id"],
         module=module,
-        top_k=top_k,
+        top_k=top_k
     )
     return {"results": results, "ok": True}
 
@@ -848,14 +842,14 @@ async def rag_search(
 @router.get("/lifelink-ai/rag/stats")
 async def rag_stats(
     user: dict = Depends(_current_user_dict),
-    rag_service: EnterpriseRAGService = Depends(get_enterprise_rag_service),
+    rag_service: EnterpriseRAGService = Depends(get_enterprise_rag_service)
 ):
     """Get enterprise RAG index statistics."""
     auth = _get_auth_context(user)
     _validate_auth(auth)
 
     stats = await rag_service.get_index_stats(
-        hospital_id=auth["org_id"],
+        hospital_id=auth["org_id"]
     )
     return {"stats": stats, "ok": True}
 
@@ -863,13 +857,13 @@ async def rag_stats(
 @router.post("/lifelink-ai/rag/reset")
 async def rag_reset(
     user: dict = Depends(_current_user_dict),
-    rag_service: EnterpriseRAGService = Depends(get_enterprise_rag_service),
+    rag_service: EnterpriseRAGService = Depends(get_enterprise_rag_service)
 ):
     """Reset the enterprise RAG index for this hospital."""
     auth = _get_auth_context(user)
     _validate_auth(auth)
 
     deleted = await rag_service.reset_index(
-        hospital_id=auth["org_id"],
+        hospital_id=auth["org_id"]
     )
     return {"deleted": deleted, "ok": True}

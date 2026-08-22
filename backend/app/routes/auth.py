@@ -29,7 +29,7 @@ def _create_token(user_id: str, role: str) -> str:
 @router.post("/signup", status_code=201)
 async def signup(
     payload: SignupRequest,
-    _: None = Depends(rate_limit_signup.dependency()),
+    _: None = Depends(rate_limit_signup.dependency())
 ):
     db = get_db()
     user_repo = MongoRepository(db, USERS)
@@ -77,7 +77,7 @@ async def signup(
                     reviewed_by=None,
                     reviewed_at=None,
                     created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow()
                 )
             )
             await session.commit()
@@ -104,7 +104,7 @@ async def signup(
 @router.post("/login")
 async def login(
     payload: LoginRequest,
-    _: None = Depends(rate_limit_login.dependency()),
+    _: None = Depends(rate_limit_login.dependency())
 ):
     db = get_db()
     user_repo = MongoRepository(db, USERS)
@@ -120,9 +120,8 @@ async def login(
         if payload.role.lower() != user["role"].lower():
             raise HTTPException(
                 status_code=400,
-                detail=f"This email is registered as '{user['role'].upper()}', not '{payload.role.upper()}'. Please switch tabs.",
+                detail=f"This email is registered as '{user['role'].upper()}', not '{payload.role.upper()}'. Please switch tabs."
             )
-
     if user["role"] == "hospital" and not user.get("isVerified", False):
         raise HTTPException(status_code=403, detail="Account pending Government verification.")
 

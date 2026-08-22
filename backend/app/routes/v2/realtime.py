@@ -79,7 +79,7 @@ async def websocket_endpoint(websocket: WebSocket, channel: str):
 @router.post("/publish")
 async def publish(
     payload: PublishEvent,
-    ctx: AuthContext = Depends(require_scopes("dashboard:read")),
+    ctx: AuthContext = Depends(require_scopes("dashboard:read"))
 ) -> dict:
     await _service.broadcast(payload.channel, {"channel": payload.channel, "payload": payload.event})
     return {"status": "ok", "channel": payload.channel}
@@ -88,7 +88,7 @@ async def publish(
 @router.post("/ambulance-update")
 async def ambulance_update(
     payload: dict = Body(default_factory=dict),
-    ctx: AuthContext = Depends(require_scopes("ambulance:write")),
+    ctx: AuthContext = Depends(require_scopes("ambulance:write"))
 ) -> dict:
     await _service.broadcast("ambulance", {"type": "ambulance_update", "payload": payload})
     return {"status": "ok"}
@@ -97,7 +97,7 @@ async def ambulance_update(
 @router.post("/hospital-update")
 async def hospital_update(
     payload: dict = Body(default_factory=dict),
-    ctx: AuthContext = Depends(require_scopes("hospital:write")),
+    ctx: AuthContext = Depends(require_scopes("hospital:write"))
 ) -> dict:
     await _service.broadcast("hospital", {"type": "hospital_update", "payload": payload})
     return {"status": "ok"}
@@ -106,7 +106,7 @@ async def hospital_update(
 @router.post("/alert")
 async def alert_event(
     payload: dict = Body(default_factory=dict),
-    ctx: AuthContext = Depends(require_scopes("emergency:trigger")),
+    ctx: AuthContext = Depends(require_scopes("emergency:trigger"))
 ) -> dict:
     await _service.broadcast("alerts", {"type": "alert", "payload": payload})
     return {"status": "ok"}
@@ -115,7 +115,7 @@ async def alert_event(
 @router.post("/government-update")
 async def government_update(
     payload: dict = Body(default_factory=dict),
-    ctx: AuthContext = Depends(require_scopes("gov:write")),
+    ctx: AuthContext = Depends(require_scopes("gov:write"))
 ) -> dict:
     await _service.broadcast("government", {"type": "government_update", "payload": payload})
     return {"status": "ok"}
