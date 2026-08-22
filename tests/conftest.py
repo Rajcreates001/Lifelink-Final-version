@@ -67,8 +67,8 @@ def pytest_sessionstart(session):
             except OSError:
                 return False
 
-        candidate_ports = [3010, 3001]
-        chosen = next((p for p in candidate_ports if _port_open(p)), 3010)
+        candidate_ports = [3001, 3010]
+        chosen = next((p for p in candidate_ports if _port_open(p)), 3001)
         os.environ["LIFELINK_BASE_URL"] = f"http://127.0.0.1:{chosen}"
 
     async def _seed():

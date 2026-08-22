@@ -6,7 +6,7 @@ and ambulance modules. Supports both auto-start and connect-to-running modes.
 
 Usage:
     python scripts/run_e2e_tests.py              # Auto-start backend
-    python scripts/run_e2e_tests.py --port 3010   # Connect to running backend
+    python scripts/run_e2e_tests.py --port 3001   # Connect to running backend
     python scripts/run_e2e_tests.py --mode demo   # Use frontend demo fallback
 """
 
@@ -25,7 +25,7 @@ import httpx
 
 # -- Config -----------------------------------------------------
 BACKEND_DIR = Path(__file__).resolve().parent.parent / "backend"
-DEFAULT_PORT = 3010
+DEFAULT_PORT = 3001
 BASE_URL = os.getenv("LIFELINK_BASE_URL", f"http://127.0.0.1:{DEFAULT_PORT}")
 TIMEOUT_SECONDS = float(os.getenv("LIFELINK_E2E_TIMEOUT", "30"))
 STARTUP_WAIT_SECONDS = 20

@@ -7,7 +7,7 @@ from typing import Any
 
 import httpx
 
-BASE_URL = os.getenv("LIFELINK_API_URL", "http://localhost:3010").rstrip("/")
+BASE_URL = os.getenv("LIFELINK_API_URL", "http://localhost:3001").rstrip("/")
 TIMEOUT_SECONDS = float(os.getenv("LIFELINK_SMOKE_TIMEOUT", "25"))
 DEMO_PASSWORD = "Demo@2026!"
 

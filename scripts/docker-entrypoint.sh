@@ -58,7 +58,7 @@ run_migration() {
 # ─── Start Backend API ────────────────────────────────────
 start_api() {
     echo "🚀 Starting LifeLink Backend API..."
-    exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-3010}" --reload
+    exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-3001}" --reload
 }
 
 # ─── Start Celery Worker ──────────────────────────────────

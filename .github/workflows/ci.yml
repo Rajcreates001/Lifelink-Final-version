@@ -157,7 +157,7 @@ jobs:
           POSTGRES_URL: ${{ env.POSTGRES_URL }}
           REDIS_URL: redis://localhost:6379/0
           JWT_SECRET: ${{ env.JWT_SECRET }}
-          LIFELINK_BASE_URL: http://127.0.0.1:3010
+          LIFELINK_BASE_URL: http://127.0.0.1:3001
         run: |
           cd ..
           python -m pytest tests/ -v --timeout=60 -x
