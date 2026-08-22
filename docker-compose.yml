@@ -10,7 +10,7 @@ x-backend-env: &backend-env
   CELERY_BROKER_URL: redis://redis:6379/0
   CELERY_RESULT_BACKEND: redis://redis:6379/1
   APP_ENV: development
-  JWT_SECRET: change_me_in_production
+  JWT_SECRET: c4e4bfbcd9e4e3a0a79508c19d2beb07067343183e66b0511260b0a7bfe17f5a
   PRIVACY_SALT: change_me_in_production
   FRONTEND_URL: http://localhost:5000
   HOST: "0.0.0.0"
