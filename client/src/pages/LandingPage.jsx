@@ -1998,7 +1998,7 @@ const PortalSection = () => {
                                 </div>
                             </div>
                         );
-                    })
+                    })}
                 </div>
                 </div>
         </section>

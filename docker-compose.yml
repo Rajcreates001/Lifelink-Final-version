@@ -1,5 +1,3 @@
-version: "3.9"
-
 # ============================================================
 # LifeLink - Docker Compose (Docker CE in WSL2)
 # All persistent data stored on D: drive
