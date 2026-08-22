@@ -1,10 +1,11 @@
 from datetime import datetime
 
 from bson import ObjectId
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.db.mongo import get_db
+from app.core.auth import get_current_user, AuthContext
 from app.services.collections import RESOURCE_REQUESTS, USERS
 from app.services.repository import MongoRepository
 
@@ -48,15 +49,14 @@ def _as_object_id(value: str) -> ObjectId:
 
 
 @router.get("/donors")
-async def get_donors():
+async def get_donors(ctx: AuthContext = Depends(get_current_user)):
     db = get_db()
     user_repo = MongoRepository(db, USERS)
 
     donors = await user_repo.find_many(
         {"role": "public"},
-        projection={"name": 1, "location": 1, "phone": 1, "publicProfile": 1},
+        projection={"name": 1, "location": 1, "phone": 1, "publicProfile": 1}
     )
-
     results = []
     for donor in donors:
         health = (donor.get("publicProfile") or {}).get("healthRecords") or {}
@@ -81,7 +81,7 @@ async def get_donors():
 
 
 @router.patch("/donors/availability")
-async def update_availability(payload: DonorAvailabilityUpdate):
+async def update_availability(payload: DonorAvailabilityUpdate, ctx: AuthContext = Depends(get_current_user)):
     db = get_db()
     user_repo = MongoRepository(db, USERS)
     oid = _as_object_id(payload.userId)
@@ -102,7 +102,7 @@ async def update_availability(payload: DonorAvailabilityUpdate):
 
 
 @router.get("/donors/forecast")
-async def donor_forecast(blood_group: str | None = None):
+async def donor_forecast(blood_group: str | None = None, ctx: AuthContext = Depends(get_current_user)):
     db = get_db()
     user_repo = MongoRepository(db, USERS)
     request_repo = MongoRepository(db, RESOURCE_REQUESTS)

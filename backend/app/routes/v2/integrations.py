@@ -22,7 +22,7 @@ def _parse_float(value: str, label: str) -> float:
 async def geocode(
     query: str = Query(..., min_length=2),
     ctx: AuthContext = Depends(require_scopes("dashboard:read")),
-    service: DataIntegrationService = Depends(get_data_integration_service),
+    service: DataIntegrationService = Depends(get_data_integration_service)
 ) -> dict:
     return await service.geocode(query)
 
@@ -33,7 +33,7 @@ async def route(
     destination: str,
     provider: str = "auto",
     ctx: AuthContext = Depends(require_scopes("dashboard:read")),
-    service: DataIntegrationService = Depends(get_data_integration_service),
+    service: DataIntegrationService = Depends(get_data_integration_service)
 ) -> dict:
     return await service.route(origin, destination, provider)
 
@@ -43,7 +43,7 @@ async def traffic(
     origin: str,
     destination: str,
     ctx: AuthContext = Depends(require_scopes("dashboard:read")),
-    service: DataIntegrationService = Depends(get_data_integration_service),
+    service: DataIntegrationService = Depends(get_data_integration_service)
 ) -> dict:
     return await service.traffic(origin, destination)
 
@@ -53,7 +53,7 @@ async def weather(
     lat: str,
     lng: str,
     ctx: AuthContext = Depends(require_scopes("dashboard:read")),
-    service: DataIntegrationService = Depends(get_data_integration_service),
+    service: DataIntegrationService = Depends(get_data_integration_service)
 ) -> dict:
     latitude = _parse_float(lat, "lat")
     longitude = _parse_float(lng, "lng")
@@ -62,7 +62,7 @@ async def weather(
 
 @router.get("/health/summary")
 async def health_summary(
-    ctx: AuthContext = Depends(require_scopes("analytics:read")),
+    ctx: AuthContext = Depends(require_scopes("analytics:read"))
 ) -> dict:
     db = get_db()
     health_repo = MongoRepository(db, HEALTH_RECORDS)
@@ -78,7 +78,7 @@ async def health_summary(
 
 @router.get("/hospitals/summary")
 async def hospital_summary(
-    ctx: AuthContext = Depends(require_scopes("analytics:read")),
+    ctx: AuthContext = Depends(require_scopes("analytics:read"))
 ) -> dict:
     db = get_db()
     hospital_repo = MongoRepository(db, HOSPITALS)

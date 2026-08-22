@@ -61,7 +61,7 @@ def _get_token_user(token: str) -> dict | None:
 
 @router.post("/enterprise/auth/bootstrap")
 async def bootstrap_enterprise_auth(
-    service: EnterpriseAuthService = Depends(get_auth_service),
+    service: EnterpriseAuthService = Depends(get_auth_service)
 ):
     """Initialize enterprise auth tables and seed defaults (dev only)."""
     settings = get_settings()
@@ -76,7 +76,7 @@ async def enterprise_login(
     request: Request,
     body: dict,
     service: EnterpriseAuthService = Depends(get_auth_service),
-    _: None = Depends(rate_limit_login.dependency()),
+    _: None = Depends(rate_limit_login.dependency())
 ):
     """Authenticate with hospital email + password. Returns token + workspaces."""
     email = body.get("email", "").strip()
@@ -108,7 +108,7 @@ async def verify_workspace(
     request: Request,
     body: dict,
     authorization: str | None = Header(default=None),
-    service: EnterpriseAuthService = Depends(get_auth_service),
+    service: EnterpriseAuthService = Depends(get_auth_service)
 ):
     """Verify user has access to a specific workspace."""
     department_key = body.get("department_key", "").strip()
@@ -135,7 +135,7 @@ async def verify_workspace(
             user["id"], "workspace_entry_denied", "workspace",
             department_key=department_key,
             details={"reason": str(e), "department_key": department_key},
-            ip=ip,
+            ip=ip
         )
         raise HTTPException(status_code=403, detail=str(e))
 
@@ -143,7 +143,7 @@ async def verify_workspace(
 @router.get("/enterprise/auth/workspaces")
 async def list_workspaces(
     authorization: str | None = Header(default=None),
-    service: EnterpriseAuthService = Depends(get_auth_service),
+    service: EnterpriseAuthService = Depends(get_auth_service)
 ):
     """List all workspaces (departments) the authenticated user can access."""
     if not authorization or not authorization.lower().startswith("bearer "):
@@ -160,7 +160,7 @@ async def list_workspaces(
 
 @router.get("/enterprise/auth/dev-creds")
 async def get_dev_credentials(
-    service: EnterpriseAuthService = Depends(get_auth_service),
+    service: EnterpriseAuthService = Depends(get_auth_service)
 ):
     """Return development auto-fill credentials (empty in production)."""
     settings = get_settings()
@@ -175,7 +175,7 @@ async def get_dev_credentials(
 async def enterprise_logout(
     body: dict,
     authorization: str | None = Header(default=None),
-    service: EnterpriseAuthService = Depends(get_auth_service),
+    service: EnterpriseAuthService = Depends(get_auth_service)
 ):
     """Logout and invalidate session."""
     if not authorization or not authorization.lower().startswith("bearer "):
@@ -193,11 +193,11 @@ async def enterprise_logout(
                 await conn.execute(
                     "UPDATE enterprise_sessions SET is_active = FALSE, logout_time = $1 "
                     "WHERE user_id = $2 AND is_active = TRUE",
-                    now, user_id,
+                    now, user_id
                 )
                 await conn.execute(
                     "UPDATE enterprise_users SET last_activity = $1 WHERE id = $2",
-                    now, user_id,
+                    now, user_id
                 )
             await service._audit_log(user_id, "logout", "auth", success=True)
     except Exception as exc:
@@ -207,7 +207,7 @@ async def enterprise_logout(
 
 @router.get("/enterprise/auth/status")
 async def enterprise_auth_status(
-    service: EnterpriseAuthService = Depends(get_auth_service),
+    service: EnterpriseAuthService = Depends(get_auth_service)
 ):
     """Get enterprise auth system status (counts per table)."""
     try:
@@ -221,7 +221,7 @@ async def log_enterprise_action(
     request: Request,
     body: dict,
     authorization: str | None = Header(default=None),
-    service: EnterpriseAuthService = Depends(get_auth_service),
+    service: EnterpriseAuthService = Depends(get_auth_service)
 ):
     """Log an enterprise action to the audit trail."""
     if not authorization or not authorization.lower().startswith("bearer "):
@@ -244,7 +244,7 @@ async def log_enterprise_action(
         entity_id=body.get("entity_id"),
         department_key=body.get("department_key"),
         details=body.get("details"),
-        ip=ip,
+        ip=ip
     )
     return {"status": "ok"}
 
@@ -252,7 +252,7 @@ async def log_enterprise_action(
 @router.get("/enterprise/auth/user")
 async def get_enterprise_user_info(
     authorization: str | None = Header(default=None),
-    service: EnterpriseAuthService = Depends(get_auth_service),
+    service: EnterpriseAuthService = Depends(get_auth_service)
 ):
     """Get authenticated user's full profile with permissions."""
     if not authorization or not authorization.lower().startswith("bearer "):
@@ -268,7 +268,7 @@ async def get_enterprise_user_info(
         "SELECT id, full_name, email, employee_id, designation, phone, status, "
         "mfa_enabled, avatar, profile_settings, last_login, last_activity "
         "FROM enterprise_users WHERE id = $1",
-        user["id"],
+        user["id"]
     )
     if not profile:
         raise HTTPException(status_code=404, detail="User not found")

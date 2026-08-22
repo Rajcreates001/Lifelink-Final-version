@@ -26,7 +26,7 @@ from app.services.collections import (
     HOSPITALS,
     NOTIFICATIONS,
     RESOURCE_REQUESTS,
-    USERS,
+    USERS
 )
 from app.core.celery_app import celery_app
 from app.services.public_service import PublicService
@@ -247,7 +247,7 @@ async def _log_activity(
     user_id: str,
     module: str,
     action: str,
-    metadata: dict | None = None,
+    metadata: dict | None = None
 ) -> None:
     repo = MongoRepository(db, ANALYTICS_EVENTS)
     await repo.insert_one(
@@ -304,7 +304,7 @@ async def _seed_hospitals(db, center_lat: float, center_lng: float, count: int =
 @router.get("/modules")
 async def list_modules(
     ctx: AuthContext = Depends(require_roles("public")),
-    service: PublicService = Depends(get_public_service),
+    service: PublicService = Depends(get_public_service)
 ) -> dict:
     return service.list_modules()
 
@@ -313,7 +313,7 @@ async def list_modules(
 async def get_module(
     module_key: str,
     ctx: AuthContext = Depends(require_roles("public")),
-    service: PublicService = Depends(get_public_service),
+    service: PublicService = Depends(get_public_service)
 ) -> dict:
     return service.get_module(module_key)
 
@@ -369,7 +369,7 @@ async def create_sos(
     severity_result = _predict_sos_heuristic(payload.message)
     celery_app.send_task(
         "system.generate_predictions",
-        args=["predict_sos_severity", {"message": payload.message, "vitals": payload.vitals or {}}],
+        args=["predict_sos_severity", {"message": payload.message, "vitals": payload.vitals or {}}]
     )
     emergency_type = severity_result.get("emergency_type") or "medical_emergency"
 
@@ -519,9 +519,8 @@ async def create_sos(
                 "alert_id": created_alert.get("_id"),
                 "severity": severity_result.get("severity_level"),
                 "ambulance_type": severity_result.get("ambulance_type"),
-            },
+            }
         )
-
     assignment_doc = None
     if selected_ambulance and selected_hospital and selected_hospital.get("id"):
         assignment_doc = await assignment_repo.insert_one(
@@ -537,9 +536,8 @@ async def create_sos(
         )
         await ambulance_repo.update_one(
             {"_id": selected_ambulance.get("_id")},
-            {"$set": {"status": "Assigned", "currentAssignment": assignment_doc.get("_id")}},
+            {"$set": {"status": "Assigned", "currentAssignment": assignment_doc.get("_id")}}
         )
-
     sos_user_id = _as_object_id(user_id) if user_id else None
     if user_id:
         await notification_repo.insert_one(
@@ -587,27 +585,24 @@ async def create_sos(
         f"Ambulance {selected_ambulance.get('ambulanceId') if selected_ambulance else 'assigned'} is en route to {selected_hospital.get('name') if selected_hospital else 'the hospital'}. Prepare emergency triage.",
         metadata_base=common_sos_metadata,
         route="/dashboard/hospital/ambulance-tracking",
-        module_name="hospital",
+        module_name="hospital"
     )
-
     await _insert_role_notifications(
         "ambulance",
         "New SOS Dispatch",
         "A new SOS assignment is available. Open live route tracking now.",
         metadata_base=common_sos_metadata,
         route="/dashboard/ambulance/live-tracking",
-        module_name="ambulance",
+        module_name="ambulance"
     )
-
     await _insert_role_notifications(
         "government",
         "District Emergency Alert",
         "A new SOS incident has been reported. Monitor live ambulance status and hospital readiness.",
         metadata_base=common_sos_metadata,
         route="/dashboard/government/live-monitoring",
-        module_name="government",
+        module_name="government"
     )
-
     await MongoRepository(db, EMERGENCY_EVENTS).insert_one(
         {
             "alert_id": created_alert.get("_id"),
@@ -625,27 +620,24 @@ async def create_sos(
             "type": "assignment",
             "alert_id": created_alert.get("_id"),
             "ambulance_id": selected_ambulance.get("_id") if selected_ambulance else None,
-        },
+        }
     )
-
     await realtime.broadcast(
         "hospital",
         {
             "type": "sos_alert",
             "alert_id": created_alert.get("_id"),
             "hospital_id": selected_hospital.get("id") if selected_hospital else None,
-        },
+        }
     )
-
     await realtime.broadcast(
         "government",
         {
             "type": "sos_alert",
             "alert_id": created_alert.get("_id"),
             "severity": severity_result.get("severity_level"),
-        },
+        }
     )
-
     response_meta = {
         "confidence": severity_meta.get("confidence", 0.7),
         "reasoning": [
@@ -679,7 +671,7 @@ async def create_sos(
 async def sos_status(
     sos_id: str,
     ctx: AuthContext = Depends(require_roles("public")),
-    routing: RoutingService = Depends(get_routing_service),
+    routing: RoutingService = Depends(get_routing_service)
 ) -> dict:
     db = get_db()
     alert_repo = MongoRepository(db, ALERTS)
@@ -711,7 +703,7 @@ async def sos_status(
                     alert["location"]["lng"],
                     coords[0],
                     coords[1],
-                    include_geometry=False,
+                    include_geometry=False
                 )
                 eta_minutes = int(round((route.get("duration_seconds") or 600) / 60))
 
@@ -730,7 +722,7 @@ async def sos_status(
 async def donor_match(
     payload: DonorMatchRequest,
     ctx: AuthContext | None = Depends(get_optional_user),
-    routing: RoutingService = Depends(get_routing_service),
+    routing: RoutingService = Depends(get_routing_service)
 ) -> dict:
     db = get_db()
     user_repo = MongoRepository(db, USERS)
@@ -801,7 +793,7 @@ async def donor_match(
                 "count": len(ranked),
                 "blood_group": payload.blood_group,
                 "urgency": payload.urgency,
-            },
+            }
         )
     return {"count": len(ranked), "donors": ranked[:12]}
 
@@ -809,7 +801,7 @@ async def donor_match(
 @router.get("/donors/{donor_id}/profile")
 async def donor_profile(
     donor_id: str,
-    ctx: AuthContext | None = Depends(get_optional_user),
+    ctx: AuthContext | None = Depends(get_optional_user)
 ) -> dict:
     """
     Returns detailed donor profile with health records, response metrics,
@@ -935,7 +927,7 @@ async def donor_profile(
 @router.post("/donors/notify")
 async def notify_donor(
     payload: DonorNotifyRequest,
-    ctx: AuthContext = Depends(require_roles("public")),
+    ctx: AuthContext = Depends(require_roles("public"))
 ) -> dict:
     if payload.requester_id and payload.requester_id != ctx.user_id:
         raise HTTPException(status_code=403, detail="Invalid requester context")
@@ -968,9 +960,8 @@ async def notify_donor(
         ctx.user_id,
         "donor",
         "notified",
-        {"donor_id": payload.donor_id, "urgency": payload.urgency or "medium"},
+        {"donor_id": payload.donor_id, "urgency": payload.urgency or "medium"}
     )
-
     return {"status": "ok"}
 
 

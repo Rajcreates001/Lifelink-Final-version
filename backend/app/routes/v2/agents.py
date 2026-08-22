@@ -1,3 +1,4 @@
+import logging
 import asyncio
 from datetime import datetime
 from html.parser import HTMLParser
@@ -99,6 +100,8 @@ def _needs_clarification(query: str) -> bool:
 
 import re as _re
 
+logger = logging.getLogger(__name__)
+
 
 def _classify_query_type(query: str) -> str | None:
     """
@@ -192,7 +195,7 @@ def _extract_multi_agent_inputs(query: str) -> dict:
             if 0 < age_val < 130:
                 inputs["age"] = age_val
         except (ValueError, IndexError):
-            pass
+            logger.debug("Suppressed (ValueError, IndexError) in %s", __name__)
 
     # Extract blood group mentions
     bg_match = _re.search(r'(A|B|AB|O)\s*([+\-])', text)
@@ -321,7 +324,7 @@ def _compute_confidence(context_len: int, web_count: int, attachment_count: int,
 @router.post("/analyze")
 async def multi_agent_analyze(
     payload: MultiAgentRequest,
-    ctx: AuthContext = Depends(require_scopes("ai:ask")),
+    ctx: AuthContext = Depends(require_scopes("ai:ask"))
 ) -> dict:
     """
     Run a multi-agent analysis pipeline.
@@ -341,16 +344,14 @@ async def multi_agent_analyze(
             detail={
                 "error": f"Invalid request_type '{request_type}'.",
                 "valid_types": sorted(valid_types),
-            },
+            }
         )
-
     result = run_multi_agent_analysis(
         request_type=request_type,
         inputs=payload.inputs,
         hospitals=payload.hospitals,
-        donor_pool=payload.donor_pool,
+        donor_pool=payload.donor_pool
     )
-
     return {
         "requestedBy": ctx.user_id,
         "request_type": request_type,
@@ -400,7 +401,7 @@ async def memory(memory_id: str, ctx: AuthContext = Depends(require_scopes("emer
 @router.get("/chat/sessions")
 async def list_chat_sessions(
     ctx: AuthContext = Depends(get_current_user),
-    chat_service: AiChatService = Depends(get_ai_chat_service),
+    chat_service: AiChatService = Depends(get_ai_chat_service)
 ) -> dict:
     sessions = await chat_service.list_sessions(ctx.user_id)
     return {"sessions": sessions}
@@ -410,14 +411,14 @@ async def list_chat_sessions(
 async def create_chat_session(
     payload: ChatSessionCreate,
     ctx: AuthContext = Depends(get_current_user),
-    chat_service: AiChatService = Depends(get_ai_chat_service),
+    chat_service: AiChatService = Depends(get_ai_chat_service)
 ) -> dict:
     title = (payload.title or "New chat").strip() or "New chat"
     session = await chat_service.create_session(
         ctx.user_id,
         title=title,
         module=(payload.module or "general").lower(),
-        mode=(payload.mode or "chat").lower(),
+        mode=(payload.mode or "chat").lower()
     )
     ensure_session(session["id"], {"createdBy": ctx.user_id})
     return {"session": session}
@@ -427,7 +428,7 @@ async def create_chat_session(
 async def get_chat_session(
     session_id: str,
     ctx: AuthContext = Depends(get_current_user),
-    chat_service: AiChatService = Depends(get_ai_chat_service),
+    chat_service: AiChatService = Depends(get_ai_chat_service)
 ) -> dict:
     session = await chat_service.get_session_with_messages(ctx.user_id, session_id)
     if not session:
@@ -441,7 +442,7 @@ async def ask(
     ctx: AuthContext | None = Depends(get_optional_user),
     chat_service: AiChatService = Depends(get_ai_chat_service),
     routing: RoutingService = Depends(get_routing_service),
-    weather: WeatherService = Depends(get_weather_service),
+    weather: WeatherService = Depends(get_weather_service)
 ) -> dict:
     question = (payload.query or "").strip()
     attachments = payload.attachments or []
@@ -476,9 +477,8 @@ async def ask(
                 title="New chat",
                 module=module,
                 mode=mode,
-                session_id=memory_id,
+                session_id=memory_id
             )
-
     history_context = "No prior context."
     if ctx and memory_id:
         recent_messages = await chat_service.get_recent_messages(ctx.user_id, memory_id, limit=6)
@@ -520,14 +520,14 @@ async def ask(
                 memory_id,
                 role="user",
                 content=question,
-                payload={"attachments": attachment_summaries, "module": module, "mode": mode},
+                payload={"attachments": attachment_summaries, "module": module, "mode": mode}
             )
             await chat_service.add_message(
                 ctx.user_id,
                 memory_id,
                 role="assistant",
                 content="I can help, but I need a bit more detail to proceed.",
-                payload={"clarifying": clarifying, "needsClarification": True},
+                payload={"clarifying": clarifying, "needsClarification": True}
             )
             if persisted_session and persisted_session.get("title") == "New chat":
                 await chat_service.update_title(ctx.user_id, memory_id, question[:32])
@@ -553,7 +553,7 @@ async def ask(
             memory_id,
             role="user",
             content=question,
-            payload={"attachments": attachment_summaries, "module": module, "mode": mode},
+            payload={"attachments": attachment_summaries, "module": module, "mode": mode}
         )
         if persisted_session and persisted_session.get("title") == "New chat":
             await chat_service.update_title(ctx.user_id, memory_id, question[:32])
@@ -591,16 +591,15 @@ async def ask(
             donors_for_agents = await user_repo.find_many(
                 {"role": "public"},
                 projection={"name": 1, "location": 1, "phone": 1, "publicProfile": 1},
-                limit=120,
+                limit=120
             )
-
         # Run the multi-agent analysis (synchronous)
         try:
             agent_analysis = run_multi_agent_analysis(
                 request_type=agent_type,
                 inputs=agent_inputs,
                 hospitals=hospitals_for_agents,
-                donor_pool=donors_for_agents,
+                donor_pool=donors_for_agents
             )
         except Exception as agent_err:
             agent_analysis = {
@@ -679,7 +678,7 @@ async def ask(
             donors = await user_repo.find_many(
                 {"role": "public"},
                 projection={"name": 1, "location": 1, "phone": 1, "publicProfile": 1},
-                limit=120,
+                limit=120
             )
         candidates = []
         for donor in donors:
@@ -777,7 +776,7 @@ async def ask(
                     "Write in a natural, conversational style similar to modern AI assistants. "
                     "Use LifeLink context and public sources to make the answer useful, but keep the user's question front and center. "
                     "Avoid generic fallback language and do not return raw metadata as the main answer."
-                ),
+                )
             )
         except Exception as exc:
             error_text = str(exc)
@@ -895,7 +894,7 @@ async def ask(
                 "module": module,
                 "mode": mode,
                 "followUp": follow_up,
-            },
+            }
         )
         persisted_session = await chat_service.get_session_summary(ctx.user_id, memory_id)
 

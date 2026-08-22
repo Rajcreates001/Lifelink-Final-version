@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Body, HTTPException, Query
+from fastapi import APIRouter, Body, HTTPException, Query, Depends
+from app.core.auth import get_current_user, AuthContext
 from fastapi.responses import PlainTextResponse
 
 from app.db.mongo import get_db
@@ -37,7 +38,7 @@ from app.services.collections import (
     RADIOLOGY_REPORTS,
     RADIOLOGY_REQUESTS,
     RESOURCES,
-    VENDOR_LEAD_TIMES,
+    VENDOR_LEAD_TIMES
 )
 from app.core.celery_app import celery_app
 from app.services.prediction_store import get_latest_prediction
@@ -55,6 +56,7 @@ async def list_radiology_requests(
     status: str | None = Query(None),
     sort_by: str | None = Query(None),
     sort_dir: str | None = Query(None),
+    ctx: AuthContext = Depends(get_current_user)
 ):
     db = get_db()
     await _ensure_seeded(db, hospitalId)
@@ -72,7 +74,9 @@ async def list_radiology_requests(
 
 
 @router.post("/radiology/requests", status_code=201)
-async def create_radiology_request(payload: RadiologyRequestCreate):
+async def create_radiology_request(payload: RadiologyRequestCreate,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, RADIOLOGY_REQUESTS)
     oid = _require_hospital_id(payload.hospitalId)
@@ -89,7 +93,9 @@ async def create_radiology_request(payload: RadiologyRequestCreate):
 
 
 @router.patch("/radiology/requests/{request_id}")
-async def update_radiology_request(request_id: str, payload: RadiologyRequestUpdate):
+async def update_radiology_request(request_id: str, payload: RadiologyRequestUpdate,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, RADIOLOGY_REQUESTS)
     oid = _as_object_id(request_id)
@@ -107,6 +113,7 @@ async def list_radiology_reports(
     status: str | None = Query(None),
     sort_by: str | None = Query(None),
     sort_dir: str | None = Query(None),
+    ctx: AuthContext = Depends(get_current_user)
 ):
     db = get_db()
     await _ensure_seeded(db, hospitalId)
@@ -124,7 +131,9 @@ async def list_radiology_reports(
 
 
 @router.post("/radiology/reports", status_code=201)
-async def create_radiology_report(payload: RadiologyReportCreate):
+async def create_radiology_report(payload: RadiologyReportCreate,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, RADIOLOGY_REPORTS)
     oid = _require_hospital_id(payload.hospitalId)

@@ -6,6 +6,8 @@ from typing import Any
 
 import redis
 
+logger = logging.getLogger(__name__)
+
 
 class EventStream:
     def __init__(self, redis_url: str, namespace: str = "lifelink:ai") -> None:
@@ -36,7 +38,7 @@ class EventStream:
                 event_id = self._redis.xadd(key, {"data": json.dumps(record)}, maxlen=maxlen)
                 return {"status": "ok", "event_id": event_id}
             except Exception:
-                pass
+                logger.debug("Suppressed Exception in %s", __name__)
 
         self._fallback.setdefault(key, []).append(record)
         return {"status": "fallback", "event_id": str(len(self._fallback[key]))}
@@ -55,6 +57,6 @@ class EventStream:
                         results.append({"payload": raw})
                 return results
             except Exception:
-                pass
+                logger.debug("Suppressed Exception in %s", __name__)
 
         return list(reversed(self._fallback.get(key, [])[-count:]))

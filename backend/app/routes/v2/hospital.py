@@ -174,7 +174,7 @@ async def triage(payload: dict, ctx: AuthContext = Depends(require_scopes("patie
 @router.get("/modules")
 async def list_modules(
     ctx: AuthContext = Depends(require_roles("hospital")),
-    service: HospitalService = Depends(get_hospital_service),
+    service: HospitalService = Depends(get_hospital_service)
 ) -> dict:
     return service.list_modules(ctx.sub_role)
 
@@ -183,7 +183,7 @@ async def list_modules(
 async def get_module(
     module_key: str,
     ctx: AuthContext = Depends(require_roles("hospital")),
-    service: HospitalService = Depends(get_hospital_service),
+    service: HospitalService = Depends(get_hospital_service)
 ) -> dict:
     return service.get_module(ctx.sub_role, module_key)
 
@@ -196,7 +196,7 @@ async def nearby_hospitals(
     radius_km: float = Query(25.0, ge=1, le=200),
     include_eta: bool = Query(True),
     ctx: AuthContext | None = Depends(get_optional_user),
-    routing: RoutingService = Depends(get_routing_service),
+    routing: RoutingService = Depends(get_routing_service)
 ) -> dict:
     latitude = _parse_float(lat, "lat")
     longitude = _parse_float(lng, "lng")
@@ -232,7 +232,7 @@ async def nearby_hospitals(
                 longitude,
                 item["lat"],
                 item["lng"],
-                include_geometry=False,
+                include_geometry=False
             )
             item["eta_seconds"] = route.get("duration_seconds")
 
@@ -289,9 +289,8 @@ async def nearby_hospitals(
                 "radius_km": radius_km,
                 "lat": latitude,
                 "lng": longitude,
-            },
+            }
         )
-
     return {
         "status": "ok",
         "count": len(hospitals),
@@ -302,7 +301,7 @@ async def nearby_hospitals(
 @router.post("/wait-time", status_code=201)
 async def report_wait_time(
     payload: WaitTimeReport,
-    ctx: AuthContext = Depends(require_scopes("dashboard:read")),
+    ctx: AuthContext = Depends(require_scopes("dashboard:read"))
 ):
     db = get_db()
     repo = MongoRepository(db, HOSPITAL_WAIT_TIMES)
@@ -319,7 +318,7 @@ async def report_wait_time(
 @router.get("/beds/availability")
 async def bed_availability(
     hospital_id: int | None = Query(None),
-    ctx: AuthContext = Depends(require_scopes("dashboard:read")),
+    ctx: AuthContext = Depends(require_scopes("dashboard:read"))
 ) -> dict:
     db = get_db()
     repo = MongoRepository(db, RESOURCES)

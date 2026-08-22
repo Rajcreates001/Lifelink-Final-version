@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Body, HTTPException, Query
+from fastapi import APIRouter, Body, HTTPException, Query, Depends
+from app.core.auth import get_current_user, AuthContext
 from fastapi.responses import PlainTextResponse
 
 from app.db.mongo import get_db
@@ -37,7 +38,7 @@ from app.services.collections import (
     RADIOLOGY_REPORTS,
     RADIOLOGY_REQUESTS,
     RESOURCES,
-    VENDOR_LEAD_TIMES,
+    VENDOR_LEAD_TIMES
 )
 from app.core.celery_app import celery_app
 from app.services.prediction_store import get_latest_prediction
@@ -58,6 +59,7 @@ async def emergency_feed(
     source: str | None = Query(None),
     sort_by: str | None = Query(None),
     sort_dir: str | None = Query(None),
+    ctx: AuthContext = Depends(get_current_user)
 ):
     db = get_db()
     await _ensure_seeded(db, hospitalId)
@@ -81,7 +83,9 @@ async def emergency_feed(
 
 
 @router.post("/emergency/feed", status_code=201)
-async def create_emergency_event(payload: EmergencyEventCreate):
+async def create_emergency_event(payload: EmergencyEventCreate,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, EMERGENCY_EVENTS)
     oid = _require_hospital_id(payload.hospitalId)
@@ -105,7 +109,9 @@ async def create_emergency_event(payload: EmergencyEventCreate):
 
 
 @router.patch("/emergency/feed/{event_id}")
-async def update_emergency_event(event_id: str, payload: EmergencyEventUpdate):
+async def update_emergency_event(event_id: str, payload: EmergencyEventUpdate,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, EMERGENCY_EVENTS)
     oid = _as_object_id(event_id)
@@ -117,7 +123,9 @@ async def update_emergency_event(event_id: str, payload: EmergencyEventUpdate):
 
 
 @router.get("/emergency/ambulances")
-async def emergency_ambulances(hospitalId: str = Query(...)):
+async def emergency_ambulances(hospitalId: str = Query(...),
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     ambulance_repo = MongoRepository(db, AMBULANCES)
     assignment_repo = MongoRepository(db, AMBULANCE_ASSIGNMENTS)
@@ -131,7 +139,9 @@ async def emergency_ambulances(hospitalId: str = Query(...)):
 
 
 @router.post("/emergency/dispatch", status_code=201)
-async def emergency_dispatch(payload: dict = Body(default_factory=dict)):
+async def emergency_dispatch(payload: dict = Body(default_factory=dict),
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     assignment_repo = MongoRepository(db, AMBULANCE_ASSIGNMENTS)
 
@@ -173,6 +183,7 @@ async def emergency_intake(
     department: str | None = Query(None),
     sort_by: str | None = Query(None),
     sort_dir: str | None = Query(None),
+    ctx: AuthContext = Depends(get_current_user)
 ):
     db = get_db()
     patient_repo = MongoRepository(db, PATIENTS)
@@ -193,7 +204,9 @@ async def emergency_intake(
 
 
 @router.post("/emergency/intake", status_code=201)
-async def create_emergency_intake(payload: EmergencyIntakeCreate):
+async def create_emergency_intake(payload: EmergencyIntakeCreate,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     patient_repo = MongoRepository(db, PATIENTS)
     oid = _require_hospital_id(payload.hospitalId)
@@ -218,7 +231,9 @@ async def create_emergency_intake(payload: EmergencyIntakeCreate):
 
 
 @router.patch("/emergency/intake/{patient_id}")
-async def update_emergency_intake(patient_id: str, payload: EmergencyIntakeUpdate):
+async def update_emergency_intake(patient_id: str, payload: EmergencyIntakeUpdate,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     patient_repo = MongoRepository(db, PATIENTS)
     oid = _as_object_id(patient_id)

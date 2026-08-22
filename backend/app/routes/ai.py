@@ -1,3 +1,4 @@
+import logging
 import csv
 import io
 import re
@@ -6,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from bson import ObjectId
-from fastapi import APIRouter, Body, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from app.db.mongo import get_db
@@ -18,11 +19,15 @@ from app.services.medical_knowledge import (
     compute_risk_score,
     estimate_confidence,
     validate_blood_group,
-    validate_health_payload,
+    validate_health_payload
 )
 from app.services.prediction_store import get_latest_prediction
 from app.services.repository import MongoRepository
 from app.services.ml_runner import run_ml_model
+from app.core.auth import get_current_user, AuthContext
+from app.services.rate_limiter import rate_limit_ml, rate_limit_ml_heavy
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["ai"])
 
@@ -77,7 +82,7 @@ async def _run_prediction(command: str, payload: dict):
             result.get("meta"),
             cached.get("confidence", 0.0),
             ["Serving latest cached prediction; fresh run queued in background."],
-            [{"title": "Task", "detail": f"system.generate_predictions::{command}"}],
+            [{"title": "Task", "detail": f"system.generate_predictions::{command}"}]
         )
         return result
 
@@ -88,7 +93,7 @@ async def _run_prediction(command: str, payload: dict):
                 result.get("meta"),
                 result.get("meta", {}).get("confidence", 0.65) if isinstance(result.get("meta"), dict) else 0.65,
                 ["Generated immediately from the ML model as no cached prediction was available."],
-                [{"title": "Model", "detail": f"ai_ml.py::{command}"}],
+                [{"title": "Model", "detail": f"ai_ml.py::{command}"}]
             )
             return result
     except Exception as exc:
@@ -99,7 +104,7 @@ async def _run_prediction(command: str, payload: dict):
                 None,
                 0.0,
                 ["Prediction queued for background processing."],
-                [{"title": "Task", "detail": f"system.generate_predictions::{command}"}],
+                [{"title": "Task", "detail": f"system.generate_predictions::{command}"}]
             ),
         }
 
@@ -109,7 +114,7 @@ async def _run_prediction(command: str, payload: dict):
             None,
             0.0,
             ["Prediction queued for background processing."],
-            [{"title": "Task", "detail": f"system.generate_predictions::{command}"}],
+            [{"title": "Task", "detail": f"system.generate_predictions::{command}"}]
         ),
     }
 
@@ -507,7 +512,7 @@ def _extract_conditions(report_text: str) -> list[str]:
 
 
 @router.post("/predict_health_risk")
-async def predict_health_risk(payload: dict = Body(default_factory=dict)):
+async def predict_health_risk(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(get_current_user), _: None = Depends(rate_limit_ml.dependency())):
     # Validate payload before forwarding to ML model
     validated = validate_health_payload(payload)
     warnings = validated.get("_warnings", [])
@@ -526,9 +531,8 @@ async def predict_health_risk(payload: dict = Body(default_factory=dict)):
             detail={
                 "error": "Input validation failed: impossible values detected.",
                 "warnings": hard_reject,
-            },
+            }
         )
-
     # Forward validated/normalized payload (strip _warnings before ML)
     clean_payload = {k: v for k, v in validated.items() if k != "_warnings"}
     # Merge back any fields that validate_health_payload didn't handle
@@ -555,17 +559,17 @@ async def predict_health_risk(payload: dict = Body(default_factory=dict)):
 
 
 @router.post("/predict_user_cluster")
-async def predict_user_cluster(payload: dict = Body(default_factory=dict)):
+async def predict_user_cluster(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(get_current_user), _: None = Depends(rate_limit_ml.dependency())):
     return await _run_prediction("predict_cluster", payload)
 
 
 @router.post("/predict_user_forecast")
-async def predict_user_forecast(payload: dict = Body(default_factory=dict)):
+async def predict_user_forecast(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(get_current_user), _: None = Depends(rate_limit_ml.dependency())):
     return await _run_prediction("predict_forecast", payload)
 
 
 @router.post("/check_profile_cluster")
-async def check_profile_cluster(payload: ProfileClusterRequest):
+async def check_profile_cluster(payload: ProfileClusterRequest, ctx: AuthContext = Depends(get_current_user), _: None = Depends(rate_limit_ml.dependency())):
     db = get_db()
     user_repo = MongoRepository(db, USERS)
 
@@ -642,9 +646,8 @@ async def check_profile_cluster(payload: ProfileClusterRequest):
         [
             {"title": "Data Source", "detail": f"User profile with {donation_count + sos_count} engagement events"},
             {"title": "Model", "detail": "ml/activity_cluster_model.joblib"},
-        ],
+        ]
     )
-
     return {
         "cluster_id": cluster,
         "cluster_label": cluster_labels.get(cluster, "User Profile"),
@@ -654,7 +657,7 @@ async def check_profile_cluster(payload: ProfileClusterRequest):
 
 
 @router.post("/predict_donation_forecast")
-async def predict_donation_forecast(payload: DonationForecastRequest):
+async def predict_donation_forecast(payload: DonationForecastRequest, ctx: AuthContext = Depends(get_current_user), _: None = Depends(rate_limit_ml.dependency())):
     # Derive donation frequency from real user data when possible
     donation_frequency = 1
     hospital_stock_level = 50
@@ -671,14 +674,14 @@ async def predict_donation_forecast(payload: DonationForecastRequest):
                     # Estimate hospital stock level from donation frequency
                     hospital_stock_level = min(95, max(10, donation_frequency * 15 + 20))
         except Exception:
-            pass
+            logger.debug("Suppressed Exception in %s", __name__)
 
     blood_group = payload.blood_group or "O+"
     try:
         normalized_bg = validate_blood_group(blood_group)
         blood_group = normalized_bg or "O+"
     except Exception:
-        pass
+        logger.debug("Suppressed Exception in %s", __name__)
 
     forecast_data = {
         "month": datetime.utcnow().month,
@@ -716,9 +719,8 @@ async def predict_donation_forecast(payload: DonationForecastRequest):
         [
             {"title": "Dataset", "detail": "ml/donor_availability_data.csv"},
             {"title": "Model", "detail": "ml/donor_availability_model.joblib"},
-        ],
+        ]
     )
-
     return {
         "forecast_days": max(1, int(score // 10) + 1),
         "availability_score": round(score, 1),
@@ -762,7 +764,7 @@ _SEVERITY_TRIAGE_MAP = {
 
 
 @router.post("/hosp/predict_severity")
-async def hosp_predict_severity(payload: dict = Body(default_factory=dict)):
+async def hosp_predict_severity(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(get_current_user), _: None = Depends(rate_limit_ml.dependency())):
     result = await _run_prediction("predict_hosp_severity", payload)
     # Enrich the raw model output into a full triage response so callers always
     # receive severity_level, severity_score, ambulance/hospital type and response time.
@@ -776,82 +778,82 @@ async def hosp_predict_severity(payload: dict = Body(default_factory=dict)):
 
 
 @router.post("/hosp/predict_policy")
-async def hosp_predict_policy(payload: dict = Body(default_factory=dict)):
+async def hosp_predict_policy(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(get_current_user), _: None = Depends(rate_limit_ml.dependency())):
     return await _run_prediction("predict_policy_seg", payload)
 
 
 @router.post("/hosp/predict_outbreak")
-async def hosp_predict_outbreak(payload: dict = Body(default_factory=dict)):
+async def hosp_predict_outbreak(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(get_current_user), _: None = Depends(rate_limit_ml.dependency())):
     return await _run_prediction("predict_forecast_outbreak", payload)
 
 
 @router.post("/hosp/optimize_ambulance")
-async def hosp_optimize_ambulance(payload: dict = Body(default_factory=dict)):
+async def hosp_optimize_ambulance(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(get_current_user), _: None = Depends(rate_limit_ml.dependency())):
     return await _run_prediction("predict_allocation", payload)
 
 
 @router.post("/hosp/detect_anomaly")
-async def hosp_detect_anomaly(payload: dict = Body(default_factory=dict)):
+async def hosp_detect_anomaly(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(get_current_user), _: None = Depends(rate_limit_ml.dependency())):
     return await _run_prediction("predict_anomaly", payload)
 
 
 @router.post("/gov/predict_outbreak")
-async def gov_predict_outbreak(payload: dict = Body(default_factory=dict)):
+async def gov_predict_outbreak(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(get_current_user), _: None = Depends(rate_limit_ml.dependency())):
     return await _run_prediction("predict_forecast_outbreak", payload)
 
 
 @router.post("/gov/predict_severity")
-async def gov_predict_severity(payload: dict = Body(default_factory=dict)):
+async def gov_predict_severity(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(get_current_user), _: None = Depends(rate_limit_ml.dependency())):
     return await _run_prediction("predict_severity", payload)
 
 
 @router.post("/gov/predict_availability")
-async def gov_predict_availability(payload: dict = Body(default_factory=dict)):
+async def gov_predict_availability(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(get_current_user), _: None = Depends(rate_limit_ml.dependency())):
     return await _run_prediction("predict_availability", payload)
 
 
 @router.post("/gov/predict_allocation")
-async def gov_predict_allocation(payload: dict = Body(default_factory=dict)):
+async def gov_predict_allocation(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(get_current_user), _: None = Depends(rate_limit_ml.dependency())):
     return await _run_prediction("predict_allocation", payload)
 
 
 @router.post("/gov/predict_policy_segment")
-async def gov_predict_policy_segment(payload: dict = Body(default_factory=dict)):
+async def gov_predict_policy_segment(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(get_current_user), _: None = Depends(rate_limit_ml.dependency())):
     return await _run_prediction("predict_policy_seg", payload)
 
 
 @router.post("/gov/predict_performance_score")
-async def gov_predict_performance_score(payload: dict = Body(default_factory=dict)):
+async def gov_predict_performance_score(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(get_current_user), _: None = Depends(rate_limit_ml.dependency())):
     return await _run_prediction("predict_perf_score", payload)
 
 
 @router.post("/gov/predict_anomaly")
-async def gov_predict_anomaly(payload: dict = Body(default_factory=dict)):
+async def gov_predict_anomaly(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(get_current_user), _: None = Depends(rate_limit_ml.dependency())):
     return await _run_prediction("predict_anomaly", payload)
 
 
 @router.post("/hospital/patient/recovery")
-async def hospital_patient_recovery(payload: dict = Body(default_factory=dict)):
+async def hospital_patient_recovery(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(get_current_user), _: None = Depends(rate_limit_ml.dependency())):
     return await _run_prediction("predict_recovery", payload)
 
 
 @router.post("/hospital/patient/stay")
-async def hospital_patient_stay(payload: dict = Body(default_factory=dict)):
+async def hospital_patient_stay(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(get_current_user), _: None = Depends(rate_limit_ml.dependency())):
     return await _run_prediction("predict_stay", payload)
 
 
 @router.post("/hospital/inventory/predict")
-async def hospital_inventory_predict(payload: dict = Body(default_factory=dict)):
+async def hospital_inventory_predict(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(get_current_user), _: None = Depends(rate_limit_ml.dependency())):
     return await _run_prediction("predict_inventory", payload)
 
 
 @router.post("/ml/predict-eta")
-async def ml_predict_eta(payload: dict = Body(default_factory=dict)):
+async def ml_predict_eta(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(get_current_user), _: None = Depends(rate_limit_ml.dependency())):
     return await _run_prediction("predict_eta", payload)
 
 
 @router.post("/check_compatibility")
-async def check_compatibility(payload: CompatibilityRequest):
+async def check_compatibility(payload: CompatibilityRequest, ctx: AuthContext = Depends(get_current_user), _: None = Depends(rate_limit_ml.dependency())):
     if not payload.requester_id or not payload.donor_id:
         raise HTTPException(status_code=400, detail="requester_id and donor_id are required")
 
@@ -901,7 +903,7 @@ async def check_compatibility(payload: CompatibilityRequest):
             if not (raw_score == 0 or (45 <= raw_score <= 55)):
                 ml_score = raw_score
     except HTTPException:
-        pass
+        logger.debug("Suppressed HTTPException in %s", __name__)
 
     # Secondary: use evidence-based medical_knowledge assessment
     knowledge_assessment = assess_donor_compatibility(
@@ -910,9 +912,8 @@ async def check_compatibility(payload: CompatibilityRequest):
         recipient_age=requester_hr.get("age"),
         donor_age=donor_hr.get("age"),
         distance_km=5.0,
-        donor_available=donor_available,
+        donor_available=donor_available
     )
-
     # Blend: prefer ML score when reasonable, otherwise use knowledge layer
     if ml_score is not None and 10 <= ml_score <= 100:
         score = ml_score
@@ -955,7 +956,7 @@ async def check_compatibility(payload: CompatibilityRequest):
         [
             {"title": "Medical Knowledge", "detail": "app/services/medical_knowledge.py::assess_donor_compatibility"},
             {"title": "Model", "detail": "ml/compatibility_model.joblib"},
-        ],
+        ]
     )
     if profile_warnings:
         meta["warnings"] = profile_warnings
@@ -1032,9 +1033,8 @@ async def _build_report_analysis(report_text: str, user_id: str | None, source_m
         blood_pressure_dia=metrics.get("blood_pressure_diastolic"),
         oxygen=metrics.get("oxygen"),
         bmi=metrics.get("bmi"),
-        age=metrics.get("age"),
+        age=metrics.get("age")
     )
-
     if ml_result and isinstance(ml_result, dict):
         model_score = ml_result.get("risk_score")
         model_level = ml_result.get("risk_level")
@@ -1052,9 +1052,8 @@ async def _build_report_analysis(report_text: str, user_id: str | None, source_m
         heart_rate=metrics.get("heart_rate"),
         oxygen=metrics.get("oxygen"),
         has_condition=bool(conditions),
-        lifestyle=lifestyle,
+        lifestyle=lifestyle
     )
-
     if clinical_risk.get("risk_score") is not None:
         # Blend clinical risk with existing risk score
         risk_score = max(risk_score, clinical_risk["risk_score"])
@@ -1082,9 +1081,8 @@ async def _build_report_analysis(report_text: str, user_id: str | None, source_m
     conf_result = estimate_confidence(
         provided_inputs=provided_inputs,
         model_confidence=ml_result.get("meta", {}).get("confidence") if isinstance(ml_result, dict) else None,
-        critical_inputs=["heart_rate", "blood_pressure"],
+        critical_inputs=["heart_rate", "blood_pressure"]
     )
-
     metric_notes = []
     if metrics.get("blood_pressure_systolic") and metrics.get("blood_pressure_diastolic"):
         metric_notes.append(f"BP {metrics['blood_pressure_systolic']}/{metrics['blood_pressure_diastolic']}")
@@ -1217,7 +1215,7 @@ async def _build_report_analysis(report_text: str, user_id: str | None, source_m
         [
             {"title": "Medical Knowledge", "detail": "app/services/medical_knowledge.py"},
             {"title": "Pipeline", "detail": "ml/ai_ml.py::analyze_report"},
-        ],
+        ]
     )
     meta["data_completeness"] = conf_result.data_completeness
     meta["missing_critical_inputs"] = conf_result.missing_critical_inputs
@@ -1294,7 +1292,7 @@ async def _build_report_analysis(report_text: str, user_id: str | None, source_m
 
 
 @router.post("/analyze_report")
-async def analyze_report(payload: AnalyzeReportRequest):
+async def analyze_report(payload: AnalyzeReportRequest, ctx: AuthContext = Depends(get_current_user), _: None = Depends(rate_limit_ml_heavy.dependency())):
     return await _build_report_analysis(payload.report_text, payload.user_id, {"source": "text"})
 
 
@@ -1303,6 +1301,8 @@ async def analyze_report_file(
     file: UploadFile = File(...),
     user_id: str | None = Form(default=None),
     report_text: str | None = Form(default=None),
+    ctx: AuthContext = Depends(get_current_user),
+    _: None = Depends(rate_limit_ml_heavy.dependency()),
 ):
     if not file:
         raise HTTPException(status_code=400, detail="Report file is required")
@@ -1324,14 +1324,13 @@ async def analyze_report_file(
     if len(combined) < MIN_REPORT_CHARS:
         raise HTTPException(
             status_code=422,
-            detail="Unable to extract readable text. Try a clearer scan or a text-based PDF.",
+            detail="Unable to extract readable text. Try a clearer scan or a text-based PDF."
         )
-
     return await _build_report_analysis(combined, user_id, source_meta)
 
 
 @router.get("/gov/emergency_hotspots")
-async def gov_emergency_hotspots():
+async def gov_emergency_hotspots(ctx: AuthContext = Depends(get_current_user), _: None = Depends(rate_limit_ml.dependency())):
     seed_data = _load_hotspot_seed_data()
     if not seed_data:
         return []

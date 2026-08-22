@@ -113,13 +113,17 @@ async def health_ready() -> dict:
     # 3. LLM endpoint connectivity check
     try:
         import httpx
-        base_url = settings.openai_base_url or "http://144.79.62.242:8000/v1"
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.get(f"{base_url}/models")
-            if resp.status_code < 500:
-                checks["llm_endpoint"] = {"status": "healthy"}
-            else:
-                checks["llm_endpoint"] = {"status": "degraded", "note": f"HTTP {resp.status_code}"}
+        base_url = settings.openai_base_url
+        if not base_url:
+            checks["llm_endpoint"] = {"status": "degraded", "note": "OPENAI_BASE_URL not configured"}
+            all_healthy = False
+        else:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(f"{base_url}/models")
+                if resp.status_code < 500:
+                    checks["llm_endpoint"] = {"status": "healthy"}
+                else:
+                    checks["llm_endpoint"] = {"status": "degraded", "note": f"HTTP {resp.status_code}"}
     except Exception as e:
         checks["llm_endpoint"] = {"status": "degraded", "error": str(e)[:80]}
 

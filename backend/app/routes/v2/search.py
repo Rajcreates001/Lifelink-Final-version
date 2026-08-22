@@ -41,7 +41,7 @@ def _get_orchestrator() -> HybridSearchOrchestrator:
 @router.post("/search")
 async def search(
     payload: LegacySearchRequest,
-    ctx: AuthContext | None = Depends(get_optional_user),
+    ctx: AuthContext | None = Depends(get_optional_user)
 ) -> dict:
     """
     Hybrid AI search endpoint.
@@ -71,15 +71,13 @@ async def search(
         max_results=payload.max_results,
         include_progress=True,
         user_id=str(ctx.user_id) if ctx and ctx.user_id else None,
-        role=ctx.role if ctx else None,
+        role=ctx.role if ctx else None
     )
-
     response = await orchestrator.search(
         request=request,
         user_id=str(ctx.user_id) if ctx and ctx.user_id else None,
-        role=ctx.role if ctx else None,
+        role=ctx.role if ctx else None
     )
-
     # Convert to dict for JSON response
     return response.model_dump()
 

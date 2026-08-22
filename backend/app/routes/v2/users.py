@@ -11,7 +11,7 @@ router = APIRouter(tags=["users"])
 @router.get("/me")
 async def me(
     ctx: AuthContext = Depends(get_current_user),
-    service: UserService = Depends(get_user_service),
+    service: UserService = Depends(get_user_service)
 ) -> dict:
     return service.me(ctx)
 
@@ -19,6 +19,6 @@ async def me(
 @router.get("/permissions")
 async def permissions(
     ctx: AuthContext = Depends(require_scopes("dashboard:read")),
-    service: UserService = Depends(get_user_service),
+    service: UserService = Depends(get_user_service)
 ) -> dict:
     return service.permissions(ctx)

@@ -29,7 +29,7 @@ async def assignment(payload: dict, ctx: AuthContext = Depends(require_scopes("a
 @router.get("/modules")
 async def list_modules(
     ctx: AuthContext = Depends(require_roles("ambulance")),
-    service: AmbulanceService = Depends(get_ambulance_service),
+    service: AmbulanceService = Depends(get_ambulance_service)
 ) -> dict:
     return service.list_modules()
 
@@ -38,6 +38,6 @@ async def list_modules(
 async def get_module(
     module_key: str,
     ctx: AuthContext = Depends(require_roles("ambulance")),
-    service: AmbulanceService = Depends(get_ambulance_service),
+    service: AmbulanceService = Depends(get_ambulance_service)
 ) -> dict:
     return service.get_module(module_key)

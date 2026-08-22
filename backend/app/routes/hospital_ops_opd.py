@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Body, HTTPException, Query
+from fastapi import APIRouter, Body, HTTPException, Query, Depends
+from app.core.auth import get_current_user, AuthContext
 from fastapi.responses import PlainTextResponse
 
 from app.db.mongo import get_db
@@ -37,7 +38,7 @@ from app.services.collections import (
     RADIOLOGY_REPORTS,
     RADIOLOGY_REQUESTS,
     RESOURCES,
-    VENDOR_LEAD_TIMES,
+    VENDOR_LEAD_TIMES
 )
 from app.core.celery_app import celery_app
 from app.services.prediction_store import get_latest_prediction
@@ -58,6 +59,7 @@ async def list_opd_appointments(
     season: str | None = Query(None),
     sort_by: str | None = Query(None),
     sort_dir: str | None = Query(None),
+    ctx: AuthContext = Depends(get_current_user)
 ):
     db = get_db()
     await _ensure_seeded(db, hospitalId)
@@ -79,7 +81,7 @@ async def list_opd_appointments(
         sort_by,
         sort_dir,
         {"createdAt", "updatedAt", "time", "status", "patient", "doctor", "appointmentType", "channel"},
-        "createdAt",
+        "createdAt"
     )
     records = await repo.find_many(query, sort=sort, limit=200)
     for record in records:
@@ -92,7 +94,9 @@ async def list_opd_appointments(
 
 
 @router.get("/opd/appointments/insights")
-async def opd_appointment_insights(hospitalId: str = Query(...)):
+async def opd_appointment_insights(hospitalId: str = Query(...),
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     await _ensure_seeded(db, hospitalId)
     repo = MongoRepository(db, OPD_APPOINTMENTS)
@@ -149,7 +153,9 @@ async def opd_appointment_insights(hospitalId: str = Query(...)):
 
 
 @router.post("/opd/appointments", status_code=201)
-async def create_opd_appointment(payload: OpdAppointmentCreate):
+async def create_opd_appointment(payload: OpdAppointmentCreate,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, OPD_APPOINTMENTS)
     oid = _require_hospital_id(payload.hospitalId)
@@ -176,13 +182,15 @@ async def create_opd_appointment(payload: OpdAppointmentCreate):
 
 
 @router.patch("/opd/appointments/{appointment_id}")
-async def update_opd_appointment(appointment_id: str, payload: OpdAppointmentUpdate):
+async def update_opd_appointment(appointment_id: str, payload: OpdAppointmentUpdate,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, OPD_APPOINTMENTS)
     oid = _as_object_id(appointment_id)
     update_data = _build_update(
         payload,
-        ["patient", "doctor", "time", "status", "appointmentType", "channel", "expectedDurationMinutes", "reason", "notes"],
+        ["patient", "doctor", "time", "status", "appointmentType", "channel", "expectedDurationMinutes", "reason", "notes"]
     )
     if payload.time:
         appt_time = _parse_datetime(payload.time)
@@ -195,7 +203,9 @@ async def update_opd_appointment(appointment_id: str, payload: OpdAppointmentUpd
 
 
 @router.delete("/opd/appointments/{appointment_id}")
-async def delete_opd_appointment(appointment_id: str):
+async def delete_opd_appointment(appointment_id: str,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, OPD_APPOINTMENTS)
     oid = _as_object_id(appointment_id)
@@ -214,6 +224,7 @@ async def list_opd_doctors(
     shift: str | None = Query(None),
     sort_by: str | None = Query(None),
     sort_dir: str | None = Query(None),
+    ctx: AuthContext = Depends(get_current_user)
 ):
     db = get_db()
     await _ensure_seeded(db, hospitalId)
@@ -233,14 +244,16 @@ async def list_opd_doctors(
         sort_by,
         sort_dir,
         {"createdAt", "updatedAt", "name", "specialty", "availability", "normalizedShift"},
-        "createdAt",
+        "createdAt"
     )
     records = await repo.find_many(query, sort=sort, limit=200)
     return {"count": len(records), "data": records}
 
 
 @router.get("/opd/doctors/coverage")
-async def opd_doctor_coverage(hospitalId: str = Query(...)):
+async def opd_doctor_coverage(hospitalId: str = Query(...),
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     await _ensure_seeded(db, hospitalId)
     repo = MongoRepository(db, OPD_DOCTORS)
@@ -286,7 +299,9 @@ async def opd_doctor_coverage(hospitalId: str = Query(...)):
 
 
 @router.post("/opd/doctors", status_code=201)
-async def create_opd_doctor(payload: OpdDoctorCreate):
+async def create_opd_doctor(payload: OpdDoctorCreate,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, OPD_DOCTORS)
     oid = _require_hospital_id(payload.hospitalId)
@@ -307,7 +322,9 @@ async def create_opd_doctor(payload: OpdDoctorCreate):
 
 
 @router.patch("/opd/doctors/{doctor_id}")
-async def update_opd_doctor(doctor_id: str, payload: OpdDoctorUpdate):
+async def update_opd_doctor(doctor_id: str, payload: OpdDoctorUpdate,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, OPD_DOCTORS)
     oid = _as_object_id(doctor_id)
@@ -321,7 +338,9 @@ async def update_opd_doctor(doctor_id: str, payload: OpdDoctorUpdate):
 
 
 @router.delete("/opd/doctors/{doctor_id}")
-async def delete_opd_doctor(doctor_id: str):
+async def delete_opd_doctor(doctor_id: str,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, OPD_DOCTORS)
     oid = _as_object_id(doctor_id)
@@ -338,6 +357,7 @@ async def list_opd_consultations(
     status: str | None = Query(None),
     sort_by: str | None = Query(None),
     sort_dir: str | None = Query(None),
+    ctx: AuthContext = Depends(get_current_user)
 ):
     db = get_db()
     await _ensure_seeded(db, hospitalId)
@@ -353,14 +373,16 @@ async def list_opd_consultations(
         sort_by,
         sort_dir,
         {"createdAt", "updatedAt", "date", "status", "patient", "doctor"},
-        "createdAt",
+        "createdAt"
     )
     records = await repo.find_many(query, sort=sort, limit=200)
     return {"count": len(records), "data": records}
 
 
 @router.get("/opd/consultations/insights")
-async def opd_consultation_insights(hospitalId: str = Query(...)):
+async def opd_consultation_insights(hospitalId: str = Query(...),
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     await _ensure_seeded(db, hospitalId)
     repo = MongoRepository(db, OPD_CONSULTATIONS)
@@ -393,7 +415,9 @@ async def opd_consultation_insights(hospitalId: str = Query(...)):
 
 
 @router.post("/opd/consultations", status_code=201)
-async def create_opd_consultation(payload: OpdConsultationCreate):
+async def create_opd_consultation(payload: OpdConsultationCreate,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, OPD_CONSULTATIONS)
     oid = _require_hospital_id(payload.hospitalId)
@@ -421,13 +445,15 @@ async def create_opd_consultation(payload: OpdConsultationCreate):
 
 
 @router.patch("/opd/consultations/{consultation_id}")
-async def update_opd_consultation(consultation_id: str, payload: OpdConsultationUpdate):
+async def update_opd_consultation(consultation_id: str, payload: OpdConsultationUpdate,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, OPD_CONSULTATIONS)
     oid = _as_object_id(consultation_id)
     update_data = _build_update(
         payload,
-        ["patient", "doctor", "notes", "date", "status", "summary", "aiSummary", "keywords", "followUpPlan", "followUpDate"],
+        ["patient", "doctor", "notes", "date", "status", "summary", "aiSummary", "keywords", "followUpPlan", "followUpDate"]
     )
     if payload.notes is not None:
         summary = _summarize_note(payload.notes)
@@ -442,7 +468,9 @@ async def update_opd_consultation(consultation_id: str, payload: OpdConsultation
 
 
 @router.delete("/opd/consultations/{consultation_id}")
-async def delete_opd_consultation(consultation_id: str):
+async def delete_opd_consultation(consultation_id: str,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, OPD_CONSULTATIONS)
     oid = _as_object_id(consultation_id)
@@ -460,6 +488,7 @@ async def opd_queue(
     priority: str | None = Query(None),
     sort_by: str | None = Query(None),
     sort_dir: str | None = Query(None),
+    ctx: AuthContext = Depends(get_current_user)
 ):
     db = get_db()
     await _ensure_seeded(db, hospitalId)
@@ -498,7 +527,9 @@ async def opd_queue(
 
 
 @router.post("/opd/queue", status_code=201)
-async def create_opd_queue(payload: OpdQueueCreate):
+async def create_opd_queue(payload: OpdQueueCreate,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, OPD_QUEUE)
     oid = _require_hospital_id(payload.hospitalId)
@@ -520,7 +551,9 @@ async def create_opd_queue(payload: OpdQueueCreate):
 
 
 @router.patch("/opd/queue/{queue_id}")
-async def update_opd_queue(queue_id: str, payload: OpdQueueUpdate):
+async def update_opd_queue(queue_id: str, payload: OpdQueueUpdate,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, OPD_QUEUE)
     oid = _as_object_id(queue_id)
@@ -538,7 +571,9 @@ async def update_opd_queue(queue_id: str, payload: OpdQueueUpdate):
 
 
 @router.delete("/opd/queue/{queue_id}")
-async def delete_opd_queue(queue_id: str):
+async def delete_opd_queue(queue_id: str,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, OPD_QUEUE)
     oid = _as_object_id(queue_id)

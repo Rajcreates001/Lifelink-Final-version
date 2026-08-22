@@ -19,7 +19,7 @@ class EmailNotification(BaseModel):
 async def send_email_notification(
     payload: EmailNotification,
     ctx: AuthContext = Depends(require_scopes("alerts:read")),
-    service: NotificationService = Depends(get_notification_service),
+    service: NotificationService = Depends(get_notification_service)
 ) -> dict:
     result = service.send_email(payload.to_email, payload.subject, payload.html)
     return {"requestedBy": ctx.user_id, **result}

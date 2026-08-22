@@ -1,8 +1,9 @@
 import bcrypt
 from bson import ObjectId
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.db.mongo import get_db
+from app.core.auth import get_current_user, AuthContext
 from app.services.collections import (
     ALERTS,
     ANALYTICS_EVENTS,
@@ -13,7 +14,7 @@ from app.services.collections import (
     PREDICTIONS,
     RESOURCES,
     RESOURCE_REQUESTS,
-    USERS,
+    USERS
 )
 from app.services.repository import MongoRepository
 
@@ -44,7 +45,7 @@ def _empty_dashboard() -> dict:
 
 
 @router.get("/public/{user_id}/full")
-async def public_full_dashboard(user_id: str):
+async def public_full_dashboard(user_id: str, ctx: AuthContext = Depends(get_current_user)):
     try:
         db = get_db()
         if db is None:
@@ -70,9 +71,8 @@ async def public_full_dashboard(user_id: str):
 
     hospital_messages = await message_repo.find_many(
         {"toHospital": user_id, "status": {"$ne": "resolved"}},
-        sort=[("createdAt", -1)],
+        sort=[("createdAt", -1)]
     )
-
     user = await user_repo.find_one({"_id": oid})
     health_records = (
         (user or {}).get("publicProfile", {}).get("healthRecords", {})
@@ -84,7 +84,7 @@ async def public_full_dashboard(user_id: str):
     risk_history = await prediction_repo.find_many(
         {"user": oid, "prediction_type": "health_risk"},
         sort=[("createdAt", -1)],
-        limit=20,
+        limit=20
     )
     risk_timeline = [
         {
@@ -98,16 +98,15 @@ async def public_full_dashboard(user_id: str):
     latest_vitals = await health_repo.find_many(
         {"user": oid, "record_type": "vitals"},
         sort=[("createdAt", -1)],
-        limit=1,
+        limit=1
     )
     vitals_payload = latest_vitals[0] if latest_vitals else None
 
     activity_history = await activity_repo.find_many(
         {"$or": [{"user": oid}, {"user": str(oid)}]},
         sort=[("createdAt", -1)],
-        limit=20,
+        limit=20
     )
-
     anomalies = []
     if vitals_payload:
         metrics = vitals_payload.get("metrics") or {}
@@ -136,7 +135,7 @@ async def public_full_dashboard(user_id: str):
 
 
 @router.put("/profile/{user_id}")
-async def update_profile(user_id: str, payload: dict):
+async def update_profile(user_id: str, payload: dict, ctx: AuthContext = Depends(get_current_user)):
     db = get_db()
     user_repo = MongoRepository(db, USERS)
 
@@ -214,7 +213,7 @@ async def update_profile(user_id: str, payload: dict):
 
 
 @router.get("/hospital/stats")
-async def hospital_stats():
+async def hospital_stats(ctx: AuthContext = Depends(get_current_user)):
     # Preserve existing backend behavior: static aggregate sample payload.
     return {
         "totalPatients": 142,
@@ -237,7 +236,7 @@ async def hospital_stats():
 
 
 @router.get("/hospital/alerts")
-async def hospital_alerts():
+async def hospital_alerts(ctx: AuthContext = Depends(get_current_user)):
     db = get_db()
     alert_repo = MongoRepository(db, ALERTS)
     alerts = await alert_repo.find_many({"status": {"$ne": "Resolved"}}, sort=[("createdAt", -1)])
@@ -245,7 +244,7 @@ async def hospital_alerts():
 
 
 @router.put("/hospital/alert/{alert_id}")
-async def update_hospital_alert(alert_id: str, payload: dict):
+async def update_hospital_alert(alert_id: str, payload: dict, ctx: AuthContext = Depends(get_current_user)):
     db = get_db()
     alert_repo = MongoRepository(db, ALERTS)
     oid = _as_object_id(alert_id)
@@ -261,7 +260,7 @@ async def update_hospital_alert(alert_id: str, payload: dict):
 
 
 @router.get("/admin/pending-hospitals")
-async def admin_pending_hospitals():
+async def admin_pending_hospitals(ctx: AuthContext = Depends(get_current_user)):
     db = get_db()
     user_repo = MongoRepository(db, USERS)
     pending = await user_repo.find_many({"role": "hospital", "isVerified": False})
@@ -269,7 +268,7 @@ async def admin_pending_hospitals():
 
 
 @router.put("/admin/verify/{user_id}")
-async def admin_verify_hospital(user_id: str):
+async def admin_verify_hospital(user_id: str, ctx: AuthContext = Depends(get_current_user)):
     db = get_db()
     user_repo = MongoRepository(db, USERS)
     oid = _as_object_id(user_id)
@@ -282,7 +281,7 @@ async def admin_verify_hospital(user_id: str):
 
 
 @router.post("/hospital/patient/admit", status_code=201)
-async def hospital_admit_patient(payload: dict):
+async def hospital_admit_patient(payload: dict, ctx: AuthContext = Depends(get_current_user)):
     db = get_db()
     patient_repo = MongoRepository(db, PATIENTS)
 
@@ -313,7 +312,7 @@ async def hospital_admit_patient(payload: dict):
 
 
 @router.get("/hospital/patients/{hospital_id}")
-async def hospital_patients(hospital_id: str):
+async def hospital_patients(hospital_id: str, ctx: AuthContext = Depends(get_current_user)):
     db = get_db()
     patient_repo = MongoRepository(db, PATIENTS)
     oid = _as_object_id(hospital_id)
@@ -322,7 +321,7 @@ async def hospital_patients(hospital_id: str):
 
 
 @router.post("/hospital/resource/add", status_code=201)
-async def hospital_add_resource(payload: dict):
+async def hospital_add_resource(payload: dict, ctx: AuthContext = Depends(get_current_user)):
     db = get_db()
     resource_repo = MongoRepository(db, RESOURCES)
 
@@ -347,7 +346,7 @@ async def hospital_add_resource(payload: dict):
 
 
 @router.get("/hospital/resources/{hospital_id}")
-async def hospital_resources(hospital_id: str):
+async def hospital_resources(hospital_id: str, ctx: AuthContext = Depends(get_current_user)):
     db = get_db()
     resource_repo = MongoRepository(db, RESOURCES)
     oid = _as_object_id(hospital_id)
@@ -356,7 +355,7 @@ async def hospital_resources(hospital_id: str):
 
 
 @router.delete("/notification/{item_type}/{item_id}")
-async def delete_notification_item(item_type: str, item_id: str):
+async def delete_notification_item(item_type: str, item_id: str, ctx: AuthContext = Depends(get_current_user)):
     db = get_db()
     oid = _as_object_id(item_id)
 

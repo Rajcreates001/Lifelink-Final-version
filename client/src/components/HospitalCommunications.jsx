@@ -159,9 +159,6 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
 
   // Main useEffect - Fetch data when component mounts
   useEffect(() => {
-    console.log('[HospitalCommunications] Component mounted');
-    console.log('[HospitalCommunications] currentHospitalId:', resolvedHospitalId);
-    console.log('[HospitalCommunications] currentHospitalName:', resolvedHospitalName);
     
     if (!isValidId(resolvedHospitalId)) {
       console.error('[HospitalCommunications] No hospital ID provided');
@@ -189,7 +186,6 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
     ])
     .then(() => {
       clearTimeout(timeoutId);
-      console.log('[HospitalCommunications] Data loaded successfully');
       setLoading(false);
     })
     .catch((err) => {
@@ -205,16 +201,13 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
 
   const fetchHospitals = async (hospitalId) => {
     try {
-      console.log('[fetchHospitals] Starting with ID:', hospitalId);
       
       if (!isValidId(hospitalId)) {
         throw new Error('Hospital ID is missing');
       }
 
       const url = `${baseUrl}/api/hospital-communication/list/${hospitalId}`;
-      console.log('[fetchHospitals] URL:', url);
       
-      console.log('[fetchHospitals] Sending fetch request...');
       
       // Create an AbortController with 8-second timeout
       const controller = new AbortController();
@@ -226,7 +219,6 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
       const response = await fetch(url, { signal: controller.signal });
       clearTimeout(timeoutId);
       
-      console.log('[fetchHospitals] Response received, status:', response.status);
 
       if (!response.ok) {
         let errorMsg = `HTTP ${response.status}`;
@@ -240,7 +232,6 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
       }
 
       const data = await response.json();
-      console.log('[fetchHospitals] Response data received:', data);
       
       // Support two response shapes: an array, or { data: [...] }
       let items = [];
@@ -253,7 +244,6 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
         items = [];
       }
       
-      console.log('[fetchHospitals] Success! Hospitals count:', items.length);
       setHospitals(items);
       setWarning('');
       return items;
@@ -271,14 +261,12 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
 
   const fetchMessages = async (hospitalId) => {
     try {
-      console.log('[fetchMessages] Starting with ID:', hospitalId);
       
       if (!isValidId(hospitalId)) {
         throw new Error('Hospital ID is missing');
       }
 
       const url = `${baseUrl}/api/hospital-communication/messages/${hospitalId}`;
-      console.log('[fetchMessages] URL:', url);
       
       // Create an AbortController with 8-second timeout
       const controller = new AbortController();
@@ -290,7 +278,6 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
       const response = await fetch(url, { signal: controller.signal });
       clearTimeout(timeoutId);
       
-      console.log('[fetchMessages] Response status:', response.status);
 
       if (!response.ok) {
         let errorMsg = `HTTP ${response.status}`;
@@ -303,7 +290,6 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
 
       const data = await response.json();
       const items = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
-      console.log('[fetchMessages] Success! Messages count:', items?.length || 0);
       setMessages(items);
       return items;
     } catch (error) {
@@ -369,7 +355,6 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
 
   const fetchHospitalDetails = async (hospitalId) => {
     try {
-      console.log('[fetchHospitalDetails] Starting with ID:', hospitalId);
       setLoading(true);
       setError(null);
       
@@ -378,10 +363,8 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
       }
 
       const url = `${baseUrl}/api/hospital-communication/details/${hospitalId}`;
-      console.log('[fetchHospitalDetails] URL:', url);
       
       const response = await fetch(url);
-      console.log('[fetchHospitalDetails] Response status:', response.status);
 
       if (!response.ok) {
         let errorMsg = `HTTP ${response.status}`;
@@ -393,7 +376,6 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
       }
 
       const data = await response.json();
-      console.log('[fetchHospitalDetails] Success! Data:', data);
       
       if (!data || Object.keys(data).length === 0) {
         throw new Error('Received empty hospital data');
@@ -429,7 +411,6 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
     }
 
     try {
-      console.log('[handleSendMessage] Sending to hospital:', selectedHospital?._id);
       setLoading(true);
 
       const payload = {
@@ -448,7 +429,6 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
         urgencyLevel
       };
 
-      console.log('[handleSendMessage] Payload:', payload);
 
       const response = await fetch(`${baseUrl}/api/hospital-communication/send-message`, {
         method: 'POST',
@@ -456,7 +436,6 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
         body: JSON.stringify(payload)
       });
 
-      console.log('[handleSendMessage] Response status:', response.status);
 
       if (!response.ok) {
         let errorMsg = `HTTP ${response.status}`;
@@ -468,7 +447,6 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
       }
 
       const data = await response.json();
-      console.log('[handleSendMessage] Success!');
       alert('Message sent successfully!');
       resetForm();
       setView('list');
@@ -484,7 +462,6 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
   const handleResolveMessage = async (messageId, currentStatus) => {
     try {
       const newStatus = currentStatus === 'pending' ? 'resolved' : 'pending';
-      console.log('[handleResolveMessage] Updating message:', messageId, 'to:', newStatus);
       
       const response = await fetch(`${baseUrl}/api/hospital-communication/message/${messageId}`, {
         method: 'PATCH',
@@ -496,7 +473,6 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
         })
       });
 
-      console.log('[handleResolveMessage] Response status:', response.status);
 
       if (!response.ok) {
         let errorMsg = `HTTP ${response.status}`;
@@ -507,7 +483,6 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
         throw new Error(errorMsg);
       }
 
-      console.log('[handleResolveMessage] Success!');
       fetchMessages(resolvedHospitalId);
     } catch (error) {
       console.error('[handleResolveMessage] Error:', error);
@@ -522,7 +497,6 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
         return;
       }
 
-      console.log('[handleSendReply] Sending reply to message:', messageId);
       setLoading(true);
 
       const response = await fetch(`${baseUrl}/api/hospital-communication/message/${messageId}/reply`, {
@@ -534,7 +508,6 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
         })
       });
 
-      console.log('[handleSendReply] Response status:', response.status);
 
       if (!response.ok) {
         let errorMsg = `HTTP ${response.status}`;
@@ -545,7 +518,6 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
         throw new Error(errorMsg);
       }
 
-      console.log('[handleSendReply] Success!');
       alert('Reply sent successfully!');
       setReplyingTo(null);
       setReplyMessage('');

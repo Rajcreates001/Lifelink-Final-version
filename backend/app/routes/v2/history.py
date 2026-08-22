@@ -12,6 +12,8 @@ from app.db.mongo import get_db
 from app.services.collections import ANALYTICS_EVENTS, USERS
 from app.services.repository import MongoRepository
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/history", tags=["history"])
 
 
@@ -189,12 +191,12 @@ async def list_activity_history(
             try:
                 date_filter["$gte"] = datetime.fromisoformat(from_date)
             except ValueError:
-                pass
+                logger.debug("Suppressed ValueError in %s", __name__)
         if to_date:
             try:
                 date_filter["$lte"] = datetime.fromisoformat(to_date)
             except ValueError:
-                pass
+                logger.debug("Suppressed ValueError in %s", __name__)
         if date_filter:
             query_filter["createdAt"] = date_filter
 
@@ -216,9 +218,8 @@ async def list_activity_history(
     raw_events = await repo.find_many(
         query_filter,
         sort=[("createdAt", -1)],
-        limit=fetch_limit,
+        limit=fetch_limit
     )
-
     skip = (page - 1) * limit
     events = [_format_event(e) for e in raw_events[skip:skip + limit]]
 
@@ -325,7 +326,7 @@ async def get_activity_detail(
             related_raw = await repo.find_many(
                 related_query,
                 sort=[("createdAt", -1)],
-                limit=5,
+                limit=5
             )
             detail["related_events"] = [_format_event(r) for r in related_raw]
     except Exception:

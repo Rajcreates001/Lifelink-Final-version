@@ -3,11 +3,13 @@ import re
 from datetime import datetime, timedelta
 
 from bson import ObjectId
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.db.mongo import get_db
+from app.core.auth import get_current_user, AuthContext
 from app.services.collections import ALERTS, HEALTH_RECORDS, HOSPITALS, NOTIFICATIONS
+from app.services.rate_limiter import rate_limit_alerts
 from app.core.celery_app import celery_app
 from app.services.repository import MongoRepository
 
@@ -114,7 +116,7 @@ async def _nearest_hospital(db, lat: float, lng: float) -> dict | None:
 
 
 @router.post("/alerts", status_code=201)
-async def create_alert(payload: AlertCreateRequest):
+async def create_alert(payload: AlertCreateRequest, ctx: AuthContext = Depends(get_current_user), _: None = Depends(rate_limit_alerts.dependency())):
     db = get_db()
     alert_repo = MongoRepository(db, ALERTS)
     notification_repo = MongoRepository(db, NOTIFICATIONS)
@@ -123,9 +125,8 @@ async def create_alert(payload: AlertCreateRequest):
     severity_result = _predict_severity(payload.message)
     celery_app.send_task(
         "system.generate_predictions",
-        args=["predict_sos_severity", {"message": payload.message, "vitals": payload.vitals, "location": payload.locationDetails}],
+        args=["predict_sos_severity", {"message": payload.message, "vitals": payload.vitals, "location": payload.locationDetails}]
     )
-
     severity_meta = None
     if isinstance(severity_result, dict):
         severity_meta = severity_result.get("meta")
@@ -162,7 +163,7 @@ async def create_alert(payload: AlertCreateRequest):
         latest = await health_repo.find_many(
             {"user": _as_object_id(payload.userId), "record_type": "vitals"},
             sort=[("createdAt", -1)],
-            limit=1,
+            limit=1
         )
         if latest:
             vitals = latest[0].get("metrics")
@@ -239,7 +240,7 @@ async def create_alert(payload: AlertCreateRequest):
 
 
 @router.get("/notifications/{user_id}")
-async def get_notifications(user_id: str):
+async def get_notifications(user_id: str, ctx: AuthContext = Depends(get_current_user)):
     db = get_db()
     alert_repo = MongoRepository(db, ALERTS)
     notification_repo = MongoRepository(db, NOTIFICATIONS)
@@ -255,9 +256,8 @@ async def get_notifications(user_id: str):
             "user": oid,
             "createdAt": {"$gte": one_day_ago},
             "emergencyType": {"$in": ["Critical", "High"]},
-        },
+        }
     )
-
     total = await alert_repo.find_many({"user": oid})
 
     mapped = []

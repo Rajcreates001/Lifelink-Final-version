@@ -61,7 +61,6 @@ router.add_api_route(
     "/preload",
     preload_hospital_ops,
     methods=["POST"],
-    tags=["hospital-ops"],
+    tags=["hospital-ops"]
 )
-
 __all__ = ["router"]

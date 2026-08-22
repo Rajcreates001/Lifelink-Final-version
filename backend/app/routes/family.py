@@ -1,10 +1,11 @@
 from datetime import datetime
 
 from bson import ObjectId
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.db.mongo import get_db
+from app.core.auth import get_current_user, AuthContext
 from app.services.collections import ALERTS, FAMILY_MEMBERS, NOTIFICATIONS
 from app.services.repository import MongoRepository
 
@@ -49,7 +50,7 @@ def _as_object_id(value: str) -> ObjectId:
 
 
 @router.get("/members/{user_id}")
-async def list_members(user_id: str):
+async def list_members(user_id: str, ctx: AuthContext = Depends(get_current_user)):
     db = get_db()
     repo = MongoRepository(db, FAMILY_MEMBERS)
     members = await repo.find_many({"user": _as_object_id(user_id)}, sort=[("createdAt", -1)])
@@ -57,7 +58,7 @@ async def list_members(user_id: str):
 
 
 @router.post("/members", status_code=201)
-async def create_member(payload: FamilyMemberCreate):
+async def create_member(payload: FamilyMemberCreate, ctx: AuthContext = Depends(get_current_user)):
     db = get_db()
     repo = MongoRepository(db, FAMILY_MEMBERS)
 
@@ -78,7 +79,7 @@ async def create_member(payload: FamilyMemberCreate):
 
 
 @router.patch("/members/{member_id}")
-async def update_member(member_id: str, payload: FamilyMemberUpdate):
+async def update_member(member_id: str, payload: FamilyMemberUpdate, ctx: AuthContext = Depends(get_current_user)):
     db = get_db()
     repo = MongoRepository(db, FAMILY_MEMBERS)
     alert_repo = MongoRepository(db, ALERTS)
@@ -128,7 +129,7 @@ async def update_member(member_id: str, payload: FamilyMemberUpdate):
 
 
 @router.patch("/members/{member_id}/location")
-async def update_member_location(member_id: str, payload: FamilyLocationUpdate):
+async def update_member_location(member_id: str, payload: FamilyLocationUpdate, ctx: AuthContext = Depends(get_current_user)):
     db = get_db()
     repo = MongoRepository(db, FAMILY_MEMBERS)
 
@@ -149,7 +150,7 @@ async def update_member_location(member_id: str, payload: FamilyLocationUpdate):
 
 
 @router.post("/members/{member_id}/vitals")
-async def update_member_vitals(member_id: str, payload: FamilyVitalsUpdate):
+async def update_member_vitals(member_id: str, payload: FamilyVitalsUpdate, ctx: AuthContext = Depends(get_current_user)):
     db = get_db()
     repo = MongoRepository(db, FAMILY_MEMBERS)
 
@@ -172,7 +173,7 @@ async def update_member_vitals(member_id: str, payload: FamilyVitalsUpdate):
 
 
 @router.get("/insights/{user_id}")
-async def family_insights(user_id: str):
+async def family_insights(user_id: str, ctx: AuthContext = Depends(get_current_user)):
     db = get_db()
     repo = MongoRepository(db, FAMILY_MEMBERS)
     members = await repo.find_many({"user": _as_object_id(user_id)})

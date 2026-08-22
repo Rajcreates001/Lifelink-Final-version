@@ -21,6 +21,8 @@ from app.services.audit_chain import append_audit_log
 from app.services.privacy_service import anonymize_payload
 from app.services.system_cache import SystemCache
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(tags=["system"])
 
 _cache = SystemCache()
@@ -56,7 +58,7 @@ async def _safe_send_task(task_name: str, args: list[Any] | None = None, timeout
     try:
         return await asyncio.wait_for(
             asyncio.to_thread(celery_app.send_task, task_name, args=args or []),
-            timeout=timeout,
+            timeout=timeout
         )
     except Exception:
         return None
@@ -126,7 +128,7 @@ async def _store_prediction_record(prediction_type: str, result: dict[str, Any],
             prediction_type,
             payload,
             confidence,
-            datetime.utcnow(),
+            datetime.utcnow()
         )
     except Exception:
         conn = await asyncpg.connect(dsn=_postgres_dsn())
@@ -140,7 +142,7 @@ async def _store_prediction_record(prediction_type: str, result: dict[str, Any],
                 prediction_type,
                 payload,
                 confidence,
-                datetime.utcnow(),
+                datetime.utcnow()
             )
         finally:
             await conn.close()
@@ -162,7 +164,7 @@ def _cache_prediction(prediction_type: str, result: dict[str, Any], confidence: 
 @router.get("/predictions/latest")
 async def latest_prediction(
     prediction_type: str = Query(..., alias="type"),
-    ctx: AuthContext = Depends(require_scopes("analytics:read")),
+    ctx: AuthContext = Depends(require_scopes("analytics:read"))
 ) -> dict:
     cache_key = f"latest:{prediction_type}"
     cached = _cache.get_prediction(cache_key)
@@ -177,7 +179,7 @@ async def latest_prediction(
         ORDER BY created_at DESC
         LIMIT 1
         """,
-        prediction_type,
+        prediction_type
     )
     if not row:
         raise HTTPException(status_code=404, detail="No prediction available")
@@ -195,7 +197,7 @@ async def latest_prediction(
 @router.post("/predictions/trigger")
 async def trigger_prediction(
     payload: dict = Body(default_factory=dict),
-    ctx: AuthContext = Depends(require_scopes("ai:ask")),
+    ctx: AuthContext = Depends(require_scopes("ai:ask"))
 ) -> dict:
     prediction_type = payload.get("type") or payload.get("prediction_type")
     if not prediction_type:
@@ -214,26 +216,26 @@ async def trigger_prediction(
                 else "Moderate risk",
                 0.86,
                 "Spike in incidents + hospital load trend",
-                "Deploy 3 ambulances",
+                "Deploy 3 ambulances"
             )
             result["forecast"] = forecast
             fallback = _cache_prediction(prediction_type, result, 0.86)
             try:
                 await _store_prediction_record(prediction_type, result, 0.86)
             except Exception:
-                pass
+                logger.debug("Suppressed Exception in %s", __name__)
         else:
             result = _build_prediction_output(
                 "High emergency risk",
                 0.9,
                 "Rapid triage signals + historical surge pattern",
-                "Activate surge response",
+                "Activate surge response"
             )
             fallback = _cache_prediction(prediction_type, result, 0.9)
             try:
                 await _store_prediction_record(prediction_type, result, 0.9)
             except Exception:
-                pass
+                logger.debug("Suppressed Exception in %s", __name__)
     except Exception:
         fallback = None
 
@@ -246,7 +248,7 @@ async def trigger_prediction(
 @router.post("/federated/train")
 async def federated_train(
     payload: dict = Body(default_factory=dict),
-    ctx: AuthContext = Depends(require_roles("hospital")),
+    ctx: AuthContext = Depends(require_roles("hospital"))
 ) -> dict:
     hospital_id = payload.get("hospital_id") or ctx.user_id
     job = await _safe_send_task("system.train_local_model", [hospital_id, payload])
@@ -264,7 +266,7 @@ async def federated_train(
         try:
             await _store_prediction_record("federated_local", result, 0.75)
         except Exception:
-            pass
+            logger.debug("Suppressed Exception in %s", __name__)
     except Exception:
         fallback = None
     response = {"job_id": job.id if job else _new_id(), "status": job.status if job else "PENDING"}
@@ -276,11 +278,11 @@ async def federated_train(
 @router.post("/federated/aggregate")
 async def federated_aggregate(
     payload: dict = Body(default_factory=dict),
-    ctx: AuthContext = Depends(require_roles("government")),
+    ctx: AuthContext = Depends(require_roles("government"))
 ) -> dict:
     job = await _safe_send_task(
         "system.aggregate_global_model",
-        [payload.get("limit", 50), payload.get("noise_std", 0.02)],
+        [payload.get("limit", 50), payload.get("noise_std", 0.02)]
     )
     return {"job_id": job.id if job else _new_id(), "status": job.status if job else "PENDING"}
 
@@ -288,7 +290,7 @@ async def federated_aggregate(
 @router.post("/audit/log")
 async def audit_log(
     payload: dict = Body(default_factory=dict),
-    ctx: AuthContext = Depends(require_scopes("gov:write")),
+    ctx: AuthContext = Depends(require_scopes("gov:write"))
 ) -> dict:
     action = payload.get("action") or "unknown_action"
     details = payload.get("details") or ""
@@ -307,7 +309,7 @@ async def audit_log(
 @router.post("/simulation/start")
 async def start_simulation(
     payload: dict = Body(default_factory=dict),
-    ctx: AuthContext = Depends(require_roles("government")),
+    ctx: AuthContext = Depends(require_roles("government"))
 ) -> dict:
     job = await _safe_send_task("system.simulation_engine", [payload])
     return {"job_id": job.id if job else _new_id(), "status": job.status if job else "PENDING"}
@@ -322,7 +324,7 @@ async def simulation_status(job_id: str, ctx: AuthContext = Depends(require_role
 @router.post("/emergency/anonymized")
 async def anonymized_emergency(
     payload: dict = Body(default_factory=dict),
-    ctx: AuthContext = Depends(require_scopes("emergency:trigger")),
+    ctx: AuthContext = Depends(require_scopes("emergency:trigger"))
 ) -> dict:
     sanitized = anonymize_payload(payload)
     emergency_id = payload.get("emergency_id") or payload.get("id")
@@ -345,17 +347,17 @@ async def anonymized_emergency(
             payload.get("location") or "unknown",
             payload.get("status") or "active",
             datetime.utcnow(),
-            payload.get("assigned_hospital"),
+            payload.get("assigned_hospital")
         )
     except Exception:
-        pass
+        logger.debug("Suppressed Exception in %s", __name__)
     return {"status": "stored", "anonymized": sanitized}
 
 
 @router.post("/ambulance/nearest")
 async def nearest_ambulance(
     payload: dict = Body(default_factory=dict),
-    ctx: AuthContext = Depends(require_scopes("routes:read")),
+    ctx: AuthContext = Depends(require_scopes("routes:read"))
 ) -> dict:
     lat = payload.get("lat")
     lng = payload.get("lng")
@@ -395,7 +397,7 @@ async def nearest_ambulance(
 @router.post("/eva/ask")
 async def eva_assistant(
     payload: dict = Body(default_factory=dict),
-    ctx: AuthContext = Depends(require_scopes("ai:ask")),
+    ctx: AuthContext = Depends(require_scopes("ai:ask"))
 ) -> dict:
     intent = (payload.get("intent") or "insight").lower()
     latest = None

@@ -66,7 +66,7 @@ def _get_token_user(token: str) -> dict | None:
 
 @router.post("/gov/auth/bootstrap")
 async def bootstrap_government_auth(
-    service: GovernmentAuthService = Depends(get_gov_service),
+    service: GovernmentAuthService = Depends(get_gov_service)
 ):
     """Initialize and seed all government data (safe to call on every startup)."""
     settings = get_settings()
@@ -81,7 +81,7 @@ async def government_login(
     request: Request,
     body: dict,
     service: GovernmentAuthService = Depends(get_gov_service),
-    _: None = Depends(rate_limit_login.dependency()),
+    _: None = Depends(rate_limit_login.dependency())
 ):
     """Authenticate a government user. Returns JWT + organization + AI context."""
     email = body.get("email", "").strip().lower()
@@ -114,7 +114,7 @@ async def list_organizations(
     category: str | None = None,
     level: str | None = None,
     search: str | None = None,
-    service: GovernmentAuthService = Depends(get_gov_service),
+    service: GovernmentAuthService = Depends(get_gov_service)
 ):
     """List all government organizations with optional filtering."""
     orgs = await service.list_organizations(category=category, level=level, search=search)
@@ -127,7 +127,7 @@ async def list_organizations(
 @router.get("/gov/auth/organizations/{org_key}")
 async def get_organization(
     org_key: str,
-    service: GovernmentAuthService = Depends(get_gov_service),
+    service: GovernmentAuthService = Depends(get_gov_service)
 ):
     """Get a single government organization by key."""
     org = await service.get_organization(org_key)
@@ -144,7 +144,7 @@ async def get_organization(
 @router.get("/gov/auth/org-users/{org_key}")
 async def get_org_users(
     org_key: str,
-    service: GovernmentAuthService = Depends(get_gov_service),
+    service: GovernmentAuthService = Depends(get_gov_service)
 ):
     """Get all users for a specific government organization."""
     users = await service.get_org_users(org_key)
@@ -157,7 +157,7 @@ async def get_org_users(
 
 @router.get("/gov/auth/dev-creds")
 async def get_dev_credentials(
-    service: GovernmentAuthService = Depends(get_gov_service),
+    service: GovernmentAuthService = Depends(get_gov_service)
 ):
     """Return development auto-fill credentials for all government users."""
     settings = get_settings()
@@ -171,7 +171,7 @@ async def get_dev_credentials(
 
 @router.get("/gov/auth/status")
 async def government_auth_status(
-    service: GovernmentAuthService = Depends(get_gov_service),
+    service: GovernmentAuthService = Depends(get_gov_service)
 ):
     """Get government auth system status with counts."""
     try:
@@ -184,7 +184,7 @@ async def government_auth_status(
 async def government_logout(
     body: dict,
     authorization: str | None = Header(default=None),
-    service: GovernmentAuthService = Depends(get_gov_service),
+    service: GovernmentAuthService = Depends(get_gov_service)
 ):
     """Logout and invalidate session."""
     if not authorization or not authorization.lower().startswith("bearer "):
@@ -200,11 +200,11 @@ async def government_logout(
             await db_execute(
                 "UPDATE enterprise_sessions SET is_active = FALSE, logout_time = $1 "
                 "WHERE user_id = $2 AND is_active = TRUE",
-                now, user_id,
+                now, user_id
             )
             await db_execute(
                 "UPDATE enterprise_users SET last_activity = $1 WHERE id = $2",
-                now, user_id,
+                now, user_id
             )
             await service.log_action(user_id, "logout", "auth", details={"action": "logout"})
     except Exception as exc:
@@ -217,7 +217,7 @@ async def log_government_action(
     request: Request,
     body: dict,
     authorization: str | None = Header(default=None),
-    service: GovernmentAuthService = Depends(get_gov_service),
+    service: GovernmentAuthService = Depends(get_gov_service)
 ):
     """Log a government action to the audit trail."""
     if not authorization or not authorization.lower().startswith("bearer "):
@@ -239,7 +239,7 @@ async def log_government_action(
         action,
         category,
         details=body.get("details", {}),
-        ip=ip,
+        ip=ip
     )
     return {"status": "ok"}
 
@@ -247,7 +247,7 @@ async def log_government_action(
 @router.get("/gov/auth/profile")
 async def get_government_profile(
     authorization: str | None = Header(default=None),
-    service: GovernmentAuthService = Depends(get_gov_service),
+    service: GovernmentAuthService = Depends(get_gov_service)
 ):
     """Get authenticated government user's full profile with organization and permissions."""
     if not authorization or not authorization.lower().startswith("bearer "):
@@ -264,7 +264,7 @@ async def get_government_profile(
         "SELECT id, full_name, email, employee_id, designation, phone, status, "
         "mfa_enabled, avatar, profile_settings, last_login, last_activity "
         "FROM enterprise_users WHERE id = $1",
-        user["id"],
+        user["id"]
     )
     if not profile:
         raise HTTPException(status_code=404, detail="User not found")

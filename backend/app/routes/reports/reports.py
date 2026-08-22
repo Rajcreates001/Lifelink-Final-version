@@ -35,10 +35,8 @@ def _pdf_response(pdf_bytes: bytes | None, filename: str) -> Response:
         headers={
             "Content-Disposition": f'attachment; filename="{filename}"',
             "Content-Type": "application/pdf",
-        },
+        }
     )
-
-
 # ── Hospital Reports ─────────────────────────────────────────
 
 @router.post("/hospital/daily-ops")

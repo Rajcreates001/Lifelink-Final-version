@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Body, HTTPException, Query
+from fastapi import APIRouter, Body, HTTPException, Query, Depends
+from app.core.auth import get_current_user, AuthContext
 from fastapi.responses import PlainTextResponse
 
 from app.db.mongo import get_db
@@ -37,7 +38,7 @@ from app.services.collections import (
     RADIOLOGY_REPORTS,
     RADIOLOGY_REQUESTS,
     RESOURCES,
-    VENDOR_LEAD_TIMES,
+    VENDOR_LEAD_TIMES
 )
 from app.core.celery_app import celery_app
 from app.services.prediction_store import get_latest_prediction
@@ -56,6 +57,7 @@ async def finance_invoices(
     department: str | None = Query(None),
     sort_by: str | None = Query(None),
     sort_dir: str | None = Query(None),
+    ctx: AuthContext = Depends(get_current_user)
 ):
     db = get_db()
     await _ensure_seeded(db, hospitalId)
@@ -75,7 +77,9 @@ async def finance_invoices(
 
 
 @router.post("/finance/invoices", status_code=201)
-async def finance_create_invoice(payload: BillingInvoiceCreate):
+async def finance_create_invoice(payload: BillingInvoiceCreate,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, BILLING_INVOICES)
     oid = _require_hospital_id(payload.hospitalId)
@@ -99,7 +103,9 @@ async def finance_create_invoice(payload: BillingInvoiceCreate):
 
 
 @router.patch("/finance/invoices/{invoice_id}")
-async def finance_update_invoice(invoice_id: str, payload: BillingInvoiceUpdate):
+async def finance_update_invoice(invoice_id: str, payload: BillingInvoiceUpdate,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, BILLING_INVOICES)
     oid = _as_object_id(invoice_id)
@@ -118,6 +124,7 @@ async def finance_claims(
     insurer: str | None = Query(None),
     sort_by: str | None = Query(None),
     sort_dir: str | None = Query(None),
+    ctx: AuthContext = Depends(get_current_user)
 ):
     db = get_db()
     await _ensure_seeded(db, hospitalId)
@@ -137,7 +144,9 @@ async def finance_claims(
 
 
 @router.post("/finance/claims", status_code=201)
-async def finance_create_claim(payload: InsuranceClaimCreate):
+async def finance_create_claim(payload: InsuranceClaimCreate,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, INSURANCE_CLAIMS)
     oid = _require_hospital_id(payload.hospitalId)
@@ -158,7 +167,9 @@ async def finance_create_claim(payload: InsuranceClaimCreate):
 
 
 @router.patch("/finance/claims/{claim_id}")
-async def finance_update_claim(claim_id: str, payload: InsuranceClaimUpdate):
+async def finance_update_claim(claim_id: str, payload: InsuranceClaimUpdate,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, INSURANCE_CLAIMS)
     oid = _as_object_id(claim_id)
@@ -170,7 +181,9 @@ async def finance_update_claim(claim_id: str, payload: InsuranceClaimUpdate):
 
 
 @router.post("/finance/expenses", status_code=201)
-async def finance_create_expense(payload: FinanceExpenseCreate):
+async def finance_create_expense(payload: FinanceExpenseCreate,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, FINANCE_EXPENSES)
     oid = _require_hospital_id(payload.hospitalId)
@@ -189,7 +202,9 @@ async def finance_create_expense(payload: FinanceExpenseCreate):
 
 
 @router.get("/finance/revenue")
-async def finance_revenue(hospitalId: str = Query(...)):
+async def finance_revenue(hospitalId: str = Query(...),
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     await _ensure_seeded(db, hospitalId)
     oid = _require_hospital_id(hospitalId)
@@ -200,7 +215,9 @@ async def finance_revenue(hospitalId: str = Query(...)):
 
 
 @router.get("/finance/payer-delays")
-async def finance_payer_delays(hospitalId: str = Query(...)):
+async def finance_payer_delays(hospitalId: str = Query(...),
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     await _ensure_seeded(db, hospitalId)
     oid = _require_hospital_id(hospitalId)

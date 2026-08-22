@@ -1,7 +1,8 @@
 from datetime import datetime
 
 from bson import ObjectId
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from app.core.auth import get_current_user, AuthContext
 from pydantic import BaseModel
 
 from app.db.mongo import get_db
@@ -120,12 +121,16 @@ def _get_user_display(user_doc: dict | None, hospital_doc: dict | None) -> dict:
 
 
 @router.get("/health")
-async def health():
+async def health(
+    ctx: AuthContext = Depends(get_current_user)
+):
     return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
 
 
 @router.get("/debug/status")
-async def debug_status():
+async def debug_status(
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     hospital_repo = MongoRepository(db, HOSPITALS)
     message_repo = MongoRepository(db, HOSPITAL_MESSAGES)
@@ -142,7 +147,9 @@ async def debug_status():
 
 
 @router.get("/list/{current_hospital_id}")
-async def list_hospitals(current_hospital_id: str):
+async def list_hospitals(current_hospital_id: str,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     hospital_repo = MongoRepository(db, HOSPITALS)
     user_repo = MongoRepository(db, USERS)
@@ -153,9 +160,8 @@ async def list_hospitals(current_hospital_id: str):
 
     others = await hospital_repo.find_many(
         {"_id": {"$ne": current["_id"]}},
-        projection={"user": 1, "beds": 1, "doctors": 1, "resources": 1},
+        projection={"user": 1, "beds": 1, "doctors": 1, "resources": 1}
     )
-
     user_ids = [h.get("user") for h in others if h.get("user")]
     oid_list = []
     for uid in user_ids:
@@ -189,7 +195,9 @@ async def list_hospitals(current_hospital_id: str):
 
 
 @router.get("/details/{hospital_id}")
-async def hospital_details(hospital_id: str):
+async def hospital_details(hospital_id: str,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     user_repo = MongoRepository(db, USERS)
 
@@ -218,7 +226,9 @@ async def hospital_details(hospital_id: str):
 
 
 @router.post("/send-message", status_code=201)
-async def send_message(payload: SendMessageRequest):
+async def send_message(payload: SendMessageRequest,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     message_repo = MongoRepository(db, HOSPITAL_MESSAGES)
 
@@ -247,7 +257,9 @@ async def send_message(payload: SendMessageRequest):
 
 
 @router.get("/messages/{hospital_id}")
-async def messages_received(hospital_id: str):
+async def messages_received(hospital_id: str,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     message_repo = MongoRepository(db, HOSPITAL_MESSAGES)
     hospital_repo = MongoRepository(db, HOSPITALS)
@@ -259,9 +271,8 @@ async def messages_received(hospital_id: str):
 
     msgs = await message_repo.find_many(
         {"toHospital": _normalize_id(hospital["_id"])},
-        sort=[("createdAt", -1)],
+        sort=[("createdAt", -1)]
     )
-
     from_h_ids = [m.get("fromHospital") for m in msgs if m.get("fromHospital")]
     from_h_oid = []
     for hid in from_h_ids:
@@ -306,7 +317,9 @@ async def messages_received(hospital_id: str):
 
 
 @router.get("/sent-messages/{hospital_id}")
-async def messages_sent(hospital_id: str):
+async def messages_sent(hospital_id: str,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     message_repo = MongoRepository(db, HOSPITAL_MESSAGES)
     hospital_repo = MongoRepository(db, HOSPITALS)
@@ -318,9 +331,8 @@ async def messages_sent(hospital_id: str):
 
     msgs = await message_repo.find_many(
         {"fromHospital": _normalize_id(hospital["_id"])},
-        sort=[("createdAt", -1)],
+        sort=[("createdAt", -1)]
     )
-
     to_h_ids = [m.get("toHospital") for m in msgs if m.get("toHospital")]
     to_h_oid = []
     for hid in to_h_ids:
@@ -365,7 +377,9 @@ async def messages_sent(hospital_id: str):
 
 
 @router.patch("/message/{message_id}")
-async def update_message(message_id: str, payload: UpdateMessageRequest):
+async def update_message(message_id: str, payload: UpdateMessageRequest,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     message_repo = MongoRepository(db, HOSPITAL_MESSAGES)
 
@@ -390,7 +404,9 @@ async def update_message(message_id: str, payload: UpdateMessageRequest):
 
 
 @router.post("/message/{message_id}/reply")
-async def reply_message(message_id: str, payload: ReplyMessageRequest):
+async def reply_message(message_id: str, payload: ReplyMessageRequest,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     message_repo = MongoRepository(db, HOSPITAL_MESSAGES)
 
@@ -415,7 +431,9 @@ async def reply_message(message_id: str, payload: ReplyMessageRequest):
 
 
 @router.delete("/message/{message_id}")
-async def delete_message(message_id: str):
+async def delete_message(message_id: str,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     message_repo = MongoRepository(db, HOSPITAL_MESSAGES)
 
@@ -427,7 +445,9 @@ async def delete_message(message_id: str):
 
 
 @router.get("/my-hospital/{user_id}")
-async def my_hospital(user_id: str):
+async def my_hospital(user_id: str,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     user_repo = MongoRepository(db, USERS)
 
@@ -443,7 +463,9 @@ async def my_hospital(user_id: str):
 
 
 @router.put("/my-hospital/{user_id}")
-async def update_my_hospital(user_id: str, payload: dict):
+async def update_my_hospital(user_id: str, payload: dict,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     user_repo = MongoRepository(db, USERS)
     hospital_repo = MongoRepository(db, HOSPITALS)
@@ -467,9 +489,8 @@ async def update_my_hospital(user_id: str, payload: dict):
     updated = await hospital_repo.update_one(
         {"_id": _normalize_id(hospital["_id"])},
         {"$set": updates},
-        return_new=True,
+        return_new=True
     )
-
     if not updated:
         raise HTTPException(status_code=500, detail="Failed to update hospital")
 
@@ -477,7 +498,9 @@ async def update_my_hospital(user_id: str, payload: dict):
 
 
 @router.post("/agreements", status_code=201)
-async def create_agreement(payload: AgreementCreate):
+async def create_agreement(payload: AgreementCreate,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, HOSPITAL_NETWORK_AGREEMENTS)
 
@@ -499,7 +522,9 @@ async def create_agreement(payload: AgreementCreate):
 
 
 @router.get("/agreements/{hospital_id}")
-async def list_agreements(hospital_id: str):
+async def list_agreements(hospital_id: str,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     repo = MongoRepository(db, HOSPITAL_NETWORK_AGREEMENTS)
 
@@ -513,7 +538,9 @@ async def list_agreements(hospital_id: str):
 
 
 @router.post("/mutual-aid/recommendations")
-async def mutual_aid_recommendations(payload: MutualAidRequest):
+async def mutual_aid_recommendations(payload: MutualAidRequest,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     hospital_repo = MongoRepository(db, HOSPITALS)
     agreement_repo = MongoRepository(db, HOSPITAL_NETWORK_AGREEMENTS)
@@ -542,7 +569,9 @@ async def mutual_aid_recommendations(payload: MutualAidRequest):
 
 
 @router.post("/transfer/request", status_code=201)
-async def transfer_request(payload: MutualAidRequest):
+async def transfer_request(payload: MutualAidRequest,
+    ctx: AuthContext = Depends(get_current_user)
+):
     db = get_db()
     message_repo = MongoRepository(db, HOSPITAL_MESSAGES)
     hospital_repo = MongoRepository(db, HOSPITALS)

@@ -46,6 +46,8 @@ Agents:
 
 from __future__ import annotations
 
+import logging
+
 from datetime import datetime
 from typing import Any
 
@@ -288,13 +290,13 @@ def emergency_agent(
     try:
         sys_bp, _ = validate_blood_pressure(blood_pressure) if blood_pressure else (None, None)
     except Exception:
-        pass
+        logger.debug("Suppressed Exception in %s", __name__)
 
     validated_hr = None
     try:
         validated_hr = validate_heart_rate(heart_rate)
     except Exception:
-        pass
+        logger.debug("Suppressed Exception in %s", __name__)
 
     severity_result = classify_severity(
         message=message,
@@ -518,7 +520,7 @@ def donation_agent(
                     _haversine_km(patient_lat, patient_lng, float(d_lat), float(d_lng)), 2
                 )
             except (TypeError, ValueError):
-                pass
+                logger.debug("Suppressed (TypeError, ValueError) in %s", __name__)
 
         # Assess compatibility using medical knowledge layer
         compat = assess_donor_compatibility(

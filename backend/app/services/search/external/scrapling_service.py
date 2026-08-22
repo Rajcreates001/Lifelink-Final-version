@@ -163,7 +163,7 @@ class ScraplingService:
                     title_elem = elem.css("h1, h2, h3")
                     title = title_elem[0].text_content().strip()[:100] if title_elem else ""
                 except Exception:
-                    pass
+                    logger.debug("Suppressed Exception in %s", __name__)
 
                 # Dedup check
                 content_hash = hash(text[:200])

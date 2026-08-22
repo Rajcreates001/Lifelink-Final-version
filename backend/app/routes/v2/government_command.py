@@ -31,7 +31,7 @@ from app.db.models import (
     GovPrediction,
     GovSimulationSession,
     GovUser,
-    GovVerificationRequest,
+    GovVerificationRequest
 )
 from app.services.cache_store import CacheStore
 from app.services.realtime_service import RealtimeService
@@ -73,7 +73,7 @@ async def _log_audit(session: AsyncSession, action: str, actor_id: str, entity_t
             entity_type=entity_type,
             entity_id=entity_id,
             details=details,
-            created_at=datetime.utcnow(),
+            created_at=datetime.utcnow()
         )
     )
 
@@ -130,7 +130,7 @@ async def _seed_core_data(session: AsyncSession, center_lat: float, center_lng: 
                     load_score=round(1 - (beds_available / max(1, beds_total)), 2),
                     rating=round(random.uniform(3.6, 4.9), 1),
                     created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow()
                 )
             )
             created["hospitals"] += 1
@@ -149,7 +149,7 @@ async def _seed_core_data(session: AsyncSession, center_lat: float, center_lng: 
                     status=random.choice(["available", "assigned", "offline"]),
                     verified=random.choice([True, False]),
                     created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow()
                 )
             )
             created["ambulances"] += 1
@@ -165,7 +165,7 @@ async def _seed_core_data(session: AsyncSession, center_lat: float, center_lng: 
                     sub_role=None,
                     latitude=lat,
                     longitude=lng,
-                    created_at=datetime.utcnow(),
+                    created_at=datetime.utcnow()
                 )
             )
             created["users"] += 1
@@ -198,7 +198,7 @@ async def _generate_emergencies(session: AsyncSession, count: int, center_lat: f
                 hospital_id=None,
                 ambulance_id=None,
                 occurred_at=datetime.utcnow(),
-                created_at=datetime.utcnow(),
+                created_at=datetime.utcnow()
             )
         )
     session.add_all(emergencies)
@@ -339,7 +339,7 @@ async def _search_entities(session: AsyncSession, query: str) -> dict[str, Any] 
                     or_(
                         GovHospital.name.ilike(term),
                         GovHospital.city.ilike(term),
-                        GovHospital.state.ilike(term),
+                        GovHospital.state.ilike(term)
                     )
                 ).limit(10)
             )
@@ -361,7 +361,7 @@ async def _search_entities(session: AsyncSession, query: str) -> dict[str, Any] 
                 select(GovAmbulance).where(
                     or_(
                         GovAmbulance.code.ilike(term),
-                        GovAmbulance.driver.ilike(term),
+                        GovAmbulance.driver.ilike(term)
                     )
                 ).limit(10)
             )
@@ -382,7 +382,7 @@ async def _search_entities(session: AsyncSession, query: str) -> dict[str, Any] 
                 select(GovEmergency).where(
                     or_(
                         GovEmergency.emergency_type.ilike(term),
-                        GovEmergency.severity.ilike(term),
+                        GovEmergency.severity.ilike(term)
                     )
                 ).limit(10)
             )
@@ -403,7 +403,7 @@ async def _search_entities(session: AsyncSession, query: str) -> dict[str, Any] 
                 select(GovDisasterEvent).where(
                     or_(
                         GovDisasterEvent.disaster_type.ilike(term),
-                        GovDisasterEvent.zone.ilike(term),
+                        GovDisasterEvent.zone.ilike(term)
                     )
                 ).limit(10)
             )
@@ -424,7 +424,7 @@ async def _search_entities(session: AsyncSession, query: str) -> dict[str, Any] 
                 select(GovPolicyAction).where(
                     or_(
                         GovPolicyAction.title.ilike(term),
-                        GovPolicyAction.action.ilike(term),
+                        GovPolicyAction.action.ilike(term)
                     )
                 ).limit(10)
             )
@@ -445,7 +445,7 @@ async def _search_entities(session: AsyncSession, query: str) -> dict[str, Any] 
                 or_(
                     GovKnowledgeBase.title.ilike(term),
                     GovKnowledgeBase.content.ilike(term),
-                    GovKnowledgeBase.module.ilike(term),
+                    GovKnowledgeBase.module.ilike(term)
                 )
             ).limit(8)
         )
@@ -501,7 +501,7 @@ async def _detect_anomalies(session: AsyncSession) -> dict[str, Any] | None:
 @router.post("/command/seed")
 async def seed_command_center(
     payload: dict = Body(default_factory=dict),
-    ctx: AuthContext = Depends(require_scopes("gov:admin")),
+    ctx: AuthContext = Depends(require_scopes("gov:admin"))
 ):
     db = get_db()
     center_lat = float(payload.get("lat", 12.9716))
@@ -548,7 +548,7 @@ async def decision_engine(ctx: AuthContext = Depends(require_scopes("dashboard:r
                 suggested_action=item["suggested_action"],
                 impact=item["impact"],
                 affected_entities={"items": item["affected_entities"]},
-                created_at=datetime.utcnow(),
+                created_at=datetime.utcnow()
             )
             session.add(record)
             stored.append(record)
@@ -585,7 +585,7 @@ async def detect_disaster(ctx: AuthContext = Depends(require_scopes("dashboard:r
             resolved_at=None,
             timeline={"events": ["cluster_detected"]},
             meta={"cluster_size": largest, "lat": float(centroid[0]), "lng": float(centroid[1])},
-            created_at=datetime.utcnow(),
+            created_at=datetime.utcnow()
         )
         session.add(disaster)
         await session.commit()
@@ -608,7 +608,7 @@ async def trigger_disaster(payload: dict = Body(default_factory=dict), ctx: Auth
         resolved_at=None,
         timeline={"events": ["manual_trigger"]},
         meta={"reason": payload.get("reason", "manual"), "lat": lat, "lng": lng},
-        created_at=datetime.utcnow(),
+        created_at=datetime.utcnow()
     )
     async with db() as session:
         session.add(disaster)
@@ -730,7 +730,7 @@ async def monitoring_summary(ctx: AuthContext = Depends(require_scopes("dashboar
         emergencies = await session.scalar(
             select(func.count()).select_from(GovEmergency).where(
                 GovEmergency.status == "active",
-                GovEmergency.occurred_at >= window_start,
+                GovEmergency.occurred_at >= window_start
             )
         )
         hospitals = (await session.scalars(select(GovHospital))).all()
@@ -754,7 +754,7 @@ async def monitoring_summary(ctx: AuthContext = Depends(require_scopes("dashboar
 async def monitoring_feed(
     limit: int | None = Query(None, ge=1),
     window_minutes: int | None = Query(None, ge=5),
-    ctx: AuthContext = Depends(require_scopes("dashboard:read")),
+    ctx: AuthContext = Depends(require_scopes("dashboard:read"))
 ):
     resolved_limit = min(limit or LIVE_MONITOR_DEFAULT_LIMIT, LIVE_MONITOR_MAX_LIMIT)
     resolved_window = min(window_minutes or LIVE_MONITOR_WINDOW_MINUTES, LIVE_MONITOR_MAX_WINDOW_MINUTES)
@@ -773,7 +773,7 @@ async def monitoring_feed(
                 select(GovEmergency)
                 .where(
                     GovEmergency.status == "active",
-                    GovEmergency.occurred_at >= window_start,
+                    GovEmergency.occurred_at >= window_start
                 )
                 .order_by(GovEmergency.occurred_at.desc())
                 .limit(resolved_limit)
@@ -812,7 +812,7 @@ async def submit_verification(payload: dict = Body(default_factory=dict), ctx: A
         reviewed_by=None,
         reviewed_at=None,
         created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
     )
     async with db() as session:
         session.add(req)
@@ -890,7 +890,7 @@ async def start_simulation(payload: dict = Body(default_factory=dict), ctx: Auth
         intensity=payload.get("intensity", "medium"),
         started_at=datetime.utcnow(),
         ended_at=None,
-        meta={"note": payload.get("note")},
+        meta={"note": payload.get("note")}
     )
     async with db() as session_db:
         session_db.add(session)
@@ -905,7 +905,7 @@ async def run_simulation(payload: dict = Body(default_factory=dict), ctx: AuthCo
     center_lng = float(payload.get("lng", 77.5946))
     task = celery_app.send_task(
         "government.simulate",
-        kwargs={"count": count, "center_lat": center_lat, "center_lng": center_lng},
+        kwargs={"count": count, "center_lat": center_lat, "center_lng": center_lng}
     )
     return {"status": "queued", "task_id": task.id}
 
@@ -942,7 +942,7 @@ async def simulation_multi_phase(payload: dict = Body(default_factory=dict), ctx
                 intensity=payload.get("intensity", "medium"),
                 started_at=datetime.utcnow(),
                 ended_at=None,
-                meta={"note": payload.get("note"), "phases": []},
+                meta={"note": payload.get("note"), "phases": []}
             )
             session.add(sim)
             await session.commit()
@@ -1082,7 +1082,7 @@ async def eva_assistant(payload: dict = Body(default_factory=dict), ctx: AuthCon
         0.65,
         "Continue monitoring",
         "Low",
-        ["System"],
+        ["System"]
     )
     if execute:
         async with db() as session:
@@ -1096,7 +1096,7 @@ async def eva_assistant(payload: dict = Body(default_factory=dict), ctx: AuthCon
                     suggested_action=suggestion["suggested_action"],
                     impact=suggestion["impact"],
                     affected_entities={"items": suggestion["affected_entities"]},
-                    created_at=datetime.utcnow(),
+                    created_at=datetime.utcnow()
                 )
             )
             await session.commit()
@@ -1123,7 +1123,7 @@ async def anomaly_prediction(ctx: AuthContext = Depends(require_scopes("dashboar
             prediction_type="emergency_anomaly",
             result=result,
             confidence=0.82,
-            created_at=datetime.utcnow(),
+            created_at=datetime.utcnow()
         )
         session.add(prediction)
         await session.commit()
@@ -1137,7 +1137,7 @@ async def list_policy_actions(
     status: str | None = None,
     limit: int | None = Query(None, ge=1),
     offset: int | None = Query(None, ge=0),
-    ctx: AuthContext = Depends(require_scopes("dashboard:read")),
+    ctx: AuthContext = Depends(require_scopes("dashboard:read"))
 ):
     db = get_db()
     async with db() as session:
@@ -1178,7 +1178,7 @@ async def create_policy_action(payload: dict = Body(default_factory=dict), ctx: 
         impact=payload.get("impact"),
         decision_event_id=payload.get("decision_event_id"),
         created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
     )
     db = get_db()
     async with db() as session:
