@@ -27,9 +27,9 @@ logger = logging.getLogger("lifelink.simulation.emergency_model")
 
 try:
     from mesa import Agent, Model
-    from mesa.time import RandomActivation
     from mesa.space import ContinuousSpace
     from mesa.datacollection import DataCollector
+    # Mesa 3.x removed mesa.time.RandomActivation — scheduling is built into Model.agents
     HAS_MESA = True
 except ImportError:
     HAS_MESA = False
@@ -140,9 +140,9 @@ def random_point_near(center_lat: float, center_lng: float, radius_km: float) ->
 class Incident(Agent):
     """An emergency incident that needs response."""
 
-    def __init__(self, unique_id: int, model: Model, lat: float, lng: float,
+    def __init__(self, model: Model, lat: float, lng: float,
                  severity: str, incident_type: str):
-        super().__init__(unique_id, model)
+        super().__init__(model)
         self.lat = lat
         self.lng = lng
         self.severity = severity
@@ -164,8 +164,8 @@ class Incident(Agent):
 class Ambulance(Agent):
     """An ambulance that responds to incidents."""
 
-    def __init__(self, unique_id: int, model: Model, lat: float, lng: float):
-        super().__init__(unique_id, model)
+    def __init__(self, model: Model, lat: float, lng: float):
+        super().__init__(model)
         self.lat = lat
         self.lng = lng
         self.status = "available"  # available, responding, transporting, returning
@@ -179,7 +179,7 @@ class Ambulance(Agent):
         """Ambulance logic each simulation step."""
         if self.status == "available":
             # Find nearest unresponded incident
-            incidents = [a for a in self.model.schedule.agents
+            incidents = [a for a in self.model.agents
                          if isinstance(a, Incident) and not a.responded]
             if not incidents:
                 return
@@ -210,7 +210,7 @@ class Ambulance(Agent):
             return
 
         # Find nearest hospital with available bed
-        hospitals = [a for a in self.model.schedule.agents
+        hospitals = [a for a in self.model.agents
                      if isinstance(a, Hospital) and a.available_beds > 0]
         if not hospitals:
             self.status = "available"
@@ -235,9 +235,9 @@ class Ambulance(Agent):
 class Hospital(Agent):
     """A hospital that receives patients."""
 
-    def __init__(self, unique_id: int, model: Model, lat: float, lng: float,
+    def __init__(self, model: Model, lat: float, lng: float,
                  name: str, total_beds: int):
-        super().__init__(unique_id, model)
+        super().__init__(model)
         self.lat = lat
         self.lng = lng
         self.name = name
@@ -296,16 +296,16 @@ class EmergencySimulationModel(Model):
 
         # Set up space (continuous, coordinates as x=lng, y=lat)
         margin = 0.5  # degree margin
+        # Mesa 3.x: ContinuousSpace(x_max, y_max, torus, x_min, y_min)
         self.space = ContinuousSpace(
-            self.config.center_lng - margin,
-            self.config.center_lng + margin,
-            self.config.center_lat - margin,
-            self.config.center_lat + margin,
+            x_max=self.config.center_lng + margin,
+            y_max=self.config.center_lat + margin,
             torus=False,
+            x_min=self.config.center_lng - margin,
+            y_min=self.config.center_lat - margin,
         )
 
-        # Set up scheduler
-        self.schedule = RandomActivation(self)
+        # Mesa 3.x: scheduling is built into Model.agents (AgentSet)
         self._deferred_actions: list[tuple] = []
 
         # Create hospitals
@@ -321,16 +321,16 @@ class EmergencySimulationModel(Model):
                 self.config.center_lat, self.config.center_lng, self.config.spread_km * 0.3)
             name = hospital_names[i] if i < len(hospital_names) else f"Hospital_{i + 1}"
             beds = random.choice([200, 300, 400, 500, 600])
-            hospital = Hospital(i, self, lat, lng, name, beds)
-            self.schedule.add(hospital)
+            hospital = Hospital(self, lat, lng, name, beds)
+            self.agents.add(hospital)
 
         # Create ambulances
         amb_offset = self.config.num_hospitals
         for i in range(self.config.num_ambulances):
             lat, lng = random_point_near(
                 self.config.center_lat, self.config.center_lng, self.config.spread_km * 0.5)
-            amb = Ambulance(amb_offset + i, self, lat, lng)
-            self.schedule.add(amb)
+            amb = Ambulance(self, lat, lng)
+            self.agents.add(amb)
 
         # Create incidents
         inc_offset = amb_offset + self.config.num_ambulances
@@ -343,8 +343,8 @@ class EmergencySimulationModel(Model):
                 self.config.center_lat, self.config.center_lng, self.config.spread_km)
             severity = self.random.choices(severity_choices, weights=severity_weights)[0]
             inc_type = random.choice(incident_types)
-            incident = Incident(inc_offset + i, self, lat, lng, severity, inc_type)
-            self.schedule.add(incident)
+            incident = Incident(self, lat, lng, severity, inc_type)
+            self.agents.add(incident)
 
         # Data collector
         self.datacollector = DataCollector(
@@ -364,27 +364,28 @@ class EmergencySimulationModel(Model):
     def step(self) -> None:
         """Advance the simulation by one step."""
         self.current_step += 1
-        self.schedule.step()
+        # Mesa 3.x: use agents.do("step") to call step() on all agents
+        self.agents.do("step")
         self._process_deferred()
 
         # Track metrics
-        responded = sum(1 for a in self.schedule.agents
+        responded = sum(1 for a in self.agents
                         if isinstance(a, Incident) and a.responded)
-        beyond = sum(1 for a in self.schedule.agents
+        beyond = sum(1 for a in self.agents
                      if isinstance(a, Incident) and a.responded
                      and a.response_time and a.response_time > a.critical_window_minutes)
 
         self.metrics["responded"] = responded
         self.metrics["beyond_window"] = beyond
 
-        response_times = [a.response_time for a in self.schedule.agents
+        response_times = [a.response_time for a in self.agents
                           if isinstance(a, Incident) and a.response_time]
         if response_times:
             self.metrics["total_response_times"] = response_times
             self.metrics["avg_response_time"] = sum(response_times) / len(response_times)
 
         # Track bed utilization
-        hospitals = [a for a in self.schedule.agents if isinstance(a, Hospital)]
+        hospitals = [a for a in self.agents if isinstance(a, Hospital)]
         total_occ = sum(h.total_beds - h.available_beds for h in hospitals)
         total_beds = sum(h.total_beds for h in hospitals)
         util = round(total_occ / total_beds * 100, 1) if total_beds else 0
@@ -408,9 +409,9 @@ class EmergencySimulationModel(Model):
 
     def get_metrics_summary(self) -> dict[str, Any]:
         """Get a summary of all simulation metrics."""
-        hospitals = [a for a in self.schedule.agents if isinstance(a, Hospital)]
-        ambulances = [a for a in self.schedule.agents if isinstance(a, Ambulance)]
-        incidents = [a for a in self.schedule.agents if isinstance(a, Incident)]
+        hospitals = [a for a in self.agents if isinstance(a, Hospital)]
+        ambulances = [a for a in self.agents if isinstance(a, Ambulance)]
+        incidents = [a for a in self.agents if isinstance(a, Incident)]
 
         response_time_list = [a.response_time for a in incidents
                               if a.response_time is not None]

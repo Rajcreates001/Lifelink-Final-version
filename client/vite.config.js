@@ -9,5 +9,12 @@ export default defineConfig({
     port: 5000,
     strictPort: true,
     allowedHosts: true   // ⭐ allow ALL hosts (ngrok fix)
-  }
+  },
+
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/test/setup.js',
+    css: true,
+  },
 })

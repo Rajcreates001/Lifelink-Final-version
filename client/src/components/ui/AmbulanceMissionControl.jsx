@@ -506,7 +506,7 @@ const AmbulanceMissionControl = ({ activeModule: externalModule }) => {
   const { user } = useAuth();
   const ambulanceId = resolveAmbulanceId(user);
 
-  const [state, setState] = useState({ loading: true, data: DEMO_DATA, missionStart: new Date().toISOString() });
+  const [state, setState] = useState({ loading: true, data: { vehicle: {}, incident: {}, hospital: {}, toIncident: {}, toHospital: {}, patientStatus: 'Unknown' }, missionStart: new Date().toISOString() });
   const [triageOpen, setTriageOpen] = useState(false);
   const [toast, setToast] = useState(null);
   const toastTimer = useRef(null);
@@ -537,17 +537,57 @@ const AmbulanceMissionControl = ({ activeModule: externalModule }) => {
         const active = Array.isArray(assignments) ? assignments.find((a) => ['active', 'en route'].includes(String(a.status || '').toLowerCase())) || assignments[0] : null;
 
         if (active && isActive) {
+          // Build full data from real API response
+          const vehicleData = {
+            label: active.ambulanceId || active.vehicleId || 'Ambulance',
+            lat: active.currentLat || active.lat || 12.9766,
+            lng: active.currentLng || active.lng || 77.5713,
+            address: active.currentAddress || active.location || 'En route',
+            speedKph: active.speedKph || active.speed || 0,
+            fuelLevel: active.fuelLevel || active.fuel || 100,
+            equipment: active.equipment || [],
+          };
+          const incidentData = {
+            label: active.emergencyType || active.type || 'Emergency call',
+            lat: active.incidentLat || active.pickupLat || 12.9763,
+            lng: active.incidentLng || active.pickupLng || 77.5929,
+            address: active.incidentAddress || active.pickupAddress || 'Location pending',
+            severity: active.priorityLevel || active.priority || active.severity || 'High',
+            patientName: active.patient || active.patientName || 'Patient',
+            age: active.patientAge || active.age || null,
+            gcs: active.gcs || null,
+            mechanism: active.emergencyType || active.type || 'Emergency',
+          };
+          const hospitalData = {
+            label: active.hospitalName || active.destinationHospital || 'Nearest Hospital',
+            lat: active.hospitalLat || 12.9686,
+            lng: active.hospitalLng || 77.5995,
+            address: active.hospitalAddress || '',
+            icuBeds: active.icuBeds || 0,
+            traumaReady: active.traumaReady || false,
+            distance: active.hospitalDistance || null,
+            eta: active.etaToHospital || null,
+          };
           setState((prev) => ({
             ...prev,
             loading: false,
             data: {
-              ...DEMO_DATA,
-              incident: {
-                ...DEMO_DATA.incident,
-                patientName: active.patient || active.patientName || 'Unknown',
-                mechanism: active.emergencyType || active.emergency_type || 'Unknown',
-                severity: active.priorityLevel || active.priority || 'Critical',
+              vehicle: vehicleData,
+              incident: incidentData,
+              hospital: hospitalData,
+              toIncident: {
+                path: buildFallbackRoute(vehicleData, incidentData),
+                etaMinutes: active.etaToIncident || null,
+                distanceKm: active.distanceToIncident || null,
+                traffic: active.traffic || { level: 'Unknown', adjustedMinutes: null, baseMinutes: null },
               },
+              toHospital: {
+                path: buildFallbackRoute(incidentData, hospitalData),
+                etaMinutes: active.etaToHospital || null,
+                distanceKm: active.hospitalDistance || null,
+                traffic: active.trafficToHospital || { level: 'Unknown', adjustedMinutes: null, baseMinutes: null },
+              },
+              patientStatus: active.priorityLevel || active.priority || 'Unknown',
             },
           }));
         } else if (isActive) {

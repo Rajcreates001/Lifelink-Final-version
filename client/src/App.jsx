@@ -2,6 +2,8 @@ import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth, getLoginRoute, getWorkspaceRoute } from './context/AuthContext';
 import { getAuthToken } from './config/api';
+import ErrorBoundary from './components/ErrorBoundary';
+import './styles/responsive.css';
 
 // Pages
 const Signup = lazy(() => import('./pages/Signup'));
@@ -94,10 +96,10 @@ const PageLoader = () => (
 );
 
 const App = () => {
-    return (
-        <AuthProvider>
-            <Router>
-                <Suspense fallback={<PageLoader />}>
+    return (    <AuthProvider>
+      <Router>
+        <ErrorBoundary>
+        <Suspense fallback={<PageLoader />}>
                 <Routes>
                     {/* Public Routes */}
                     <Route path="/" element={<LandingPage />} />
@@ -232,6 +234,7 @@ const App = () => {
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
                 </Suspense>
+        </ErrorBoundary>
             </Router>
         </AuthProvider>
     );

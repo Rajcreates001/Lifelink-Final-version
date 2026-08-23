@@ -284,7 +284,7 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
         try {
           const errorData = await response.json();
           errorMsg = errorData.error || errorMsg;
-        } catch (e) {}
+        } catch (e) { console.error("HospitalComms error:", e); }
         throw new Error(errorMsg);
       }
 
@@ -371,7 +371,7 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
         try {
           const errorData = await response.json();
           errorMsg = errorData.error || errorMsg;
-        } catch (e) {}
+        } catch (e) { console.error("HospitalComms error:", e); }
         throw new Error(errorMsg);
       }
 
@@ -442,7 +442,7 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
         try {
           const errorData = await response.json();
           errorMsg = errorData.error || errorMsg;
-        } catch (e) {}
+        } catch (e) { console.error("HospitalComms error:", e); }
         throw new Error(errorMsg);
       }
 
@@ -479,7 +479,7 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
         try {
           const errorData = await response.json();
           errorMsg = errorData.error || errorMsg;
-        } catch (e) {}
+        } catch (e) { console.error("HospitalComms error:", e); }
         throw new Error(errorMsg);
       }
 
@@ -514,7 +514,7 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
         try {
           const errorData = await response.json();
           errorMsg = errorData.error || errorMsg;
-        } catch (e) {}
+        } catch (e) { console.error("HospitalComms error:", e); }
         throw new Error(errorMsg);
       }
 
@@ -628,7 +628,7 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
               <div className="loading">⏳ Loading hospitals...</div>
               <p style={{fontSize: '12px', color: '#999', marginTop: '10px'}}>
                 This is taking longer than expected. <br/>
-                Make sure the server is running on localhost:3001
+                Make sure the server is running on backend server
               </p>
             </div>
           ) : filteredHospitals && filteredHospitals.length === 0 ? (

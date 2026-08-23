@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { apiFetch } from '../../config/api';
 
-// ─── Simulated real-time incidents (would come from WebSocket) ──
+// ─── Real-time incidents fetched from API ──
 const INCIDENT_TYPES = {
   fire: { icon: 'fa-fire', color: 'text-red-400', bg: 'bg-red-500/10', label: 'Fire' },
   flood: { icon: 'fa-water', color: 'text-blue-400', bg: 'bg-blue-500/10', label: 'Flood' },
@@ -33,8 +34,43 @@ const SEVERITY_COLORS = {
 };
 
 const LiveSituationPanel = ({ compact = false, maxItems = 5 }) => {
-  const [incidents, setIncidents] = useState(DEMO_INCIDENTS);
+  const [incidents, setIncidents] = useState([]);
   const [currentTime, setCurrentTime] = useState('');
+
+  // Fetch real incidents from API on mount
+  useEffect(() => {
+    let active = true;
+    const fetchIncidents = async () => {
+      try {
+        const [feedRes, recentRes] = await Promise.all([
+          apiFetch('/v2/government/monitoring/feed'),
+          apiFetch('/v2/government/disaster/recent'),
+        ]);
+        if (!active) return;
+        const feedData = feedRes.ok ? (feedRes.data?.data || feedRes.data?.feed || []) : [];
+        const recentData = recentRes.ok ? (recentRes.data?.data || recentRes.data?.disasters || []) : [];
+        const allItems = [...feedData, ...recentData];
+        if (allItems.length > 0) {
+          const mapped = allItems.slice(0, 20).map((item, idx) => ({
+            id: item._id || item.id || idx,
+            type: (item.type || item.disaster_type || 'default').toLowerCase(),
+            title: item.title || item.message || item.name || 'Emergency Alert',
+            location: item.location || item.region || item.district || 'Unknown',
+            severity: item.severity || item.severity_level || 'High',
+            units: item.units_deployed || item.units || 0,
+            time: item.occurred_at || item.timestamp || item.createdAt || '',
+          }));
+          setIncidents(mapped);
+        } else {
+          setIncidents(DEMO_INCIDENTS); // Fallback to demo if no data
+        }
+      } catch {
+        setIncidents(DEMO_INCIDENTS);
+      }
+    };
+    fetchIncidents();
+    return () => { active = false; };
+  }, []);
 
   // Update clock
   useEffect(() => {

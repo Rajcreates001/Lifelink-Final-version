@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { apiFetch, getAuthToken } from '../config/api';
 import { DashboardCard, LoadingSpinner, StatusPill } from './Common';
 import ExportButton from './ExportButton';
+import { useWebSocket } from '../hooks/useWebSocket';
 
 const resolveAmbulanceId = (user) => user?._id || user?.id || '';
 
@@ -228,6 +229,32 @@ export const AmbulanceEmergencyResponse = () => {
     const { user } = useAuth();
 
     const ambulanceId = resolveAmbulanceId(user);
+
+    // Real-time updates via WebSocket
+    const { lastMessage: wsMessage } = useWebSocket('ambulance', {
+        onMessage: (data) => {
+            // Handle real-time ambulance location/status updates
+            if (data.type === 'ambulance_update' || data.type === 'location_update') {
+                setState((prev) => {
+                    if (!prev.data) return prev;
+                    return {
+                        ...prev,
+                        data: {
+                            ...prev.data,
+                            vehicle: {
+                                ...prev.data.vehicle,
+                                lat: data.lat || data.currentLat || prev.data.vehicle.lat,
+                                lng: data.lng || data.currentLng || prev.data.vehicle.lng,
+                                speedKph: data.speedKph || data.speed || prev.data.vehicle.speedKph,
+                                address: data.address || data.currentAddress || prev.data.vehicle.address,
+                            },
+                        },
+                        lastUpdated: new Date().toISOString(),
+                    };
+                });
+            }
+        },
+    });
     const demoFallback = useMemo(() => demoEmergencyData(), []);
     const cacheKey = ambulanceId ? `ambulance_emergency_${ambulanceId}` : 'ambulance_emergency';
     const [state, setState] = useState({ loading: true, error: '', data: null, lastUpdated: null });

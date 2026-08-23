@@ -1,0 +1,118 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: lifelink-secrets
+type: Opaque
+stringData:
+  database-url: "postgresql://lifelink:CHANGE_ME@lifelink-postgres:5432/lifelink"
+  jwt-secret: "CHANGE_ME_TO_RANDOM_256_BIT_KEY"
+  mongo-uri: "mongodb://lifelink:CHANGE_ME@lifelink-mongo:27017/lifelink"
+  encryption-key: ""
+  sentry-dsn: ""
+  openai-api-key: ""
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: lifelink-postgres
+spec:
+  serviceName: lifelink-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: lifelink
+      component: postgres
+  template:
+    metadata:
+      labels:
+        app: lifelink
+        component: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: lifelink
+            - name: POSTGRES_USER
+              value: lifelink
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: lifelink-secrets
+                  key: database-url
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lifelink-postgres
+spec:
+  selector:
+    app: lifelink
+    component: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lifelink-redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: lifelink
+      component: redis
+  template:
+    metadata:
+      labels:
+        app: lifelink
+        component: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "100m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lifelink-redis
+spec:
+  selector:
+    app: lifelink
+    component: redis
+  ports:
+    - port: 6379
+      targetPort: 6379
+  type: ClusterIP
