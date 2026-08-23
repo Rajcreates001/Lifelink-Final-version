@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from app.core.auth import require_scopes
 from app.core.dependencies import get_notification_service
 from app.core.rbac import AuthContext
-from app.services.notification_service import NotificationService
+from app.services.notification_service import NotificationChannel, NotificationService
 
 router = APIRouter(tags=["notifications"])
 
@@ -21,5 +21,10 @@ async def send_email_notification(
     ctx: AuthContext = Depends(require_scopes("alerts:read")),
     service: NotificationService = Depends(get_notification_service)
 ) -> dict:
-    result = service.send_email(payload.to_email, payload.subject, payload.html)
+    result = await service.send(
+        channel=NotificationChannel.EMAIL,
+        recipient=payload.to_email,
+        title=payload.subject,
+        body=payload.html,
+    )
     return {"requestedBy": ctx.user_id, **result}

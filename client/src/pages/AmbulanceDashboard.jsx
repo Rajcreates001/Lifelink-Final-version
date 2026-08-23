@@ -2,6 +2,7 @@ import React, { lazy, Suspense, useEffect, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import DashboardLayout from '../layout/DashboardLayout';
 import { useAuth } from '../context/AuthContext';
+import { apiFetch } from '../config/api';
 import MobileDrawer from '../components/layout/MobileDrawer';
 import LogoutConfirmDialog from '../components/ui/LogoutConfirmDialog';
 import ProfileModal from '../components/ProfileModal';
@@ -101,12 +102,113 @@ const ModuleFallback = () => (
   </div>
 );
 
-// ─── Shared Demo Mission Data ────────────────────────────────
-const DEMO_VEHICLE = { label: 'Ambulance A1', lat: 12.9766, lng: 77.5713, address: 'Majestic Bus Station', speedKph: 44, fuelLevel: 78, equipment: ['Defibrillator', 'Ventilator', 'O₂ 90%', 'Trauma Kit'] };
-const DEMO_INCIDENT = { label: 'Multi-vehicle collision', lat: 12.9763, lng: 77.5929, address: 'Cubbon Park Road', severity: 'Critical', patientName: 'Riya S.', age: 34, gcs: 10, mechanism: 'Road traffic accident' };
-const DEMO_HOSPITAL = { label: "St. Martha's Hospital", lat: 12.9686, lng: 77.5995, address: 'Nrupathunga Road', icuBeds: 3, traumaReady: true, distance: 3.5, eta: 11 };
-const DEMO_TO_INCIDENT = { etaMinutes: 7, distanceKm: 4.1, traffic: { level: 'Light', adjustedMinutes: 7, baseMinutes: 6 } };
-const DEMO_TO_HOSPITAL = { etaMinutes: 11, distanceKm: 3.5, traffic: { level: 'Moderate', adjustedMinutes: 11, baseMinutes: 9 } };
+// ─── Hook: Fetch real ambulance mission data from API ────────
+const useAmbulanceMissionData = () => {
+  const { user } = useAuth();
+  const [vehicle, setVehicle] = useState(null);
+  const [incident, setIncident] = useState(null);
+  const [hospital, setHospital] = useState(null);
+  const [toIncident, setToIncident] = useState(null);
+  const [toHospital, setToHospital] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    const fetchMissionData = async () => {
+      setLoading(true);
+      try {
+        const [statusRes, assignmentsRes, hospitalsRes] = await Promise.all([
+          apiFetch('/api/ambulance/emergency-status'),
+          apiFetch('/api/ambulance/assignments'),
+          apiFetch('/api/government-ops/hospitals'),
+        ]);
+
+        if (!active) return;
+
+        // Vehicle data from ambulance status
+        const statusData = statusRes.ok ? statusRes.data : null;
+        if (statusData) {
+          setVehicle({
+            label: statusData.vehicleId || statusData.ambulanceId || user?.name || 'Ambulance A1',
+            lat: statusData.currentLat || 12.9766,
+            lng: statusData.currentLng || 77.5713,
+            address: statusData.currentAddress || statusData.location || 'En route',
+            speedKph: statusData.speedKph || statusData.speed || 0,
+            fuelLevel: statusData.fuelLevel || statusData.fuel || 100,
+            equipment: statusData.equipment || ['Defibrillator', 'Trauma Kit'],
+          });
+        }
+
+        // Incident data from assignments
+        const assignmentsData = assignmentsRes.ok ? (assignmentsRes.data?.data || assignmentsRes.data || []) : [];
+        const activeAssignment = Array.isArray(assignmentsData)
+          ? assignmentsData.find(a => a.status === 'active' || a.status === 'en_route' || a.status === 'responding')
+          : null;
+
+        if (activeAssignment) {
+          setIncident({
+            label: activeAssignment.incidentType || activeAssignment.type || 'Emergency call',
+            lat: activeAssignment.incidentLat || activeAssignment.pickupLat || 12.9763,
+            lng: activeAssignment.incidentLng || activeAssignment.pickupLng || 77.5929,
+            address: activeAssignment.incidentAddress || activeAssignment.pickupAddress || 'Location pending',
+            severity: activeAssignment.severity || 'High',
+            patientName: activeAssignment.patientName || activeAssignment.patient_name || 'Patient',
+            age: activeAssignment.patientAge || activeAssignment.age || null,
+            gcs: activeAssignment.gcs || null,
+            mechanism: activeAssignment.mechanism || activeAssignment.incidentType || 'Emergency',
+          });
+          setToIncident({
+            etaMinutes: activeAssignment.etaToIncident || activeAssignment.eta_minutes || null,
+            distanceKm: activeAssignment.distanceToIncident || activeAssignment.distance_km || null,
+            traffic: activeAssignment.traffic || { level: 'Unknown', adjustedMinutes: null, baseMinutes: null },
+          });
+        } else {
+          // Fallback to default incident data when no active assignment
+          setIncident({ label: 'No active mission', lat: 12.9763, lng: 77.5929, address: 'Awaiting assignment', severity: 'Low', patientName: '—', age: null, gcs: null, mechanism: '—' });
+          setToIncident({ etaMinutes: null, distanceKm: null, traffic: { level: 'Unknown', adjustedMinutes: null, baseMinutes: null } });
+        }
+
+        // Hospital data
+        const hospitalsData = hospitalsRes.ok ? (hospitalsRes.data?.data || hospitalsRes.data?.hospitals || []) : [];
+        const hospArray = Array.isArray(hospitalsData) ? hospitalsData : [];
+        const targetHospital = activeAssignment?.hospital || hospArray[0];
+
+        if (targetHospital) {
+          setHospital({
+            label: targetHospital.name || targetHospital.hospitalName || 'Nearest Hospital',
+            lat: targetHospital.lat || targetHospital.latitude || 12.9686,
+            lng: targetHospital.lng || targetHospital.longitude || 77.5995,
+            address: targetHospital.address || targetHospital.location || '',
+            icuBeds: targetHospital.icuBeds || targetHospital.icu_beds || 0,
+            traumaReady: targetHospital.traumaReady || false,
+            distance: activeAssignment?.hospitalDistance || targetHospital.distance_km || null,
+            eta: activeAssignment?.etaToHospital || targetHospital.eta_minutes || null,
+          });
+          setToHospital({
+            etaMinutes: activeAssignment?.etaToHospital || targetHospital.eta_minutes || null,
+            distanceKm: activeAssignment?.hospitalDistance || targetHospital.distance_km || null,
+            traffic: activeAssignment?.trafficToHospital || { level: 'Unknown', adjustedMinutes: null, baseMinutes: null },
+          });
+        }
+      } catch (err) {
+        // Use minimal defaults if API fails
+        if (active) {
+          setVehicle({ label: user?.name || 'Ambulance', lat: 12.9766, lng: 77.5713, address: 'En route', speedKph: 0, fuelLevel: 100, equipment: [] });
+          setIncident({ label: 'No active mission', lat: 12.9763, lng: 77.5929, address: 'Awaiting assignment', severity: 'Low', patientName: '—', age: null, gcs: null, mechanism: '—' });
+          setToIncident({ etaMinutes: null, distanceKm: null, traffic: { level: 'Unknown', adjustedMinutes: null, baseMinutes: null } });
+          setHospital({ label: 'Nearest Hospital', lat: 12.9686, lng: 77.5995, address: '', icuBeds: 0, traumaReady: false, distance: null, eta: null });
+          setToHospital({ etaMinutes: null, distanceKm: null, traffic: { level: 'Unknown', adjustedMinutes: null, baseMinutes: null } });
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    fetchMissionData();
+    return () => { active = false; };
+  }, [user]);
+
+  return { vehicle, incident, hospital, toIncident, toHospital, loading };
+};
 
 const useIsDesktop = () => {
   const getMatches = () => {
@@ -129,7 +231,7 @@ const useIsDesktop = () => {
 const DesktopAmbulanceDashboard = () => {
   const navigate = useNavigate();
   const { module: urlModule } = useParams();
-  // Read active module from URL — supports direct linking, bookmarks, browser back/forward
+  const { vehicle, incident, hospital, toIncident, toHospital, loading } = useAmbulanceMissionData();
   const activeModule = urlModule && moduleLabels[urlModule] ? urlModule : 'mission-overview';
   const [triageOpen, setTriageOpen] = useState(false);
   const [toast, setToast] = useState(null);
@@ -168,12 +270,12 @@ const DesktopAmbulanceDashboard = () => {
       {/* Sticky Mission Header */}
       <div className="sticky top-0 z-10 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 bg-slate-50/95 backdrop-blur border-b border-slate-200 shadow-sm">
         <AmbulanceMissionHeader
-          patientName={DEMO_INCIDENT.patientName}
-          severity={DEMO_INCIDENT.severity}
-          eta={String(DEMO_TO_HOSPITAL.etaMinutes)}
-          incidentLabel={DEMO_INCIDENT.label}
-          vehicleLabel={DEMO_VEHICLE.label}
-          speedKph={DEMO_VEHICLE.speedKph}
+          patientName={incident?.patientName || '—'}
+          severity={incident?.severity || 'Low'}
+          eta={String(toHospital?.etaMinutes || '—')}
+          incidentLabel={incident?.label || 'No active mission'}
+          vehicleLabel={vehicle?.label || 'Ambulance'}
+          speedKph={vehicle?.speedKph || 0}
           missionStart={missionStart}
         />
       </div>
@@ -196,11 +298,11 @@ const DesktopAmbulanceDashboard = () => {
               {isActive ? (
                 <Suspense fallback={<ModuleFallback />}>
                   <Comp
-                    vehicle={DEMO_VEHICLE}
-                    incident={DEMO_INCIDENT}
-                    hospital={DEMO_HOSPITAL}
-                    toIncident={DEMO_TO_INCIDENT}
-                    toHospital={DEMO_TO_HOSPITAL}
+                    vehicle={vehicle || {}}
+                    incident={incident || {}}
+                    hospital={hospital || {}}
+                    toIncident={toIncident || {}}
+                    toHospital={toHospital || {}}
                     missionStart={missionStart}
                     patientStatus="Critical"
                     goldenHour
@@ -259,10 +361,10 @@ const MobileAmbulanceDashboard = () => {
   const { user, performLogout } = useAuth();
   const navigate = useNavigate();
   const { module: urlModule } = useParams();
+  const { vehicle, incident, hospital, toIncident, toHospital } = useAmbulanceMissionData();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  // Read active module from URL — supports direct linking, bookmarks, browser back/forward
   const activeModule = urlModule && moduleLabels[urlModule] ? urlModule : 'mission-overview';
   const [missionStart] = useState(() => new Date().toISOString());
   const [toast, setToast] = useState(null);
@@ -326,12 +428,12 @@ const MobileAmbulanceDashboard = () => {
       {/* Mobile Mission Header */}
       <div className="bg-slate-50/95 backdrop-blur border-b border-slate-200 px-3 py-2">
         <AmbulanceMissionHeader
-          patientName={DEMO_INCIDENT.patientName}
-          severity={DEMO_INCIDENT.severity}
-          eta={String(DEMO_TO_HOSPITAL.etaMinutes)}
-          incidentLabel={DEMO_INCIDENT.label}
-          vehicleLabel={DEMO_VEHICLE.label}
-          speedKph={DEMO_VEHICLE.speedKph}
+          patientName={incident?.patientName || '—'}
+          severity={incident?.severity || 'Low'}
+          eta={String(toHospital?.etaMinutes || '—')}
+          incidentLabel={incident?.label || 'No active mission'}
+          vehicleLabel={vehicle?.label || 'Ambulance'}
+          speedKph={vehicle?.speedKph || 0}
           missionStart={missionStart}
         />
       </div>
@@ -360,11 +462,11 @@ const MobileAmbulanceDashboard = () => {
                   </Suspense>
                 ) : (
                   <Comp
-                    vehicle={DEMO_VEHICLE}
-                    incident={DEMO_INCIDENT}
-                    hospital={DEMO_HOSPITAL}
-                    toIncident={DEMO_TO_INCIDENT}
-                    toHospital={DEMO_TO_HOSPITAL}
+                    vehicle={vehicle || {}}
+                    incident={incident || {}}
+                    hospital={hospital || {}}
+                    toIncident={toIncident || {}}
+                    toHospital={toHospital || {}}
                     missionStart={missionStart}
                     patientStatus="Critical"
                     goldenHour

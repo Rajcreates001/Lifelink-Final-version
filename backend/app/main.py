@@ -9,6 +9,9 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+
 from app.core.config import get_settings, validate_jwt_secret
 from app.db.mongo import close_mongo_connection, connect_to_mongo
 from app.db.asyncpg_pool import close_asyncpg, connect_asyncpg
@@ -25,6 +28,8 @@ from app.routes.health import router as health_router
 from app.routes.hospital_communication import router as hospital_communication_router
 from app.routes.hospital_ml import router as hospital_ml_router
 from app.routes.hospital_ops import router as hospital_ops_router
+from app.routes.hospital_ops_discharge import router as hospital_ops_discharge_router
+from app.routes.compliance import router as compliance_router
 from app.routes.requests import router as requests_router
 from app.routes.v2.agents import router as agents_v2_router
 from app.routes.v2.analytics import router as analytics_v2_router
@@ -85,6 +90,17 @@ logging.getLogger("asyncio").setLevel(logging.WARNING)
 
 settings = get_settings()
 
+# Initialize Sentry error monitoring (only if DSN is configured)
+if settings.sentry_dsn:
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        integrations=[FastApiIntegration()],
+        traces_sample_rate=settings.sentry_traces_sample_rate,
+        environment=settings.app_env,
+        send_default_pii=False,
+    )
+    logger.info("Sentry error monitoring initialized")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -140,6 +156,8 @@ app.include_router(hospital_communication_router, prefix="/api/hospital-communic
 app.include_router(hospital_ml_router, prefix="/api/hospital")
 app.include_router(hospital_ml_router, prefix="/api/hosp")
 app.include_router(hospital_ops_router, prefix="/api/hospital-ops")
+app.include_router(hospital_ops_discharge_router, prefix="/api/hospital-ops")
+app.include_router(compliance_router, prefix="/api")
 
 # V2 modular service routes
 app.include_router(gateway_v2_router, prefix="/v2")

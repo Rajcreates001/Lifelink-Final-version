@@ -40,9 +40,11 @@ import {
     HospitalRadiologyAIInsights,
     HospitalOTSurgeryScheduling,
     HospitalOTStaffAllocation,
-} from '../components/HospitalOpsModules';
+} from '../components/hospitalOps';
 import RevenueIntelligence from '../components/ui/RevenueIntelligence';
 import EmergencyCommandCenter from '../components/ui/EmergencyCommandCenter';
+import PatientDischargeWorkflow from '../components/PatientDischargeWorkflow';
+import StaffSchedulingModule from '../components/StaffSchedulingModule';
 
 const hospitalModuleSets = {
     ceo: [
@@ -67,6 +69,8 @@ const hospitalModuleSets = {
                 currentHospitalName={user?.name}
             />
         ) },
+        { key: 'patient-discharge', label: 'Patient Discharge', icon: 'fa-right-from-bracket', render: () => <PatientDischargeWorkflow /> },
+        { key: 'staff-scheduling', label: 'Staff Scheduling', icon: 'fa-calendar-days', render: () => <StaffSchedulingModule /> },
     ],
     emergency: [
         { key: 'emergency-command-center', label: 'Emergency Command Center', icon: 'fa-tower-broadcast', render: () => <EmergencyCommandCenter /> },

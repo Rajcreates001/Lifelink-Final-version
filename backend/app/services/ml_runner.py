@@ -26,6 +26,9 @@ from typing import Any
 # by changing directory before each call.
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _ML_DIR = _REPO_ROOT / "backend" / "ml"
+# In Docker the app is at /app and ml/ is at /app/ml
+if not _ML_DIR.exists():
+    _ML_DIR = Path(__file__).resolve().parents[2] / "ml"
 
 
 # ─── Reference map (for meta enrichment) ────────────────────────────
