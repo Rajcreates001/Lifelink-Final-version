@@ -1,0 +1,1288 @@
+{
+  "summary": {
+    "total": 146,
+    "passed": 145,
+    "failed": 1,
+    "success_rate": 99.3,
+    "timestamp": "2026-08-23T17:12:55.939021",
+    "base_url": "http://localhost:4002",
+    "duration_seconds": 122.8
+  },
+  "categories": {
+    "AI/ML v1": {
+      "passed": 24,
+      "failed": 0,
+      "total": 24
+    },
+    "Additional V2": {
+      "passed": 3,
+      "failed": 0,
+      "total": 3
+    },
+    "Ambulance": {
+      "passed": 6,
+      "failed": 0,
+      "total": 6
+    },
+    "Auth": {
+      "passed": 20,
+      "failed": 0,
+      "total": 20
+    },
+    "Dispatcher": {
+      "passed": 4,
+      "failed": 0,
+      "total": 4
+    },
+    "District Admin": {
+      "passed": 5,
+      "failed": 0,
+      "total": 5
+    },
+    "Government": {
+      "passed": 13,
+      "failed": 0,
+      "total": 13
+    },
+    "Health": {
+      "passed": 4,
+      "failed": 0,
+      "total": 4
+    },
+    "History": {
+      "passed": 1,
+      "failed": 0,
+      "total": 1
+    },
+    "Hospital": {
+      "passed": 8,
+      "failed": 0,
+      "total": 8
+    },
+    "ICU Doctor": {
+      "passed": 6,
+      "failed": 0,
+      "total": 6
+    },
+    "Isolation": {
+      "passed": 3,
+      "failed": 0,
+      "total": 3
+    },
+    "LifeLink AI": {
+      "passed": 12,
+      "failed": 0,
+      "total": 12
+    },
+    "NDMA Officer": {
+      "passed": 7,
+      "failed": 0,
+      "total": 7
+    },
+    "Notifications": {
+      "passed": 3,
+      "failed": 0,
+      "total": 3
+    },
+    "Radiologist": {
+      "passed": 4,
+      "failed": 0,
+      "total": 4
+    },
+    "Search/Public": {
+      "passed": 2,
+      "failed": 1,
+      "total": 3
+    },
+    "Simulation": {
+      "passed": 3,
+      "failed": 0,
+      "total": 3
+    },
+    "State Admin": {
+      "passed": 5,
+      "failed": 0,
+      "total": 5
+    },
+    "V2 Agents": {
+      "passed": 5,
+      "failed": 0,
+      "total": 5
+    },
+    "V2 ML": {
+      "passed": 7,
+      "failed": 0,
+      "total": 7
+    }
+  },
+  "results": [
+    {
+      "test": "GET /api/health",
+      "status": "PASS",
+      "category": "Health",
+      "timestamp": "2026-08-23T17:10:53.332834",
+      "detail": "HTTP 200",
+      "response_preview": "{\"status\":\"ok\",\"service\":\"lifelink-fastapi\",\"version\":\"0.1.0\",\"timestamp\":\"2026-08-23T17:10:53.331027Z\"}"
+    },
+    {
+      "test": "GET /api/health/ready",
+      "status": "PASS",
+      "category": "Health",
+      "timestamp": "2026-08-23T17:10:54.074260",
+      "detail": "HTTP 503: {'status': 'degraded', 'service': 'lifelink-fastapi', 'version': '0.1.0', 'timestamp': '2026-08-23T17:10:54.055556Z', 'checks': {'database': {'status': 'healthy'}, 'ml_models': {'status': 'degraded', 'note': 'Model files not loaded at startup'}, 'llm_endpoint': {'status': 'degraded', 'note': 'OPENAI_BASE_URL not configured'}}}",
+      "response_preview": "{\"error\":{\"status\":\"degraded\",\"service\":\"lifelink-fastapi\",\"version\":\"0.1.0\",\"timestamp\":\"2026-08-23T17:10:54.055556Z\",\"checks\":{\"database\":{\"status\":\"healthy\"},\"ml_models\":{\"status\":\"degraded\",\"note\""
+    },
+    {
+      "test": "GET /v2/system/health",
+      "status": "PASS",
+      "category": "Health",
+      "timestamp": "2026-08-23T17:10:54.227510",
+      "detail": "HTTP 200",
+      "response_preview": "{\"status\":\"ok\",\"service\":\"lifelink-system\",\"version\":\"v2\"}"
+    },
+    {
+      "test": "GET /v2/system/info",
+      "status": "PASS",
+      "category": "Health",
+      "timestamp": "2026-08-23T17:10:54.257580",
+      "detail": "HTTP 200",
+      "response_preview": "{\"app\":\"LifeLink FastAPI Service\",\"environment\":\"development\",\"llm_provider\":\"openai\",\"vector_store\":\"postgres\"}"
+    },
+    {
+      "test": "POST /api/auth/signup (Public)",
+      "status": "PASS",
+      "category": "Auth",
+      "timestamp": "2026-08-23T17:10:56.247600",
+      "detail": "HTTP 201",
+      "response_preview": "{\"_id\":\"6a8b299f543d8939cc207a12\",\"name\":\"E2E Public\",\"email\":\"e2e.public.1787505054@test.local\",\"role\":\"public\",\"token\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhOGIyOTlmNTQzZDg5MzljYzIwN2ExM"
+    },
+    {
+      "test": "POST /api/auth/signup (Hospital)",
+      "status": "PASS",
+      "category": "Auth",
+      "timestamp": "2026-08-23T17:10:56.740420",
+      "detail": "HTTP 201",
+      "response_preview": "{\"message\":\"Signup successful! Pending Government verification.\"}"
+    },
+    {
+      "test": "POST /api/auth/signup (Ambulance)",
+      "status": "PASS",
+      "category": "Auth",
+      "timestamp": "2026-08-23T17:10:57.204252",
+      "detail": "HTTP 201",
+      "response_preview": "{\"_id\":\"6a8b29a1543d8939cc207a15\",\"name\":\"E2E Ambulance\",\"email\":\"e2e.ambulance.1787505054@test.local\",\"role\":\"ambulance\",\"token\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhOGIyOWExNTQzZDg5Mzlj"
+    },
+    {
+      "test": "POST /api/auth/login (Public)",
+      "status": "PASS",
+      "category": "Auth",
+      "timestamp": "2026-08-23T17:10:57.635654",
+      "detail": "HTTP 200, has_token=True",
+      "response_preview": "{\"token\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhOGIyOTlmNTQzZDg5MzljYzIwN2ExMiIsInJvbGUiOiJwdWJsaWMiLCJleHAiOjE3ODc1MDg2NTd9.lXU07pzLkjfcyaEx6IthPHLDVKcA7B_ujZNhu1Rqb1s\",\"user\":{\"id\":\"6a8b2"
+    },
+    {
+      "test": "POST /api/auth/login (Hospital, unverified)",
+      "status": "PASS",
+      "category": "Auth",
+      "timestamp": "2026-08-23T17:10:58.033618",
+      "detail": "HTTP 403 (400/403 until gov verification is correct)",
+      "response_preview": "{\"error\":\"Account pending Government verification.\"}"
+    },
+    {
+      "test": "POST /v2/gov/auth/login (Government)",
+      "status": "PASS",
+      "category": "Auth",
+      "timestamp": "2026-08-23T17:10:59.213214",
+      "detail": "HTTP 200, has_token=True, portal=government",
+      "response_preview": "{\"token\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyZGE1OGExNTU2NmU0MDRhOWEzOWExOWZlZWE0YmZjMCIsImV4cCI6MTc4NzUwODY1OSwidHlwZSI6ImVudGVycHJpc2UiLCJlbWFpbCI6Im5hdGlvbmFsLmFkbWluQGxpZmVsaW5rLmRlb"
+    },
+    {
+      "test": "POST /v2/enterprise/auth/login (Hospital)",
+      "status": "PASS",
+      "category": "Auth",
+      "timestamp": "2026-08-23T17:10:59.730577",
+      "detail": "HTTP 200, has_token=True, workspaces=1",
+      "response_preview": "{\"token\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI5MGU3OGIxZWM4NGM0ODE4YTBjOTk1YmYxYmNkMjBhMCIsImV4cCI6MTc4NzUwODY1OSwidHlwZSI6ImVudGVycHJpc2UiLCJlbWFpbCI6ImRvY3Rvci5lbWVyZ2VuY3lAbGlmZWxpbmsuZ"
+    },
+    {
+      "test": "POST /v2/auth/signup (Public V2)",
+      "status": "PASS",
+      "category": "Auth",
+      "timestamp": "2026-08-23T17:11:00.172595",
+      "detail": "HTTP 201",
+      "response_preview": "{\"token\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2YThiMjlhNDU0M2Q4OTM5Y2MyMDdhMTYiLCJleHAiOjE3ODc1MDg2NjAsInJvbGUiOiJwdWJsaWMiLCJzdWJfcm9sZSI6bnVsbH0.Oj9lepzkVqPDmcAa24_btV-b3iXRuAkueJPCrxwDa"
+    },
+    {
+      "test": "POST /v2/auth/login (Public V2)",
+      "status": "PASS",
+      "category": "Auth",
+      "timestamp": "2026-08-23T17:11:00.584881",
+      "detail": "HTTP 200, has_token=True",
+      "response_preview": "{\"token\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2YThiMjlhNDU0M2Q4OTM5Y2MyMDdhMTYiLCJleHAiOjE3ODc1MDg2NjAsInJvbGUiOiJwdWJsaWMiLCJzdWJfcm9sZSI6bnVsbH0.Oj9lepzkVqPDmcAa24_btV-b3iXRuAkueJPCrxwDa"
+    },
+    {
+      "test": "POST /api/predict_health_risk",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-08-23T17:11:10.031584",
+      "detail": "HTTP 200",
+      "response_preview": "{\"risk_level\":\"Low\",\"risk_value\":0,\"risk_score\":12,\"fallback\":true,\"fallback_reason\":\"The feature names should match those that were passed during fit.\\nFeature names unseen at fit time:\\n- blood_group\\n- blood_pressure_diastolic\\n- blood_pressure_systolic\\n- lifestyle\\n- oxygen\\nFeature names seen "
+    },
+    {
+      "test": "POST /api/predict_health_risk (invalid payload)",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-08-23T17:11:10.059321",
+      "detail": "HTTP 422 (expected 422)",
+      "response_preview": "{\"error\":{\"error\":\"Input validation failed: impossible values detected.\",\"warnings\":[\"Age (999) exceeds maximum plausible human lifespan (120). Please verify the patient's date of birth.\"]}}"
+    },
+    {
+      "test": "POST /api/predict_user_cluster",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-08-23T17:11:10.229236",
+      "detail": "HTTP 200, cluster=Unknown",
+      "response_preview": "{\"cluster_label\":\"Unknown\",\"cluster_id\":4,\"meta\":{\"command\":\"predict_cluster\",\"confidence\":1.0,\"data_completeness\":1.0,\"reasoning\":[\"Prediction generated from model outputs and provided inputs.\",\"Input completeness: 3/3 features provided.\"],\"references\":[{\"title\":\"Model\",\"detail\":\"ml/ai_ml.py::predi"
+    },
+    {
+      "test": "POST /api/predict_user_forecast",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-08-23T17:11:10.277622",
+      "detail": "HTTP 200",
+      "response_preview": "{\"error\":\"Prediction error: \\\"None of [Index(['past_donations'], dtype='str')] are in the [columns]\\\"\",\"meta\":{\"command\":\"predict_forecast\",\"confidence\":1.0,\"data_completeness\":1.0,\"reasoning\":[\"Predi"
+    },
+    {
+      "test": "POST /api/predict_donation_forecast",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-08-23T17:11:11.236231",
+      "detail": "HTTP 200, score=32",
+      "response_preview": "{\"forecast_days\":4,\"availability_score\":32,\"status\":\"Low Availability\",\"meta\":{\"command\":\"predict_availability\",\"confidence\":1.0,\"data_completeness\":1.0,\"reasoning\":[\"Prediction generated from model outputs and provided inputs.\",\"Input completeness: 5/5 features provided.\"],\"references\":[{\"title\":\"D"
+    },
+    {
+      "test": "POST /api/hosp/predict_severity",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-08-23T17:11:11.764522",
+      "detail": "HTTP 200",
+      "response_preview": "{\"predicted_severity\":\"High\",\"severity_score\":74,\"fallback\":true,\"fallback_reason\":\"The feature names should match those that were passed during fit.\\nFeature names unseen at fit time:\\n- message\\nFeature names seen at fit time, yet now missing:\\n- age\\n- blood_pressure_systolic\\n- distance_km\\n- em"
+    },
+    {
+      "test": "POST /api/hosp/predict_policy",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-08-23T17:11:11.813146",
+      "detail": "HTTP 200",
+      "response_preview": "{\"error\":\"Prediction error: \\\"None of [Index(['emergency_rate', 'avg_response_time', 'hospital_bed_occupancy'], dtype='str')] are in the [columns]\\\"\",\"meta\":{\"command\":\"predict_policy_seg\",\"confidence"
+    },
+    {
+      "test": "POST /api/hosp/predict_outbreak",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-08-23T17:11:11.856551",
+      "detail": "HTTP 200",
+      "response_preview": "{\"error\":\"Prediction error: No module named 'xgboost'\",\"meta\":{\"command\":\"predict_forecast_outbreak\",\"confidence\":1.0,\"data_completeness\":1.0,\"reasoning\":[\"Prediction generated from model outputs and "
+    },
+    {
+      "test": "POST /api/hosp/optimize_ambulance",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-08-23T17:11:11.910270",
+      "detail": "HTTP 200",
+      "response_preview": "{\"error\":\"Prediction error: int() argument must be a string, a bytes-like object or a real number, not 'NoneType'\",\"meta\":{\"command\":\"predict_allocation\",\"confidence\":1.0,\"data_completeness\":1.0,\"reas"
+    },
+    {
+      "test": "POST /api/hosp/detect_anomaly",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-08-23T17:11:12.253265",
+      "detail": "HTTP 200",
+      "response_preview": "{\"is_anomaly\":true,\"message\":\"Unusual pattern detected!\",\"meta\":{\"command\":\"predict_anomaly\",\"confidence\":1.0,\"data_completeness\":1.0,\"reasoning\":[\"Prediction generated from model outputs and provided"
+    },
+    {
+      "test": "POST /api/gov/predict_outbreak",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-08-23T17:11:12.286082",
+      "detail": "HTTP 200",
+      "response_preview": "{\"error\":\"Prediction error: No module named 'xgboost'\",\"meta\":{\"command\":\"predict_forecast_outbreak\",\"confidence\":1.0,\"data_completeness\":1.0,\"reasoning\":[\"Prediction generated from model outputs and "
+    },
+    {
+      "test": "POST /api/gov/predict_severity",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-08-23T17:11:12.786397",
+      "detail": "HTTP 200",
+      "response_preview": "{\"error\":\"Prediction error: The feature names should match those that were passed during fit.\\nFeature names unseen at fit time:\\n- message\\nFeature names seen at fit time, yet now missing:\\n- age\\n- "
+    },
+    {
+      "test": "POST /api/gov/predict_availability",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-08-23T17:11:13.176983",
+      "detail": "HTTP 200",
+      "response_preview": "{\"error\":\"Prediction error: The feature names should match those that were passed during fit.\\nFeature names unseen at fit time:\\n- district\\n- resource\\nFeature names seen at fit time, yet now missin"
+    },
+    {
+      "test": "POST /api/gov/predict_allocation",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-08-23T17:11:13.204561",
+      "detail": "HTTP 200",
+      "response_preview": "{\"error\":\"Prediction error: int() argument must be a string, a bytes-like object or a real number, not 'NoneType'\",\"meta\":{\"command\":\"predict_allocation\",\"confidence\":1.0,\"data_completeness\":1.0,\"reas"
+    },
+    {
+      "test": "POST /api/gov/predict_policy_segment",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-08-23T17:11:13.229667",
+      "detail": "HTTP 200",
+      "response_preview": "{\"error\":\"Prediction error: \\\"None of [Index(['emergency_rate', 'avg_response_time', 'hospital_bed_occupancy'], dtype='str')] are in the [columns]\\\"\",\"meta\":{\"command\":\"predict_policy_seg\",\"confidence"
+    },
+    {
+      "test": "POST /api/gov/predict_performance_score",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-08-23T17:11:13.268498",
+      "detail": "HTTP 200",
+      "response_preview": "{\"error\":\"Prediction error: \\\"None of [Index(['emergency_rate', 'avg_response_time', 'hospital_bed_occupancy'], dtype='str')] are in the [columns]\\\"\",\"meta\":{\"command\":\"predict_perf_score\",\"confidence"
+    },
+    {
+      "test": "POST /api/gov/predict_anomaly",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-08-23T17:11:13.473014",
+      "detail": "HTTP 200",
+      "response_preview": "{\"error\":\"Prediction error: setting an array element with a sequence.\",\"meta\":{\"command\":\"predict_anomaly\",\"confidence\":1.0,\"data_completeness\":1.0,\"reasoning\":[\"Prediction generated from model output"
+    },
+    {
+      "test": "POST /api/hospital/patient/recovery (Patient Recovery)",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-08-23T17:11:13.532024",
+      "detail": "HTTP 200",
+      "response_preview": "{\"error\":\"Prediction error: The feature names should match those that were passed during fit.\\nFeature names unseen at fit time:\\n- condition\\n- treatment\\nFeature names seen at fit time, yet now miss"
+    },
+    {
+      "test": "POST /api/hospital/patient/stay (Patient Stay)",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-08-23T17:11:14.109801",
+      "detail": "HTTP 200",
+      "response_preview": "{\"predicted_stay_days\":10,\"meta\":{\"command\":\"predict_stay\",\"confidence\":1.0,\"data_completeness\":1.0,\"reasoning\":[\"Prediction generated from model outputs and provided inputs.\",\"Input completeness: 3/3"
+    },
+    {
+      "test": "POST /api/hospital/inventory/predict (Inventory Predict)",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-08-23T17:11:14.316093",
+      "detail": "HTTP 200",
+      "response_preview": "{\"error\":\"Prediction error: The feature names should match those that were passed during fit.\\nFeature names unseen at fit time:\\n- daily_usage\\n- lead_time_days\\n- supplier_reliability\\n\",\"meta\":{\"co"
+    },
+    {
+      "test": "POST /api/ml/predict-eta (ML ETA)",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-08-23T17:11:14.354630",
+      "detail": "HTTP 200",
+      "response_preview": "{\"error\":\"networkx library required for route planning.\",\"meta\":{\"command\":\"predict_eta\",\"confidence\":1.0,\"data_completeness\":1.0,\"reasoning\":[\"Prediction generated from model outputs and provided inp"
+    },
+    {
+      "test": "POST /api/check_compatibility",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-08-23T17:11:14.403048",
+      "detail": "HTTP 200, has_score=True",
+      "response_preview": "{\"compatibility_score\":52,\"probability\":0.52,\"recommendation\":\"Check Further\",\"compatible\":true,\"availability\":\"Available\",\"priority\":\"Low\",\"estimated_wait_minutes\":15,\"factors\":[{\"factor\":\"Blood types not provided for both parties\",\"contribution\":27.5,\"max_possible\":55,\"weight\":0.55},{\"factor\":\"Dis"
+    },
+    {
+      "test": "POST /api/analyze_report",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-08-23T17:11:14.442002",
+      "detail": "HTTP 200, has_analysis=True",
+      "response_preview": "{\"risk_level\":\"Low\",\"risk_score\":42,\"primary_category\":\"General\",\"detected_conditions\":[],\"summary\":\"Report text missing. Overall risk estimate: Low (42/100). This is a text-only screening, not a diagnosis.\",\"explanation\":[],\"next_steps\":[\"Share this report with your clinician for confirmation.\",\"If"
+    },
+    {
+      "test": "GET /api/gov/emergency_hotspots",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-08-23T17:11:14.467730",
+      "detail": "HTTP 200",
+      "response_preview": "[]"
+    },
+    {
+      "test": "POST /v2/ml/health-risk (fast)",
+      "status": "PASS",
+      "category": "V2 ML",
+      "timestamp": "2026-08-23T17:11:14.487328",
+      "detail": "HTTP 200",
+      "response_preview": "{\"risk_level\":\"Low\",\"risk_score\":37,\"drivers\":[\"Age 45?59 (5 pts)\",\"BMI 30?34.9 (Obese) (8 pts)\",\"BP 140?179 (Hypertension) (12 pts)\",\"Pre-existing condition (12 pts)\"],\"explanation\":\"Risk driven primarily by: BP 140?179 (Hypertension), Pre-existing condition, BMI 30?34.9 (Obese).\",\"missing_data\":[]"
+    },
+    {
+      "test": "POST /v2/ml/health-risk (full)",
+      "status": "PASS",
+      "category": "V2 ML",
+      "timestamp": "2026-08-23T17:11:14.504737",
+      "detail": "HTTP 200",
+      "response_preview": "{\"risk_level\":\"Medium\",\"risk_score\":48,\"drivers\":[\"Age 45?59 (5 pts)\",\"BMI 30?34.9 (Obese) (8 pts)\",\"BP 140?179 (Hypertension) (12 pts)\",\"SpO? 90?94% (6 pts)\",\"Pre-existing condition (12 pts)\",\"Sedentary lifestyle (5 pts)\"],\"explanation\":\"Risk driven primarily by: BP 140?179 (Hypertension), Pre-exis"
+    },
+    {
+      "test": "POST /v2/ml/health-risk/async",
+      "status": "PASS",
+      "category": "V2 ML",
+      "timestamp": "2026-08-23T17:11:14.544125",
+      "detail": "HTTP 200, has_job=True",
+      "response_preview": "{\"job_id\":\"dbf337b7-782e-4270-874d-9c9de583516b\",\"status\":\"PENDING\"}"
+    },
+    {
+      "test": "POST /v2/ml/emergency-detection",
+      "status": "PASS",
+      "category": "V2 ML",
+      "timestamp": "2026-08-23T17:11:14.560697",
+      "detail": "HTTP 200",
+      "response_preview": "{\"severity_level\":\"Low\",\"severity_score\":30,\"ai_confidence\":0.36,\"ambulance_type\":\"Standard Ambulance\",\"hospital_type\":\"Walk-in Clinic\",\"response_time\":\"Standard\",\"criteria\":[],\"recommendation\":\"Routine assessment. Standard clinic evaluation appropriate.\",\"meta\":{\"confidence\":0.36,\"reasoning\":[\"No s"
+    },
+    {
+      "test": "POST /v2/ml/eta",
+      "status": "PASS",
+      "category": "V2 ML",
+      "timestamp": "2026-08-23T17:11:17.365086",
+      "detail": "HTTP 200, eta_minutes=467",
+      "response_preview": "{\"eta_minutes\":467,\"distance_km\":350,\"meta\":{\"confidence\":0.4,\"reasoning\":[\"Fallback ETA until async model completes.\"],\"references\":[{\"title\":\"Task\",\"detail\":\"system.generate_predictions::predict_eta\"}]}}"
+    },
+    {
+      "test": "POST /v2/ml/hospital-load",
+      "status": "PASS",
+      "category": "V2 ML",
+      "timestamp": "2026-08-23T17:11:17.390714",
+      "detail": "HTTP 200",
+      "response_preview": "{\"status\":\"queued\",\"meta\":{\"confidence\":0.0,\"reasoning\":[\"Prediction queued for background processing.\"],\"references\":[{\"title\":\"Task\",\"detail\":\"system.generate_predictions::predict_bed_forecast\"}]}}"
+    },
+    {
+      "test": "POST /v2/ml/heatmap",
+      "status": "PASS",
+      "category": "V2 ML",
+      "timestamp": "2026-08-23T17:11:17.419807",
+      "detail": "HTTP 200",
+      "response_preview": "{\"status\":\"queued\",\"meta\":{\"confidence\":0.0,\"reasoning\":[\"Prediction queued for background processing.\"],\"references\":[{\"title\":\"Task\",\"detail\":\"system.generate_predictions::predict_hotspot\"}]}}"
+    },
+    {
+      "test": "GET /v2/lifelink-ai/context (no auth)",
+      "status": "PASS",
+      "category": "LifeLink AI",
+      "timestamp": "2026-08-23T17:11:17.430344",
+      "detail": "HTTP 401 (expected 401/403)",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "GET /v2/lifelink-ai/context/refresh (no auth)",
+      "status": "PASS",
+      "category": "LifeLink AI",
+      "timestamp": "2026-08-23T17:11:17.438874",
+      "detail": "HTTP 401 (expected 401/403)",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "GET /v2/lifelink-ai/conversations (no auth)",
+      "status": "PASS",
+      "category": "LifeLink AI",
+      "timestamp": "2026-08-23T17:11:17.450516",
+      "detail": "HTTP 401 (expected 401/403)",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "POST /v2/lifelink-ai/conversations (no auth)",
+      "status": "PASS",
+      "category": "LifeLink AI",
+      "timestamp": "2026-08-23T17:11:17.461788",
+      "detail": "HTTP 401 (expected 401/403)",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "GET /v2/lifelink-ai/memory (no auth)",
+      "status": "PASS",
+      "category": "LifeLink AI",
+      "timestamp": "2026-08-23T17:11:17.472845",
+      "detail": "HTTP 401 (expected 401/403)",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "POST /v2/lifelink-ai/ask (no auth)",
+      "status": "PASS",
+      "category": "LifeLink AI",
+      "timestamp": "2026-08-23T17:11:17.483377",
+      "detail": "HTTP 401 (expected 401/403)",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "LIFELINK AI GOV AUTH",
+      "status": "PASS",
+      "category": "LifeLink AI",
+      "timestamp": "2026-08-23T17:11:17.483377",
+      "detail": "Token obtained, running gov-specific tests...",
+      "response_preview": ""
+    },
+    {
+      "test": "GET /v2/lifelink-ai/context (gov auth)",
+      "status": "PASS",
+      "category": "LifeLink AI",
+      "timestamp": "2026-08-23T17:11:17.586458",
+      "detail": "HTTP 200, portal=government",
+      "response_preview": "{\"context\":{\"user\":{\"id\":\"2da58a15566e404a9a39a19feea4bfc0\",\"hospital_id\":\"government\",\"role_id\":\"national_admin\",\"role_label\":\"Staff\",\"department\":\"Government\",\"scope\":\"general\",\"description\":\"General hospital staff\"},\"role\":{\"role_label\":\"Staff\",\"scope\":\"general\",\"description\":\"General hospital st"
+    },
+    {
+      "test": "POST /v2/lifelink-ai/ask (gov auth)",
+      "status": "PASS",
+      "category": "LifeLink AI",
+      "timestamp": "2026-08-23T17:11:17.786986",
+      "detail": "HTTP 200, has_answer=True, has_conv=True",
+      "response_preview": "{\"answer\":\"Hello User. As **Staff**, I have access to .\\n\\nYou asked: _Summarize current emergency status in Karnataka_\\n\\nBased on your role permissions, I can analyze information related to: general. Your current module view is **disaster-dashboard**. How would you like me to proceed?\",\"conversati"
+    },
+    {
+      "test": "POST /v2/lifelink-ai/memory (gov auth)",
+      "status": "PASS",
+      "category": "LifeLink AI",
+      "timestamp": "2026-08-23T17:11:21.273398",
+      "detail": "HTTP 200",
+      "response_preview": "{\"memory\":{\"id\":\"12cb89a4-d55a-45a1-b3ad-b4424e224b5e\",\"memory_type\":\"preference\",\"key\":\"module_focus\",\"value\":\"disaster\",\"weight\":1.0},\"ok\":true}"
+    },
+    {
+      "test": "POST /v2/lifelink-ai/rag/search (gov auth)",
+      "status": "PASS",
+      "category": "LifeLink AI",
+      "timestamp": "2026-08-23T17:11:21.337597",
+      "detail": "HTTP 200",
+      "response_preview": "{\"results\":[],\"ok\":true}"
+    },
+    {
+      "test": "POST /v2/lifelink-ai/feedback (gov auth)",
+      "status": "PASS",
+      "category": "LifeLink AI",
+      "timestamp": "2026-08-23T17:11:21.968784",
+      "detail": "HTTP 400",
+      "response_preview": "{\"error\":\"Invalid feedback (rating must be 1-5)\"}"
+    },
+    {
+      "test": "POST /v2/agents/analyze",
+      "status": "PASS",
+      "category": "V2 Agents",
+      "timestamp": "2026-08-23T17:11:21.991807",
+      "detail": "HTTP 200",
+      "response_preview": "{\"requestedBy\":\"2da58a15566e404a9a39a19feea4bfc0\",\"request_type\":\"general\",\"generatedAt\":\"2026-08-23T17:11:21.989207\",\"status\":\"completed\",\"summary\":\"Insufficient clinical data for risk scoring. ? No "
+    },
+    {
+      "test": "POST /v2/agents/decision",
+      "status": "PASS",
+      "category": "V2 Agents",
+      "timestamp": "2026-08-23T17:11:34.001834",
+      "detail": "HTTP 200",
+      "response_preview": "{\"requestedBy\":\"2da58a15566e404a9a39a19feea4bfc0\",\"memoryId\":\"978cc482-64fb-498b-bc0a-79123dc036f2\",\"result\":{\"event\":{\"context\":\"Emergency flood response\",\"options\":[\"evacuate\",\"shelter_in_place\"],\"e"
+    },
+    {
+      "test": "POST /v2/agents/workflow",
+      "status": "PASS",
+      "category": "V2 Agents",
+      "timestamp": "2026-08-23T17:11:40.951037",
+      "detail": "HTTP 200",
+      "response_preview": "{\"requestedBy\":\"2da58a15566e404a9a39a19feea4bfc0\",\"memoryId\":\"1e973c9e-0c37-4a35-a560-f404b11a28ac\",\"result\":{\"event\":{\"workflow_type\":\"emergency_dispatch\",\"params\":{\"incident\":\"flood\"},\"execute\":true"
+    },
+    {
+      "test": "GET /v2/agents/chat/sessions",
+      "status": "PASS",
+      "category": "V2 Agents",
+      "timestamp": "2026-08-23T17:11:41.023937",
+      "detail": "HTTP 200",
+      "response_preview": "{\"sessions\":[]}"
+    },
+    {
+      "test": "POST /v2/agents/ask",
+      "status": "PASS",
+      "category": "V2 Agents",
+      "timestamp": "2026-08-23T17:11:56.261443",
+      "detail": "HTTP 200, has_answer=True",
+      "response_preview": "{\"requestedBy\":\"guest\",\"memoryId\":\"01366720-fc3b-4d13-8379-ac7f0361cfd0\",\"answer\":\"**Recent emergencies in Karnataka (as of 2024):**\\n\\n| Date (2024) | Type of emergency | Affected areas | Brief impact |\\n|-------------|-------------------|----------------|--------------|\\n|?July???August | **Heavy?"
+    },
+    {
+      "test": "GET /v2/government/overview (Overview)",
+      "status": "PASS",
+      "category": "Government",
+      "timestamp": "2026-08-23T17:11:56.277118",
+      "detail": "HTTP 200",
+      "response_preview": "{\"message\":\"Government service ready\",\"authorityId\":\"2da58a15566e404a9a39a19feea4bfc0\",\"level\":\"national_admin\"}"
+    },
+    {
+      "test": "GET /v2/government/disaster/recent (Recent Disasters)",
+      "status": "PASS",
+      "category": "Government",
+      "timestamp": "2026-08-23T17:11:56.476970",
+      "detail": "HTTP 200",
+      "response_preview": "{\"count\":20,\"data\":[{\"id\":\"27d847ec66794ede8c587c2282b628cd\",\"disaster_type\":\"manual\",\"status\":\"active\",\"zone\":\"Zone A\",\"severity\":\"High\",\"lat\":null,\"lng\":null,\"started_at\":\"2026-08-23T16:52:49.917226+00:00\",\"resolved_at\":null},{\"id\":\"0320ff26c5b24eb7b530063794bf373a\",\"disaster_type\":\"road_accident_"
+    },
+    {
+      "test": "GET /v2/government/resources/hospitals (Hospital Resources)",
+      "status": "PASS",
+      "category": "Government",
+      "timestamp": "2026-08-23T17:11:57.715120",
+      "detail": "HTTP 200",
+      "response_preview": "{\"count\":10002,\"data\":[{\"id\":\"seed-hosp-1\",\"name\":\"Central Medical\",\"city\":\"Metro\",\"state\":\"State\",\"lat\":12.9716,\"lng\":77.5946,\"beds_total\":180,\"beds_available\":40,\"load_score\":0.78,\"verified\":true},{\"id\":\"seed-hosp-2\",\"name\":\"Harbor Health\",\"city\":\"Metro\",\"state\":\"State\",\"lat\":12.9816,\"lng\":77.6046"
+    },
+    {
+      "test": "GET /v2/government/resources/ambulances (Ambulance Resources)",
+      "status": "PASS",
+      "category": "Government",
+      "timestamp": "2026-08-23T17:11:58.197290",
+      "detail": "HTTP 200",
+      "response_preview": "{\"count\":10002,\"data\":[{\"id\":\"seed-amb-1\",\"code\":\"AMB-2001\",\"lat\":12.975,\"lng\":77.59,\"status\":\"available\",\"verified\":true},{\"id\":\"seed-amb-2\",\"code\":\"AMB-2002\",\"lat\":12.965,\"lng\":77.61,\"status\":\"assigned\",\"verified\":false},{\"id\":\"0b9b204d8ac142fdb33ca719f692d9b8\",\"code\":\"AMB-3000\",\"lat\":12.963712576"
+    },
+    {
+      "test": "GET /v2/government/monitoring/summary (Monitoring Summary)",
+      "status": "PASS",
+      "category": "Government",
+      "timestamp": "2026-08-23T17:11:59.191908",
+      "detail": "HTTP 200",
+      "response_preview": "{\"active_emergencies\":800,\"avg_response_minutes\":11,\"resource_utilization\":73.4,\"ambulances\":{\"total\":10002,\"available\":3367}}"
+    },
+    {
+      "test": "GET /v2/government/monitoring/feed (Monitoring Feed)",
+      "status": "PASS",
+      "category": "Government",
+      "timestamp": "2026-08-23T17:11:59.229225",
+      "detail": "HTTP 200",
+      "response_preview": "{\"count\":50,\"data\":[{\"id\":\"8f016f9bab68469c83d2c5dd5cf1816c\",\"type\":\"road_accident\",\"severity\":\"Medium\",\"lat\":13.043804623371006,\"lng\":77.50284253346709,\"occurred_at\":\"2026-08-23T16:00:44.524077+00:00\"},{\"id\":\"77e1dd757026438789ccfade6530161e\",\"type\":\"trauma\",\"severity\":\"Medium\",\"lat\":12.74630783678"
+    },
+    {
+      "test": "GET /v2/government/command/overview",
+      "status": "PASS",
+      "category": "Government",
+      "timestamp": "2026-08-23T17:11:59.286887",
+      "detail": "HTTP 200",
+      "response_preview": "{\"hospitals\":10002,\"ambulances\":10002,\"emergencies\":14662}"
+    },
+    {
+      "test": "POST /v2/government/command/seed",
+      "status": "PASS",
+      "category": "Government",
+      "timestamp": "2026-08-23T17:11:59.383569",
+      "detail": "HTTP 200",
+      "response_preview": "{\"status\":\"ok\",\"created\":{\"hospitals\":0,\"ambulances\":0,\"users\":0}}"
+    },
+    {
+      "test": "POST /v2/government/decision/engine",
+      "status": "PASS",
+      "category": "Government",
+      "timestamp": "2026-08-23T17:12:00.260734",
+      "detail": "HTTP 200",
+      "response_preview": "{\"status\":\"ok\",\"decisions\":[{\"event\":\"Hospital Overload\",\"location\":\"North Jasmineton\",\"reason\":\"2105 hospitals above 85% load\",\"confidence\":0.88,\"suggested_action\":\"Reserve 20 beds and divert ambulan"
+    },
+    {
+      "test": "POST /v2/government/disaster/detect (Detect)",
+      "status": "PASS",
+      "category": "Government",
+      "timestamp": "2026-08-23T17:12:00.397575",
+      "detail": "HTTP 200",
+      "response_preview": "{\"status\":\"ok\",\"disaster\":{\"id\":\"4751b47b35934458907591931142df36\",\"type\":\"road_accident_cluster\",\"severity\":\"Critical\"}}"
+    },
+    {
+      "test": "POST /v2/government/disaster/trigger (Trigger)",
+      "status": "PASS",
+      "category": "Government",
+      "timestamp": "2026-08-23T17:12:00.434782",
+      "detail": "HTTP 200",
+      "response_preview": "{\"status\":\"ok\",\"disaster_id\":\"2fe327c779644174965ebd7f2145157e\"}"
+    },
+    {
+      "test": "POST /v2/government/disaster/broadcast (Broadcast)",
+      "status": "PASS",
+      "category": "Government",
+      "timestamp": "2026-08-23T17:12:00.452826",
+      "detail": "HTTP 200",
+      "response_preview": "{\"status\":\"ok\"}"
+    },
+    {
+      "test": "GET /v2/government/verification/pending",
+      "status": "PASS",
+      "category": "Government",
+      "timestamp": "2026-08-23T17:12:00.776085",
+      "detail": "HTTP 200",
+      "response_preview": "{\"count\":3583,\"data\":[{\"id\":\"a87741ee31ed4c81b6b56ed6729fea39\",\"entity_type\":\"ambulance\",\"entity_id\":\"0988ec70612d4f29b74cdf6cdd3af175\",\"notes\":\"Mr bill level none reveal.\",\"created_at\":\"2026-04-04T11"
+    },
+    {
+      "test": "POST /v2/government/simulation/start",
+      "status": "PASS",
+      "category": "Simulation",
+      "timestamp": "2026-08-23T17:12:00.825346",
+      "detail": "HTTP 200, has_session=True",
+      "response_preview": "{\"status\":\"running\",\"session_id\":\"23c03f2ea9f14bf8b92653e6f09e8001\"}"
+    },
+    {
+      "test": "POST /v2/government/simulation/run",
+      "status": "PASS",
+      "category": "Simulation",
+      "timestamp": "2026-08-23T17:12:00.861529",
+      "detail": "HTTP 200",
+      "response_preview": "{\"status\":\"queued\",\"task_id\":\"7e8b3038-4cfd-437d-89b0-acfc65fffb25\"}"
+    },
+    {
+      "test": "POST /v2/government/simulation/multi-phase",
+      "status": "PASS",
+      "category": "Simulation",
+      "timestamp": "2026-08-23T17:12:00.910605",
+      "detail": "HTTP 200",
+      "response_preview": "{\"status\":\"ok\",\"session_id\":\"7ee6b393f15d46839246e33f37ba47ed\",\"results\":[{\"name\":\"warning\",\"intensity\":\"medium\",\"count\":40,\"duration_minutes\":25},{\"name\":\"evacuation\",\"intensity\":\"medium\",\"count\":40,"
+    },
+    {
+      "test": "POST /v2/search (db)",
+      "status": "PASS",
+      "category": "Search/Public",
+      "timestamp": "2026-08-23T17:12:13.516595",
+      "detail": "HTTP 200, has_results=True",
+      "response_preview": "{\"query\":\"KMC Hospital Mangalore\",\"normalized_query\":\"kmc hospital mangalore\",\"mode\":\"quick\",\"intent\":{\"raw_query\":\"KMC Hospital Mangalore\",\"normalized_query\":\"kmc hospital mangalore\",\"intent_type\":\"hospital_lookup\",\"entities\":[],\"target_collections\":[\"hospitals\",\"users\",\"alerts\",\"donations\",\"health"
+    },
+    {
+      "test": "POST /v2/search (ai)",
+      "status": "FAIL",
+      "category": "Search/Public",
+      "timestamp": "2026-08-23T17:12:43.533605",
+      "detail": "HTTP 0, has_answer=False",
+      "response_preview": "Timeout"
+    },
+    {
+      "test": "GET /v2/public/health/summary (Public Health Summary)",
+      "status": "PASS",
+      "category": "Search/Public",
+      "timestamp": "2026-08-23T17:12:43.612566",
+      "detail": "HTTP 200",
+      "response_preview": "{\"status\":\"ok\",\"alerts\":2507,\"requests\":0,\"donations\":0,\"health_records\":8,\"hospitals\":14,\"ambulances\":1532,\"checkedAt\":\"2026-08-23T17:12:43.610135\"}"
+    },
+    {
+      "test": "GET /api/ambulance/ (List)",
+      "status": "PASS",
+      "category": "Ambulance",
+      "timestamp": "2026-08-23T17:12:44.230775",
+      "detail": "HTTP 200",
+      "response_preview": "{\"success\":true,\"count\":1000,\"data\":[{\"_id\":\"69d3de7777da1ba0408be1be\",\"ambulanceId\":\"AMB-100\",\"registrationNumber\":\"KA-01-AA-1000\",\"status\":\"en_route\",\"metrics\":{\"totalTripsToday\":3,\"onTimeDeliveryRa"
+    },
+    {
+      "test": "GET /api/ambulance/emergency-status (Emergency Status)",
+      "status": "PASS",
+      "category": "Ambulance",
+      "timestamp": "2026-08-23T17:12:44.287955",
+      "detail": "HTTP 200",
+      "response_preview": "{\"count\":200,\"severityCounts\":{\"Critical\":0,\"High\":47,\"Medium\":143,\"Low\":10},\"alerts\":[{\"_id\":\"6a8b258477f31cfb4681dd7c\",\"user\":\"000000000000000000000001\",\"status\":\"pending\",\"vitals\":null,\"message\":\"E"
+    },
+    {
+      "test": "GET /api/ambulance/assignments (Assignments)",
+      "status": "PASS",
+      "category": "Ambulance",
+      "timestamp": "2026-08-23T17:12:44.817825",
+      "detail": "HTTP 200",
+      "response_preview": "{\"count\":200,\"data\":[{\"_id\":\"6a7b3e2b3a956800648a72ec\",\"pickup\":\"Central Zone\",\"status\":\"Completed\",\"eventId\":null,\"hospital\":\"KMC001\",\"createdAt\":\"2026-08-11T15:22:11.218944\",\"updatedAt\":\"2026-08-11T"
+    },
+    {
+      "test": "GET /api/ambulance/patient-info (Patient Info)",
+      "status": "PASS",
+      "category": "Ambulance",
+      "timestamp": "2026-08-23T17:12:45.199252",
+      "detail": "HTTP 200",
+      "response_preview": "{\"count\":50,\"data\":[{\"id\":\"6a7b3e2b3a956800648a7311\",\"patient\":null,\"emergencyType\":null,\"status\":\"Active\",\"patientVitals\":{}},{\"id\":\"6a7b3e2b3a956800648a72ed\",\"patient\":null,\"emergencyType\":null,\"sta"
+    },
+    {
+      "test": "GET /api/ambulance/history (History)",
+      "status": "PASS",
+      "category": "Ambulance",
+      "timestamp": "2026-08-23T17:12:45.266438",
+      "detail": "HTTP 200",
+      "response_preview": "{\"count\":200,\"data\":[{\"_id\":\"6a7b3e2b3a956800648a7310\",\"pickup\":\"Central Zone\",\"status\":\"Completed\",\"eventId\":null,\"hospital\":\"KMC001\",\"createdAt\":\"2026-08-11T15:22:11.218944\",\"updatedAt\":\"2026-08-11T"
+    },
+    {
+      "test": "GET /v2/ambulance/modules",
+      "status": "PASS",
+      "category": "Ambulance",
+      "timestamp": "2026-08-23T17:12:45.294323",
+      "detail": "HTTP 200",
+      "response_preview": "{\"modules\":[{\"key\":\"assignments\",\"title\":\"Assignments\",\"description\":\"Active dispatches and queued calls.\"},{\"key\":\"live-tracking\",\"title\":\"Live Tracking\",\"description\":\"Real-time vehicle location and"
+    },
+    {
+      "test": "GET /api/dashboard/hospital/stats (Stats)",
+      "status": "PASS",
+      "category": "Hospital",
+      "timestamp": "2026-08-23T17:12:45.832589",
+      "detail": "HTTP 200",
+      "response_preview": "{\"totalPatients\":142,\"availableBeds\":38,\"criticalCases\":9,\"activeAmbulances\":5,\"caseDistribution\":[{\"name\":\"Cardiac\",\"value\":30},{\"name\":\"Trauma\",\"value\":40},{\"name\":\"Viral\",\"value\":20},{\"name\":\"Other"
+    },
+    {
+      "test": "GET /api/dashboard/hospital/alerts (Alerts)",
+      "status": "PASS",
+      "category": "Hospital",
+      "timestamp": "2026-08-23T17:12:45.905020",
+      "detail": "HTTP 200",
+      "response_preview": "[{\"_id\":\"6a8b258477f31cfb4681dd7c\",\"user\":\"000000000000000000000001\",\"status\":\"pending\",\"vitals\":null,\"message\":\"E2E Test alert - flood warning in Mangaluru\",\"location\":null,\"priority\":\"Low\",\"createdA"
+    },
+    {
+      "test": "GET /api/government-ops/hospitals (Ops Hospitals)",
+      "status": "PASS",
+      "category": "Hospital",
+      "timestamp": "2026-08-23T17:12:45.946330",
+      "detail": "HTTP 200",
+      "response_preview": "{\"count\":14,\"data\":[{\"id\":\"6a7b4c81e1e59129698c339d\",\"name\":\"E2E Hospital\",\"location\":\"Unknown\",\"email\":\"e2e.hospital.1786465404@test.local\",\"phone\":\"9999999999\",\"beds\":{\"totalBeds\":0,\"occupiedBeds\":0"
+    },
+    {
+      "test": "GET /api/government-ops/emergencies (Ops Emergencies)",
+      "status": "PASS",
+      "category": "Hospital",
+      "timestamp": "2026-08-23T17:12:45.977854",
+      "detail": "HTTP 200",
+      "response_preview": "{\"count\":200,\"data\":[{\"_id\":\"6a8b258477f31cfb4681dd7c\",\"user\":\"000000000000000000000001\",\"status\":\"pending\",\"vitals\":null,\"message\":\"E2E Test alert - flood warning in Mangaluru\",\"location\":null,\"prior"
+    },
+    {
+      "test": "GET /api/government-ops/ambulances (Ops Ambulances)",
+      "status": "PASS",
+      "category": "Hospital",
+      "timestamp": "2026-08-23T17:12:46.137104",
+      "detail": "HTTP 200",
+      "response_preview": "{\"count\":1000,\"data\":[{\"_id\":\"6a7b3e3b3a956800648a7b00\",\"ambulanceId\":\"AMB-100\",\"registrationNumber\":\"KA-01-AA-1000\",\"status\":\"en_route\",\"metrics\":{\"totalTripsToday\":3,\"onTimeDeliveryRate\":90,\"average"
+    },
+    {
+      "test": "GET /api/hospital-ops/reports",
+      "status": "PASS",
+      "category": "Hospital",
+      "timestamp": "2026-08-23T17:12:46.231386",
+      "detail": "HTTP 200",
+      "response_preview": "{\"data\":[{\"id\":\"6a7b3e2e3a956800648a7404\",\"reportKey\":\"weekly-ops\",\"name\":\"Weekly Operations Summary\",\"status\":\"Ready\",\"generatedAt\":\"2026-08-10T15:22:11.218944\"},{\"id\":\"6a7b3e2e3a956800648a7405\",\"rep"
+    },
+    {
+      "test": "GET /v2/hospital/modules (Modules)",
+      "status": "PASS",
+      "category": "Hospital",
+      "timestamp": "2026-08-23T17:12:46.246385",
+      "detail": "HTTP 200",
+      "response_preview": "{\"subRole\":\"emergency\",\"modules\":[{\"key\":\"live-emergency-feed\",\"title\":\"Live Emergency Feed\",\"description\":\"Monitor incoming SOS alerts and triage.\"},{\"key\":\"ambulance-tracking\",\"title\":\"Ambulance Tra"
+    },
+    {
+      "test": "GET /v2/hospital/overview (Overview)",
+      "status": "PASS",
+      "category": "Hospital",
+      "timestamp": "2026-08-23T17:12:46.259854",
+      "detail": "HTTP 200",
+      "response_preview": "{\"message\":\"Hospital service ready\",\"hospitalId\":\"90e78b1ec84c4818a0c995bf1bcd20a0\",\"subRole\":\"emergency\"}"
+    },
+    {
+      "test": "Login: ndma.director@lifelink.demo (NDMA Officer)",
+      "status": "PASS",
+      "category": "NDMA Officer",
+      "timestamp": "2026-08-23T17:12:47.101614",
+      "detail": "HTTP token=True, portal=government",
+      "response_preview": "{'token': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3ODQzMzM3MDRmY2U0ZTM3ODVhMDA5ZjkwOGU2ZDFhNiIsImV4cCI6MTc4NzUwODc2NywidHlwZSI6ImVudGVycHJpc2UiLCJlbWFpbCI6Im5kbWEuZGlyZWN0b3JAbGlmZWxpbmsuZGVtbyIsIm5hbWUiOiJHZW5lcmFsIFZpa3JhbSBTaW5naCIsInJvbGUiOiJnb3Zlcm5tZW50Iiwic3ViX3JvbGUiOiJuYXRpb25hbF9v"
+    },
+    {
+      "test": "GET /v2/government/command/overview (NDMA Officer)",
+      "status": "PASS",
+      "category": "NDMA Officer",
+      "timestamp": "2026-08-23T17:12:47.135558",
+      "detail": "HTTP 200 (expected 200) ? gov dashboard",
+      "response_preview": "{\"hospitals\":10002,\"ambulances\":10002,\"emergencies\":14662}"
+    },
+    {
+      "test": "GET /v2/government/disaster/recent (NDMA Officer)",
+      "status": "PASS",
+      "category": "NDMA Officer",
+      "timestamp": "2026-08-23T17:12:47.175558",
+      "detail": "HTTP 200 (expected 200) ? gov disaster feed",
+      "response_preview": "{\"count\":20,\"data\":[{\"id\":\"2fe327c779644174965ebd7f2145157e\",\"disaster_type\":\"manual\",\"status\":\"active\",\"zone\":\"Zone A\",\"severity\":\"High\",\"lat\":null,\"lng\":null,\"started_at\":\"2026-08-23T17:12:00.422495+00:00\",\"resolved_at\":null},{\"id\":\"4751b47b35934458907591931142df36\",\"disaster_type\":\"road_accident_"
+    },
+    {
+      "test": "GET /v2/government/monitoring/summary (NDMA Officer)",
+      "status": "PASS",
+      "category": "NDMA Officer",
+      "timestamp": "2026-08-23T17:12:48.231251",
+      "detail": "HTTP 200 (expected 200) ? gov monitoring",
+      "response_preview": "{\"active_emergencies\":800,\"avg_response_minutes\":11,\"resource_utilization\":73.4,\"ambulances\":{\"total\":10002,\"available\":3367}}"
+    },
+    {
+      "test": "POST /v2/government/command/seed (NDMA Officer)",
+      "status": "PASS",
+      "category": "NDMA Officer",
+      "timestamp": "2026-08-23T17:12:48.261037",
+      "detail": "HTTP 200 (expected 200) ? gov:admin scope",
+      "response_preview": "{\"status\":\"ok\",\"created\":{\"hospitals\":0,\"ambulances\":0,\"users\":0}}"
+    },
+    {
+      "test": "GET /v2/lifelink-ai/context (NDMA Officer)",
+      "status": "PASS",
+      "category": "NDMA Officer",
+      "timestamp": "2026-08-23T17:12:48.292824",
+      "detail": "HTTP 200 (expected 200) ? portal=government",
+      "response_preview": "{\"context\":{\"user\":{\"id\":\"784333704fce4e3785a009f908e6d1a6\",\"hospital_id\":\"government\",\"role_id\":\"national_officer\",\"role_label\":\"Staff\",\"department\":\"Government\",\"scope\":\"general\",\"description\":\"General hospital staff\"},\"role\":{\"role_label\":\"Staff\",\"scope\":\"general\",\"description\":\"General hospital "
+    },
+    {
+      "test": "GET /v2/lifelink-ai/context portal (NDMA Officer)",
+      "status": "PASS",
+      "category": "NDMA Officer",
+      "timestamp": "2026-08-23T17:12:48.292824",
+      "detail": "portal=government (expected government)",
+      "response_preview": "{'context': {'user': {'id': '784333704fce4e3785a009f908e6d1a6', 'hospital_id': 'government', 'role_id': 'national_officer', 'role_label': 'Staff', 'department': 'Government', 'scope': 'general', 'description': 'General hospital staff'}, 'role': {'role_label': 'Staff', 'scope': 'general', 'descriptio"
+    },
+    {
+      "test": "Login: state.karnataka.admin@lifelink.demo (State Admin)",
+      "status": "PASS",
+      "category": "State Admin",
+      "timestamp": "2026-08-23T17:12:49.127143",
+      "detail": "HTTP token=True, portal=government",
+      "response_preview": "{'token': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzOGNjNGY0MmNhNDY0MDYyOWExNGJlNTYzODA0MTkyYyIsImV4cCI6MTc4NzUwODc2OSwidHlwZSI6ImVudGVycHJpc2UiLCJlbWFpbCI6InN0YXRlLmthcm5hdGFrYS5hZG1pbkBsaWZlbGluay5kZW1vIiwibmFtZSI6IkRyLiBTYW5qYXkgR3VwdGEiLCJyb2xlIjoiZ292ZXJubWVudCIsInN1Yl9yb2xlIjoic3RhdGVf"
+    },
+    {
+      "test": "GET /v2/government/command/overview (State Admin)",
+      "status": "PASS",
+      "category": "State Admin",
+      "timestamp": "2026-08-23T17:12:49.173148",
+      "detail": "HTTP 200 (expected 200) ? state dashboard",
+      "response_preview": "{\"hospitals\":10002,\"ambulances\":10002,\"emergencies\":14662}"
+    },
+    {
+      "test": "GET /v2/government/disaster/recent (State Admin)",
+      "status": "PASS",
+      "category": "State Admin",
+      "timestamp": "2026-08-23T17:12:49.193204",
+      "detail": "HTTP 200 (expected 200) ? gov disaster feed",
+      "response_preview": "{\"count\":20,\"data\":[{\"id\":\"2fe327c779644174965ebd7f2145157e\",\"disaster_type\":\"manual\",\"status\":\"active\",\"zone\":\"Zone A\",\"severity\":\"High\",\"lat\":null,\"lng\":null,\"started_at\":\"2026-08-23T17:12:00.422495+00:00\",\"resolved_at\":null},{\"id\":\"4751b47b35934458907591931142df36\",\"disaster_type\":\"road_accident_"
+    },
+    {
+      "test": "GET /v2/government/monitoring/summary (State Admin)",
+      "status": "PASS",
+      "category": "State Admin",
+      "timestamp": "2026-08-23T17:12:49.892268",
+      "detail": "HTTP 200 (expected 200) ? gov monitoring",
+      "response_preview": "{\"active_emergencies\":800,\"avg_response_minutes\":11,\"resource_utilization\":73.4,\"ambulances\":{\"total\":10002,\"available\":3367}}"
+    },
+    {
+      "test": "POST /v2/government/command/seed (State Admin)",
+      "status": "PASS",
+      "category": "State Admin",
+      "timestamp": "2026-08-23T17:12:49.943706",
+      "detail": "HTTP 200 (expected 200) ? gov:admin scope",
+      "response_preview": "{\"status\":\"ok\",\"created\":{\"hospitals\":0,\"ambulances\":0,\"users\":0}}"
+    },
+    {
+      "test": "Login: district.bengaluru.admin@lifelink.demo (District Admin)",
+      "status": "PASS",
+      "category": "District Admin",
+      "timestamp": "2026-08-23T17:12:50.767029",
+      "detail": "HTTP token=True, portal=government",
+      "response_preview": "{'token': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkNzc5MTBhYmU0NGM0ZjBlYjQxMzNhNDQ1ZGUxNWI3OCIsImV4cCI6MTc4NzUwODc3MCwidHlwZSI6ImVudGVycHJpc2UiLCJlbWFpbCI6ImRpc3RyaWN0LmJlbmdhbHVydS5hZG1pbkBsaWZlbGluay5kZW1vIiwibmFtZSI6Ik1yLiBWYXJ1biBDaGFuZHJhc2hla2FyIiwicm9sZSI6ImdvdmVybm1lbnQiLCJzdWJfcm9s"
+    },
+    {
+      "test": "GET /v2/government/command/overview (District Admin)",
+      "status": "PASS",
+      "category": "District Admin",
+      "timestamp": "2026-08-23T17:12:50.788828",
+      "detail": "HTTP 200 (expected 200) ? district dashboard",
+      "response_preview": "{\"hospitals\":10002,\"ambulances\":10002,\"emergencies\":14662}"
+    },
+    {
+      "test": "GET /v2/government/verification/pending (District Admin)",
+      "status": "PASS",
+      "category": "District Admin",
+      "timestamp": "2026-08-23T17:12:50.954507",
+      "detail": "HTTP 200 (expected 200) ? pending verifications",
+      "response_preview": "{\"count\":3583,\"data\":[{\"id\":\"a87741ee31ed4c81b6b56ed6729fea39\",\"entity_type\":\"ambulance\",\"entity_id\":\"0988ec70612d4f29b74cdf6cdd3af175\",\"notes\":\"Mr bill level none reveal.\",\"created_at\":\"2026-04-04T11:33:11.396944+00:00\"},{\"id\":\"4202db18b8844d4097339696fa5a300e\",\"entity_type\":\"ambulance\",\"entity_id\""
+    },
+    {
+      "test": "GET /v2/government/monitoring/summary (District Admin)",
+      "status": "PASS",
+      "category": "District Admin",
+      "timestamp": "2026-08-23T17:12:51.672647",
+      "detail": "HTTP 200 (expected 200) ? gov monitoring",
+      "response_preview": "{\"active_emergencies\":800,\"avg_response_minutes\":11,\"resource_utilization\":73.4,\"ambulances\":{\"total\":10002,\"available\":3367}}"
+    },
+    {
+      "test": "POST /v2/government/command/seed (District Admin)",
+      "status": "PASS",
+      "category": "District Admin",
+      "timestamp": "2026-08-23T17:12:51.684163",
+      "detail": "HTTP 403 (expected 403) ? no gov:admin scope",
+      "response_preview": "{\"error\":\"Missing required scopes: gov:admin\"}"
+    },
+    {
+      "test": "Login: icu@lifelink.demo (ICU Doctor)",
+      "status": "PASS",
+      "category": "ICU Doctor",
+      "timestamp": "2026-08-23T17:12:52.176489",
+      "detail": "HTTP token=True, dept=icu",
+      "response_preview": "{'token': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2N2M4ZTYwMmU5MGM0YzMyYTYwM2UyY2YzNDVhZTdjMiIsImV4cCI6MTc4NzUwODc3MiwidHlwZSI6ImVudGVycHJpc2UiLCJlbWFpbCI6ImljdUBsaWZlbGluay5kZW1vIiwibmFtZSI6IkRyLiBFbWlseSBDaGVuIiwicm9sZSI6Imhvc3BpdGFsIiwic3ViX3JvbGUiOiJpY3UiLCJyb2xlX25hbWUiOiJpY3VfcGh5c2lj"
+    },
+    {
+      "test": "GET /v2/hospital/modules (ICU Doctor)",
+      "status": "PASS",
+      "category": "ICU Doctor",
+      "timestamp": "2026-08-23T17:12:52.189011",
+      "detail": "HTTP 200 (expected 200) ? subRole=icu",
+      "response_preview": "{\"subRole\":\"icu\",\"modules\":[{\"key\":\"live-patient-monitoring\",\"title\":\"Live Patient Monitoring\",\"description\":\"ICU vitals monitoring and staffing.\"},{\"key\":\"critical-alerts\",\"title\":\"Critical Alerts\",\"description\":\"ICU alerts and escalation tracking.\"},{\"key\":\"ai-risk-prediction\",\"title\":\"AI Risk Pre"
+    },
+    {
+      "test": "GET /v2/hospital/modules subRole (ICU Doctor)",
+      "status": "PASS",
+      "category": "ICU Doctor",
+      "timestamp": "2026-08-23T17:12:52.189011",
+      "detail": "subRole=icu (expected icu)",
+      "response_preview": "{'subRole': 'icu', 'modules': [{'key': 'live-patient-monitoring', 'title': 'Live Patient Monitoring', 'description': 'ICU vitals monitoring and staffing.'}, {'key': 'critical-alerts', 'title': 'Critical Alerts', 'description': 'ICU alerts and escalation tracking.'}, {'key': 'ai-risk-prediction', 'ti"
+    },
+    {
+      "test": "GET /v2/hospital/overview (ICU Doctor)",
+      "status": "PASS",
+      "category": "ICU Doctor",
+      "timestamp": "2026-08-23T17:12:52.203022",
+      "detail": "HTTP 200 (expected 200) ? hospital overview",
+      "response_preview": "{\"message\":\"Hospital service ready\",\"hospitalId\":\"67c8e602e90c4c32a603e2cf345ae7c2\",\"subRole\":\"icu\"}"
+    },
+    {
+      "test": "GET /v2/lifelink-ai/context (ICU Doctor)",
+      "status": "PASS",
+      "category": "ICU Doctor",
+      "timestamp": "2026-08-23T17:12:52.247636",
+      "detail": "HTTP 200 (expected 200) ? portal=hospital",
+      "response_preview": "{\"context\":{\"user\":{\"id\":\"67c8e602e90c4c32a603e2cf345ae7c2\",\"hospital_id\":\"67c8e602e90c4c32a603e2cf345ae7c2\",\"role_id\":\"icu\",\"role_label\":\"Staff\",\"department\":\"General\",\"scope\":\"general\",\"description\":\"General hospital staff\"},\"role\":{\"role_label\":\"Staff\",\"scope\":\"general\",\"description\":\"General hos"
+    },
+    {
+      "test": "GET /v2/lifelink-ai/context portal (ICU Doctor)",
+      "status": "PASS",
+      "category": "ICU Doctor",
+      "timestamp": "2026-08-23T17:12:52.247636",
+      "detail": "portal=hospital (expected hospital)",
+      "response_preview": "{'context': {'user': {'id': '67c8e602e90c4c32a603e2cf345ae7c2', 'hospital_id': '67c8e602e90c4c32a603e2cf345ae7c2', 'role_id': 'icu', 'role_label': 'Staff', 'department': 'General', 'scope': 'general', 'description': 'General hospital staff'}, 'role': {'role_label': 'Staff', 'scope': 'general', 'desc"
+    },
+    {
+      "test": "Login: radiology@lifelink.demo (Radiologist)",
+      "status": "PASS",
+      "category": "Radiologist",
+      "timestamp": "2026-08-23T17:12:52.764000",
+      "detail": "HTTP token=True, dept=radiology",
+      "response_preview": "{'token': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjOGVlNGNkNmM4NWQ0NDYyOGNhOTlhNzQ5YTlhYmJhNCIsImV4cCI6MTc4NzUwODc3MiwidHlwZSI6ImVudGVycHJpc2UiLCJlbWFpbCI6InJhZGlvbG9neUBsaWZlbGluay5kZW1vIiwibmFtZSI6IkRyLiBBbGV4IFJpdmVyYSIsInJvbGUiOiJob3NwaXRhbCIsInN1Yl9yb2xlIjoicmFkaW9sb2d5Iiwicm9sZV9uYW1l"
+    },
+    {
+      "test": "GET /v2/hospital/modules (Radiologist)",
+      "status": "PASS",
+      "category": "Radiologist",
+      "timestamp": "2026-08-23T17:12:52.799527",
+      "detail": "HTTP 200 (expected 200) ? subRole=radiology",
+      "response_preview": "{\"subRole\":\"radiology\",\"modules\":[{\"key\":\"scan-requests\",\"title\":\"Scan Requests\",\"description\":\"Manage imaging requests and priorities.\"},{\"key\":\"report-upload\",\"title\":\"Report Upload\",\"description\":\"Upload imaging reports to the care team.\"},{\"key\":\"ai-scan-insights\",\"title\":\"AI Scan Insights\",\"des"
+    },
+    {
+      "test": "GET /v2/hospital/modules subRole (Radiologist)",
+      "status": "PASS",
+      "category": "Radiologist",
+      "timestamp": "2026-08-23T17:12:52.800527",
+      "detail": "subRole=radiology (expected radiology)",
+      "response_preview": "{'subRole': 'radiology', 'modules': [{'key': 'scan-requests', 'title': 'Scan Requests', 'description': 'Manage imaging requests and priorities.'}, {'key': 'report-upload', 'title': 'Report Upload', 'description': 'Upload imaging reports to the care team.'}, {'key': 'ai-scan-insights', 'title': 'AI S"
+    },
+    {
+      "test": "GET /v2/hospital/overview (Radiologist)",
+      "status": "PASS",
+      "category": "Radiologist",
+      "timestamp": "2026-08-23T17:12:52.814064",
+      "detail": "HTTP 200 (expected 200) ? hospital overview",
+      "response_preview": "{\"message\":\"Hospital service ready\",\"hospitalId\":\"c8ee4cd6c85d44628ca99a749a9abba4\",\"subRole\":\"radiology\"}"
+    },
+    {
+      "test": "Login: ambulance.002@lifelink.demo (Dispatcher)",
+      "status": "PASS",
+      "category": "Dispatcher",
+      "timestamp": "2026-08-23T17:12:53.227388",
+      "detail": "HTTP token=True, subRole=dispatcher",
+      "response_preview": "{'token': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OWQxNTcyNDc3ZGExYjU4ZThjMGNlY2YiLCJleHAiOjE3ODc1MDg3NzMsInJvbGUiOiJhbWJ1bGFuY2UiLCJzdWJfcm9sZSI6ImRpc3BhdGNoZXIifQ.3tWU3Kiu6G1ktetC2CjYwr2vYINNTzHQSQ0zMBiEQGc', 'user': {'id': '69d1572477da1b58e8c0cecf', 'name': 'Dr. Michelle Robinson', 'ro"
+    },
+    {
+      "test": "GET /v2/ambulance/status (Dispatcher)",
+      "status": "PASS",
+      "category": "Dispatcher",
+      "timestamp": "2026-08-23T17:12:53.252498",
+      "detail": "HTTP 200 (expected 200) ? ambulance role",
+      "response_preview": "{\"ambulanceId\":\"69d1572477da1b58e8c0cecf\",\"subRole\":\"dispatcher\",\"status\":\"available\"}"
+    },
+    {
+      "test": "GET /v2/ambulance/modules (Dispatcher)",
+      "status": "PASS",
+      "category": "Dispatcher",
+      "timestamp": "2026-08-23T17:12:53.266033",
+      "detail": "HTTP 200 (expected 200) ? ambulance workspace",
+      "response_preview": "{\"modules\":[{\"key\":\"assignments\",\"title\":\"Assignments\",\"description\":\"Active dispatches and queued calls.\"},{\"key\":\"live-tracking\",\"title\":\"Live Tracking\",\"description\":\"Real-time vehicle location and telemetry.\"},{\"key\":\"patient-info\",\"title\":\"Patient Info\",\"description\":\"Patient vitals and status "
+    },
+    {
+      "test": "GET /api/ambulance/assignments (Dispatcher)",
+      "status": "PASS",
+      "category": "Dispatcher",
+      "timestamp": "2026-08-23T17:12:53.326192",
+      "detail": "HTTP 200 (expected 200) ? dispatch assignments",
+      "response_preview": "{\"count\":200,\"data\":[{\"_id\":\"6a7b3e2b3a956800648a72ec\",\"pickup\":\"Central Zone\",\"status\":\"Completed\",\"eventId\":null,\"hospital\":\"KMC001\",\"createdAt\":\"2026-08-11T15:22:11.218944\",\"updatedAt\":\"2026-08-11T15:22:11.218944\",\"etaMinutes\":6,\"ambulanceId\":\"AMB-100\",\"destination\":\"LifeLink General Hospital\"},{"
+    },
+    {
+      "test": "GET /v2/ambulance/status (Isolation)",
+      "status": "PASS",
+      "category": "Isolation",
+      "timestamp": "2026-08-23T17:12:54.305040",
+      "detail": "HTTP 403 (expected 403) ? hospital token must not access ambulance workspace",
+      "response_preview": "{\"error\":\"Access denied for this role\"}"
+    },
+    {
+      "test": "GET /v2/hospital/modules (Isolation)",
+      "status": "PASS",
+      "category": "Isolation",
+      "timestamp": "2026-08-23T17:12:54.319055",
+      "detail": "HTTP 403 (expected 403) ? ambulance token must not access hospital workspace",
+      "response_preview": "{\"error\":\"Access denied for this role\"}"
+    },
+    {
+      "test": "GET /v2/government/command/overview (Isolation)",
+      "status": "PASS",
+      "category": "Isolation",
+      "timestamp": "2026-08-23T17:12:54.327071",
+      "detail": "HTTP 401 (expected 401) ? anonymous must not access gov workspace",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "POST /api/alerts",
+      "status": "PASS",
+      "category": "Notifications",
+      "timestamp": "2026-08-23T17:12:54.379583",
+      "detail": "HTTP 201",
+      "response_preview": "{\"message\":\"Alert Sent Successfully!\",\"severity_level\":\"Low\",\"severity_score\":45,\"ai_confidence\":0.74,\"recommendation\":{\"hospital_name\":\"Central City General\",\"eta\":25,\"ambulance_type\":\"Standard Ambul"
+    },
+    {
+      "test": "GET /api/donors (Donors List)",
+      "status": "PASS",
+      "category": "Notifications",
+      "timestamp": "2026-08-23T17:12:54.400009",
+      "detail": "HTTP 200",
+      "response_preview": "[{\"user_id\":\"6a5747ad77da1b4bd4ad55e0\",\"name\":\"E2E User 20260715141117\",\"location\":\"Bengaluru\",\"blood_group\":\"O+\",\"phone\":\"9999990001\",\"age\":null,\"gender\":null,\"availability\":\"Available\",\"lastDonation"
+    },
+    {
+      "test": "GET /api/donors/forecast (Donors Forecast)",
+      "status": "PASS",
+      "category": "Notifications",
+      "timestamp": "2026-08-23T17:12:54.441811",
+      "detail": "HTTP 200",
+      "response_preview": "{\"blood_group\":\"All\",\"supply\":25,\"demand\":0,\"availability_score\":95,\"demand_index\":1,\"forecast_days\":1,\"meta\":{\"confidence\":0.6,\"reasoning\":[\"Availability derived from active donor count and recent bl"
+    },
+    {
+      "test": "GET /v2/gov/auth/status (Status)",
+      "status": "PASS",
+      "category": "Auth",
+      "timestamp": "2026-08-23T17:12:54.470300",
+      "detail": "HTTP 200",
+      "response_preview": "{\"tables\":{\"enterprise_users\":370,\"enterprise_roles\":48,\"enterprise_permissions\":108,\"enterprise_departments\":79,\"enterprise_user_departments\":370,\"enterprise_sessions\":160,\"enterprise_audit_logs\":173"
+    },
+    {
+      "test": "GET /v2/gov/auth/organizations (Organizations)",
+      "status": "PASS",
+      "category": "Auth",
+      "timestamp": "2026-08-23T17:12:54.485306",
+      "detail": "HTTP 200",
+      "response_preview": "{\"count\":68,\"organizations\":[{\"key\":\"ministry_health\",\"name\":\"Ministry of Health & Family Welfare\",\"description\":\"National health policy & governance\",\"category\":\"national\",\"location\":\"New Delhi\",\"sta"
+    },
+    {
+      "test": "GET /v2/gov/auth/profile (Profile)",
+      "status": "PASS",
+      "category": "Auth",
+      "timestamp": "2026-08-23T17:12:54.511458",
+      "detail": "HTTP 200",
+      "response_preview": "{\"user\":{\"id\":\"2da58a15566e404a9a39a19feea4bfc0\",\"full_name\":\"Dr. Arjun Mehta\",\"email\":\"national.admin@lifelink.demo\",\"employee_id\":\"GOV-NADM-001\",\"designation\":\"National Administrator ? Chief\",\"phone"
+    },
+    {
+      "test": "GET /v2/gov/auth/dev-creds (Dev Creds)",
+      "status": "PASS",
+      "category": "Auth",
+      "timestamp": "2026-08-23T17:12:55.046624",
+      "detail": "HTTP 200",
+      "response_preview": "{\"credentials\":[{\"department\":\"air_force_liaison\",\"department_name\":\"Air Force Liaison\",\"role\":\"military_liaison\",\"email\":\"air.force.liaison.admin@gov.lifelink.demo\",\"password\":\"LifeLink@123\",\"name\":\""
+    },
+    {
+      "test": "GET /v2/enterprise/auth/status (Status)",
+      "status": "PASS",
+      "category": "Auth",
+      "timestamp": "2026-08-23T17:12:55.077380",
+      "detail": "HTTP 200",
+      "response_preview": "{\"tables\":{\"enterprise_users\":370,\"enterprise_roles\":48,\"enterprise_permissions\":108,\"enterprise_departments\":79,\"enterprise_user_departments\":370,\"enterprise_sessions\":160,\"enterprise_audit_logs\":173"
+    },
+    {
+      "test": "GET /v2/enterprise/auth/workspaces (Workspaces)",
+      "status": "PASS",
+      "category": "Auth",
+      "timestamp": "2026-08-23T17:12:55.110411",
+      "detail": "HTTP 200",
+      "response_preview": "{\"workspaces\":[{\"department_id\":\"ac1815b4b94c4cb198a76e069acc5100\",\"department_key\":\"emergency\",\"department_name\":\"Emergency Department\",\"department_status\":\"operational\",\"role_name\":\"emergency_physic"
+    },
+    {
+      "test": "GET /v2/enterprise/auth/dev-creds (Dev Creds)",
+      "status": "PASS",
+      "category": "Auth",
+      "timestamp": "2026-08-23T17:12:55.291157",
+      "detail": "HTTP 200",
+      "response_preview": "{\"credentials\":[{\"department\":\"air_force_liaison\",\"role\":\"military_liaison\",\"email\":\"air.force.liaison.admin@gov.lifelink.demo\",\"password\":\"Password123\",\"name\":\"Admin ? Air Force Liaison\"},{\"departmen"
+    },
+    {
+      "test": "GET /v2/auth/portals (Portal Roles)",
+      "status": "PASS",
+      "category": "Auth",
+      "timestamp": "2026-08-23T17:12:55.300525",
+      "detail": "HTTP 200",
+      "response_preview": "{\"roles\":[\"ambulance\",\"government\",\"hospital\",\"public\"],\"hospital_sub_roles\":[\"ceo\",\"emergency\",\"finance\",\"icu\",\"opd\",\"ot\",\"radiology\"],\"government_sub_roles\":[\"department_head\",\"department_officer\",\""
+    },
+    {
+      "test": "GET /v2/info (Gateway Info)",
+      "status": "PASS",
+      "category": "Auth",
+      "timestamp": "2026-08-23T17:12:55.309626",
+      "detail": "HTTP 200",
+      "response_preview": "{\"app\":\"LifeLink FastAPI Service\",\"environment\":\"development\",\"llm_provider\":\"openai\",\"vector_store\":\"mongodb\"}"
+    },
+    {
+      "test": "GET /v2/analytics/summary (Analytics Summary)",
+      "status": "PASS",
+      "category": "Auth",
+      "timestamp": "2026-08-23T17:12:55.322406",
+      "detail": "HTTP 200",
+      "response_preview": "{\"status\":\"ok\",\"requestedBy\":\"2da58a15566e404a9a39a19feea4bfc0\",\"metrics\":{\"active_alerts\":0,\"available_beds\":0,\"ambulances_available\":0}}"
+    },
+    {
+      "test": "POST /v2/notifications/email",
+      "status": "PASS",
+      "category": "Auth",
+      "timestamp": "2026-08-23T17:12:55.363444",
+      "detail": "HTTP 200",
+      "response_preview": "{\"requestedBy\":\"90e78b1ec84c4818a0c995bf1bcd20a0\",\"notification_id\":\"notif_20260823171255_9529\",\"channel\":\"email\",\"recipient\":\"e2e.test@lifelink.demo\",\"title\":\"E2E Notification\",\"body\":\"<p>LifeLink E2"
+    },
+    {
+      "test": "GET /v2/history",
+      "status": "PASS",
+      "category": "History",
+      "timestamp": "2026-08-23T17:12:55.374392",
+      "detail": "HTTP 404",
+      "response_preview": "{\"detail\":\"Not Found\"}"
+    },
+    {
+      "test": "GET /v2/realtime/status",
+      "status": "PASS",
+      "category": "Additional V2",
+      "timestamp": "2026-08-23T17:12:55.383850",
+      "detail": "HTTP 200",
+      "response_preview": "{\"status\":\"ok\",\"channels\":{},\"total_connections\":0,\"websocket_endpoint\":\"/v2/realtime/ws/{channel}\"}"
+    },
+    {
+      "test": "GET /v2/route (Routing)",
+      "status": "PASS",
+      "category": "Additional V2",
+      "timestamp": "2026-08-23T17:12:55.903363",
+      "detail": "HTTP 200",
+      "response_preview": "{\"status\":\"ok\",\"provider\":\"osrm\",\"distance_meters\":366900.1,\"duration_seconds\":17393.8}"
+    },
+    {
+      "test": "GET /v2/weather (Weather)",
+      "status": "PASS",
+      "category": "Additional V2",
+      "timestamp": "2026-08-23T17:12:55.934023",
+      "detail": "HTTP 200",
+      "response_preview": "{\"status\":\"ok\",\"provider\":\"open-meteo\",\"temperature_c\":23.9,\"precipitation_mm\":0.6,\"wind_kph\":6.3,\"is_raining\":true}"
+    }
+  ]
+}

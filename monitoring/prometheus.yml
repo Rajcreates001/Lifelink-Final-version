@@ -1,0 +1,42 @@
+# LifeLink Prometheus Configuration
+# Scrapes metrics from LifeLink backend and system exporters
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+
+# Alert rules (optional)
+rule_files:
+  # - "alerts.yml"
+
+scrape_configs:
+  # ─── Prometheus self-monitoring ──────────────────────────
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # ─── Node Exporter (system metrics) ──────────────────────
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # ─── LifeLink Backend ────────────────────────────────────
+  - job_name: 'lifelink-backend'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['host.docker.internal:4002']
+        labels:
+          service: 'lifelink-backend'
+          environment: 'development'
+
+  # ─── LifeLink Backend Health ─────────────────────────────
+  - job_name: 'lifelink-health'
+    metrics_path: '/health'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['host.docker.internal:4002']
+        labels:
+          service: 'lifelink-backend'
+          type: 'health'

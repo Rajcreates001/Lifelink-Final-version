@@ -200,6 +200,12 @@ async def emergency_intake(
         query["dept"] = department
     sort = _build_sort(sort_by, sort_dir, {"createdAt", "updatedAt", "severity", "status", "dept"}, "createdAt")
     records = await patient_repo.find_many(query, sort=sort, limit=200)
+    from app.services.encryption import decrypt_field, is_encryption_enabled
+    if is_encryption_enabled():
+        for rec in records:
+            if isinstance(rec, dict):
+                if rec.get('name'): rec['name'] = decrypt_field(rec['name'])
+                if rec.get('contact'): rec['contact'] = decrypt_field(rec['contact'])
     return {"count": len(records), "data": records}
 
 
@@ -213,16 +219,20 @@ async def create_emergency_intake(payload: EmergencyIntakeCreate,
     severity = payload.severity or _severity_from_text(payload.symptoms)
     department = payload.department or _department_from_symptoms(payload.symptoms)
 
+    from app.services.encryption import encrypt_field, is_encryption_enabled
+    encrypted_name = encrypt_field(payload.name) if is_encryption_enabled() else payload.name
+    encrypted_contact = encrypt_field(payload.contact) if is_encryption_enabled() and payload.contact else payload.contact
+
     doc = {
         "hospitalId": oid,
-        "name": payload.name,
+        "name": encrypted_name,
         "age": payload.age,
         "gender": payload.gender,
         "dept": department,
         "condition": payload.symptoms,
         "severity": severity,
         "status": "Intake",
-        "contact": payload.contact,
+        "contact": encrypted_contact,
         "createdAt": datetime.utcnow(),
         "updatedAt": datetime.utcnow(),
     }

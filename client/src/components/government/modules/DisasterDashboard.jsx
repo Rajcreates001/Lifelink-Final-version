@@ -1,16 +1,21 @@
 import React, { useState, useCallback } from 'react';
 import { GovKPICard, GovStatusBadge, GovSectionHeader, GovModuleHero, AlertBanner, FORMAT_TIME } from '../shared/GovernmentShared';
 import { DetailModal, ConfirmDialog, Toast, AnimatedBarChart, AIExplainPanel } from '../shared/InteractiveComponents';
+import { useApiData } from '../../../hooks/useApiData';
 
 const DisasterDashboard = () => {
   const [timeRange, setTimeRange] = useState('24h');
+  const { data: disastersData, loading: disastersLoading, refetch: refetchDisasters } = useApiData(
+    '/v2/government/disaster/recent',
+    { pollInterval: 30000, transform: (d) => d?.disasters || d || [] }
+  );
   const [disasters, setDisasters] = useState([
-    { id: 'D-1001', name: 'Cyclone', location: 'Arabian Sea', severity: 'Critical', status: 'Active', affected: '42,000', updated: '5m ago', lat: 12.95, lng: 74.5, details: 'Severe cyclonic storm with wind speeds up to 140 km/h. Expected landfall near Mangaluru coast within 12 hours. Storm surge up to 3m in coastal areas.' },
-    { id: 'D-1002', name: 'Flood', location: 'Netravati Valley', severity: 'High', status: 'Active', affected: '18,500', updated: '12m ago', lat: 12.85, lng: 75.1, details: 'River Netravati water level at 4.2m and rising. 12 villages partially submerged. 2,000 people evacuated to relief camps.' },
-    { id: 'D-1003', name: 'Earthquake', location: 'Western Ghats', severity: 'Moderate', status: 'Monitoring', affected: '3,200', updated: '45m ago', lat: 13.1, lng: 75.5, details: 'Magnitude 4.8 earthquake at depth 12km. Minor structural damage reported in 6 villages. No casualties reported.' },
-    { id: 'D-1004', name: 'Landslide', location: 'Kodagu', severity: 'Moderate', status: 'Standby', affected: '850', updated: '1h ago', lat: 12.4, lng: 75.7, details: 'Multiple landslides triggered by heavy rainfall. Road connectivity disrupted in 3 sectors. Teams monitoring 5 vulnerable locations.' },
-    { id: 'D-1005', name: 'Industrial Fire', location: 'Baikampady', severity: 'High', status: 'Active', affected: '2,100', updated: '8m ago', lat: 12.92, lng: 74.85, details: 'Major fire at chemical storage facility. Hazmat team deployed. 500m exclusion zone established. Air quality monitoring underway.' },
+    { id: 'D-1001', name: 'Cyclone', location: 'Arabian Sea', severity: 'Critical', status: 'Active', affected: '42,000', updated: '5m ago', lat: 12.95, lng: 74.5, details: 'Severe cyclonic storm with wind speeds up to 140 km/h.' },
+    { id: 'D-1002', name: 'Flood', location: 'Netravati Valley', severity: 'High', status: 'Active', affected: '18,500', updated: '12m ago', lat: 12.85, lng: 75.1, details: 'River Netravati water level at 4.2m and rising.' },
+    { id: 'D-1003', name: 'Earthquake', location: 'Western Ghats', severity: 'Moderate', status: 'Monitoring', affected: '3,200', updated: '45m ago', lat: 13.1, lng: 75.5, details: 'Magnitude 4.8 earthquake at depth 12km.' },
   ]);
+  // Use real data if available, fallback to initial state
+  const activeDisasters = disastersData?.length > 0 ? disastersData : disasters;
   const [showDetail, setShowDetail] = useState(null);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
 

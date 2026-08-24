@@ -1,0 +1,214 @@
+
+============================================================
+LifeLink Comprehensive E2E Validation Suite
+Time: 2026-07-29 04:14:36 UTC
+Base URL: http://localhost:3001
+============================================================
+[OK] Backend reachable at http://localhost:3001 (HTTP 200)
+
+==== 1. HEALTH ENDPOINTS ====
+  [PASS] GET /api/health :: HTTP 200
+  [PASS] GET /api/health/ready :: HTTP 200
+  [FAIL] GET /v2/system/health :: HTTP 404
+  [FAIL] GET /v2/system/info :: HTTP 404
+
+==== 2. AUTHENTICATION ====
+  [FAIL] POST /api/auth/signup (Public) :: HTTP 429
+  [FAIL] POST /api/auth/signup (Hospital) :: HTTP 429
+  [FAIL] POST /api/auth/signup (Ambulance) :: HTTP 429
+  [PASS] POST /api/auth/login (Public) :: HTTP 200, has_token=True
+  [FAIL] POST /api/auth/login (Hospital) :: HTTP 403, has_token=False
+  [FAIL] POST /api/auth/login (Government) :: HTTP 400, has_token=False
+  [FAIL] POST /v2/auth/signup (Hospital V2) :: HTTP 429
+  [FAIL] POST /v2/auth/login (Hospital V2) :: HTTP 400, has_token=False
+
+==== 3. AI/ML v1 ENDPOINTS ====
+  [FAIL] POST /api/predict_health_risk :: HTTP 200 | Schema: risk_level=None not in ['Low', 'Medium', 'High', 'Critical']; risk_score is None
+  [PASS] POST /api/predict_health_risk (invalid payload) :: HTTP 422 (expected 422)
+  [PASS] POST /api/predict_user_cluster :: HTTP 200, cluster=Moderate
+  [PASS] POST /api/predict_user_forecast :: HTTP 200
+  [PASS] POST /api/predict_donation_forecast :: HTTP 200, score=56.3
+  [FAIL] POST /api/hosp/predict_severity :: HTTP 200 | severity_level is missing; severity_score is missing; ambulance_type is missing
+  [PASS] POST /api/hosp/predict_policy :: HTTP 200
+  [PASS] POST /api/hosp/predict_outbreak :: HTTP 200
+  [PASS] POST /api/hosp/optimize_ambulance :: HTTP 200
+  [PASS] POST /api/hosp/detect_anomaly :: HTTP 200
+  [PASS] POST /api/gov/predict_outbreak :: HTTP 200
+  [PASS] POST /api/gov/predict_severity :: HTTP 200
+  [PASS] POST /api/gov/predict_availability :: HTTP 200
+  [PASS] POST /api/gov/predict_allocation :: HTTP 200
+  [PASS] POST /api/gov/predict_policy_segment :: HTTP 200
+  [PASS] POST /api/gov/predict_performance_score :: HTTP 200
+  [PASS] POST /api/gov/predict_anomaly :: HTTP 200
+  [PASS] POST /api/hospital/patient/recovery (Patient Recovery) :: HTTP 200
+  [PASS] POST /api/hospital/patient/stay (Patient Stay) :: HTTP 200
+  [PASS] POST /api/hospital/inventory/predict (Inventory Predict) :: HTTP 200
+  [PASS] POST /api/ml/predict-eta (ML ETA) :: HTTP 200
+  [FAIL] POST /api/check_compatibility :: HTTP 404, has_score=False
+  [PASS] POST /api/analyze_report :: HTTP 200, has_analysis=True
+  [PASS] GET /api/gov/emergency_hotspots :: HTTP 200
+
+==== 4. V2 ML ENDPOINTS ====
+  [FAIL] POST /v2/ml/health-risk (fast) :: HTTP 401 | risk_level=None not in ['Low', 'Medium', 'High', 'Critical']; risk_score is None
+  [FAIL] POST /v2/ml/health-risk (full) :: HTTP 401 | risk_level=None not in ['Low', 'Medium', 'High', 'Critical']; risk_score is None
+  [FAIL] POST /v2/ml/health-risk/async :: HTTP 401, has_job=False
+  [FAIL] POST /v2/ml/emergency-detection :: HTTP 401 | severity_level is missing; severity_score is missing; ambulance_type is missing
+  [FAIL] POST /v2/ml/eta :: HTTP 401, no eta
+  [FAIL] POST /v2/ml/hospital-load :: HTTP 401
+  [FAIL] POST /v2/ml/heatmap :: HTTP 401
+
+==== 5. LIFELINK AI ENDPOINTS ====
+  [PASS] GET /v2/lifelink-ai/context (no auth) :: HTTP 401 (expected 401/403)
+  [PASS] GET /v2/lifelink-ai/context/refresh (no auth) :: HTTP 401 (expected 401/403)
+  [PASS] GET /v2/lifelink-ai/conversations (no auth) :: HTTP 401 (expected 401/403)
+  [PASS] POST /v2/lifelink-ai/conversations (no auth) :: HTTP 401 (expected 401/403)
+  [PASS] GET /v2/lifelink-ai/memory (no auth) :: HTTP 401 (expected 401/403)
+  [PASS] POST /v2/lifelink-ai/ask (no auth) :: HTTP 401 (expected 401/403)
+  [PASS] LIFELINK AI GOV AUTH (NO TOKEN) :: Skipped: no gov token available (expected without auth session)
+
+==== 6. V2 AGENTS ENDPOINTS ====
+  [PASS] POST /v2/agents/analyze :: HTTP 401
+  [PASS] POST /v2/agents/decision :: HTTP 401
+  [PASS] POST /v2/agents/workflow :: HTTP 401
+  [FAIL] GET /v2/agents/chat/sessions :: HTTP 401
+  [FAIL] POST /v2/agents/ask :: HTTP 0, has_answer=False
+
+==== 7. GOVERNMENT & COMMAND ====
+  [FAIL] GET /v2/government/overview (Overview) :: HTTP 401
+  [FAIL] GET /v2/government/disaster/recent (Recent Disasters) :: HTTP 401
+  [FAIL] GET /v2/government/resources/hospitals (Hospital Resources) :: HTTP 401
+  [FAIL] GET /v2/government/resources/ambulances (Ambulance Resources) :: HTTP 401
+  [FAIL] GET /v2/government/monitoring/summary (Monitoring Summary) :: HTTP 401
+  [FAIL] GET /v2/government/monitoring/feed (Monitoring Feed) :: HTTP 401
+  [FAIL] GET /v2/government/command/overview :: HTTP 401
+  [FAIL] POST /v2/government/command/seed :: HTTP 401
+  [FAIL] POST /v2/government/decision/engine :: HTTP 401
+  [FAIL] POST /v2/government/disaster/detect (Detect) :: HTTP 401
+  [FAIL] POST /v2/government/disaster/trigger (Trigger) :: HTTP 401
+  [FAIL] POST /v2/government/disaster/broadcast (Broadcast) :: HTTP 401
+  [PASS] GET /v2/government/verification/pending :: HTTP 401
+
+==== 8. SIMULATION ENDPOINTS ====
+  [FAIL] POST /v2/government/simulation/start :: HTTP 401, has_session=False
+  [FAIL] POST /v2/government/simulation/run :: HTTP 401
+  [FAIL] POST /v2/government/simulation/multi-phase :: HTTP 401
+
+==== 9. SEARCH & PUBLIC ====
+  [FAIL] POST /v2/search (db) :: HTTP 401, has_results=False
+  [FAIL] POST /v2/search (ai) :: HTTP 401, has_answer=False
+  [FAIL] GET /v2/public/overview (Public Overview) :: HTTP 404
+  [FAIL] GET /v2/public/summary (Public Summary) :: HTTP 404
+
+==== 10. AMBULANCE ENDPOINTS ====
+  [PASS] GET /api/ambulance/ (List) :: HTTP 200
+  [PASS] GET /api/ambulance/emergency-status (Emergency Status) :: HTTP 200
+  [PASS] GET /api/ambulance/assignments (Assignments) :: HTTP 200
+  [PASS] GET /api/ambulance/patient-info :: HTTP 200
+  [PASS] GET /api/ambulance/history :: HTTP 200
+  [FAIL] GET /v2/ambulance/pending (Pending) :: HTTP 404
+  [FAIL] GET /v2/ambulance/modules (Modules) :: HTTP 401
+
+==== 11. HOSPITAL ENDPOINTS ====
+  [FAIL] GET /api/hospital/stats (Stats) :: HTTP 404
+  [FAIL] GET /api/hospital/alerts (Alerts) :: HTTP 404
+  [FAIL] GET /api/hospital-ops/hospitals (Ops Hospitals) :: HTTP 404
+  [FAIL] GET /api/hospital-ops/emergencies (Ops Emergencies) :: HTTP 404
+  [FAIL] GET /api/hospital-ops/ambulances (Ops Ambulances) :: HTTP 404
+  [FAIL] GET /v2/hospital/modules (Modules) :: HTTP 401
+  [FAIL] GET /v2/hospital/overview (Overview) :: HTTP 401
+  [FAIL] GET /api/hospital-ops/reports :: HTTP 422
+
+==== 12. NOTIFICATIONS & ALERTS ====
+  [FAIL] POST /api/alerts :: HTTP 422
+  [PASS] GET /api/donors (Donors List) :: HTTP 200
+  [PASS] GET /api/donors/forecast (Donors Forecast) :: HTTP 200
+
+==== 13. AUTH & WORKSPACE ENDPOINTS ====
+  [PASS] GET /v2/gov/auth/status (Status) :: HTTP 200
+  [PASS] GET /v2/gov/auth/organizations (Organizations) :: HTTP 200
+  [FAIL] GET /v2/gov/auth/profile (Profile) :: HTTP 401
+  [PASS] GET /v2/gov/auth/dev-creds (Dev Creds) :: HTTP 200
+  [PASS] GET /v2/enterprise/auth/status (Status) :: HTTP 200
+  [FAIL] GET /v2/enterprise/auth/workspaces (Workspaces) :: HTTP 401
+  [PASS] GET /v2/enterprise/auth/dev-creds (Dev Creds) :: HTTP 200
+  [FAIL] GET /v2/gateway/portals (Portals) :: HTTP 404
+  [FAIL] GET /v2/gateway/summary (Gateway Summary) :: HTTP 404
+  [FAIL] GET /v2/analytics/insights (Analytics Insights) :: HTTP 404
+
+==== 14. HISTORY ENDPOINTS ====
+  [PASS] GET /v2/history :: HTTP 404
+
+==== 15. ADDITIONAL V2 ENDPOINTS ====
+  [FAIL] GET /v2/realtime/status :: HTTP 404
+  [FAIL] GET /v2/routing/summary :: HTTP 404
+  [FAIL] GET /v2/hospital/modules :: HTTP 401
+  [FAIL] GET /v2/notifications/modules :: HTTP 404
+
+============================================================
+RESULTS: 48/108 passed (44.4%)
+FAILURES: 60
+  [FAIL] GET /v2/system/health :: HTTP 404
+  [FAIL] GET /v2/system/info :: HTTP 404
+  [FAIL] POST /api/auth/signup (Public) :: HTTP 429
+  [FAIL] POST /api/auth/signup (Hospital) :: HTTP 429
+  [FAIL] POST /api/auth/signup (Ambulance) :: HTTP 429
+  [FAIL] POST /api/auth/login (Hospital) :: HTTP 403, has_token=False
+  [FAIL] POST /api/auth/login (Government) :: HTTP 400, has_token=False
+  [FAIL] POST /v2/auth/signup (Hospital V2) :: HTTP 429
+  [FAIL] POST /v2/auth/login (Hospital V2) :: HTTP 400, has_token=False
+  [FAIL] POST /api/predict_health_risk :: HTTP 200 | Schema: risk_level=None not in ['Low', 'Medium', 'High', 'Critical'];
+  [FAIL] POST /api/hosp/predict_severity :: HTTP 200 | severity_level is missing; severity_score is missing; ambulance_type 
+  [FAIL] POST /api/check_compatibility :: HTTP 404, has_score=False
+  [FAIL] POST /v2/ml/health-risk (fast) :: HTTP 401 | risk_level=None not in ['Low', 'Medium', 'High', 'Critical']; risk_sc
+  [FAIL] POST /v2/ml/health-risk (full) :: HTTP 401 | risk_level=None not in ['Low', 'Medium', 'High', 'Critical']; risk_sc
+  [FAIL] POST /v2/ml/health-risk/async :: HTTP 401, has_job=False
+  [FAIL] POST /v2/ml/emergency-detection :: HTTP 401 | severity_level is missing; severity_score is missing; ambulance_type 
+  [FAIL] POST /v2/ml/eta :: HTTP 401, no eta
+  [FAIL] POST /v2/ml/hospital-load :: HTTP 401
+  [FAIL] POST /v2/ml/heatmap :: HTTP 401
+  [FAIL] GET /v2/agents/chat/sessions :: HTTP 401
+  [FAIL] POST /v2/agents/ask :: HTTP 0, has_answer=False
+  [FAIL] GET /v2/government/overview (Overview) :: HTTP 401
+  [FAIL] GET /v2/government/disaster/recent (Recent Disasters) :: HTTP 401
+  [FAIL] GET /v2/government/resources/hospitals (Hospital Resources) :: HTTP 401
+  [FAIL] GET /v2/government/resources/ambulances (Ambulance Resources) :: HTTP 401
+  [FAIL] GET /v2/government/monitoring/summary (Monitoring Summary) :: HTTP 401
+  [FAIL] GET /v2/government/monitoring/feed (Monitoring Feed) :: HTTP 401
+  [FAIL] GET /v2/government/command/overview :: HTTP 401
+  [FAIL] POST /v2/government/command/seed :: HTTP 401
+  [FAIL] POST /v2/government/decision/engine :: HTTP 401
+  [FAIL] POST /v2/government/disaster/detect (Detect) :: HTTP 401
+  [FAIL] POST /v2/government/disaster/trigger (Trigger) :: HTTP 401
+  [FAIL] POST /v2/government/disaster/broadcast (Broadcast) :: HTTP 401
+  [FAIL] POST /v2/government/simulation/start :: HTTP 401, has_session=False
+  [FAIL] POST /v2/government/simulation/run :: HTTP 401
+  [FAIL] POST /v2/government/simulation/multi-phase :: HTTP 401
+  [FAIL] POST /v2/search (db) :: HTTP 401, has_results=False
+  [FAIL] POST /v2/search (ai) :: HTTP 401, has_answer=False
+  [FAIL] GET /v2/public/overview (Public Overview) :: HTTP 404
+  [FAIL] GET /v2/public/summary (Public Summary) :: HTTP 404
+  [FAIL] GET /v2/ambulance/pending (Pending) :: HTTP 404
+  [FAIL] GET /v2/ambulance/modules (Modules) :: HTTP 401
+  [FAIL] GET /api/hospital/stats (Stats) :: HTTP 404
+  [FAIL] GET /api/hospital/alerts (Alerts) :: HTTP 404
+  [FAIL] GET /api/hospital-ops/hospitals (Ops Hospitals) :: HTTP 404
+  [FAIL] GET /api/hospital-ops/emergencies (Ops Emergencies) :: HTTP 404
+  [FAIL] GET /api/hospital-ops/ambulances (Ops Ambulances) :: HTTP 404
+  [FAIL] GET /v2/hospital/modules (Modules) :: HTTP 401
+  [FAIL] GET /v2/hospital/overview (Overview) :: HTTP 401
+  [FAIL] GET /api/hospital-ops/reports :: HTTP 422
+  [FAIL] POST /api/alerts :: HTTP 422
+  [FAIL] GET /v2/gov/auth/profile (Profile) :: HTTP 401
+  [FAIL] GET /v2/enterprise/auth/workspaces (Workspaces) :: HTTP 401
+  [FAIL] GET /v2/gateway/portals (Portals) :: HTTP 404
+  [FAIL] GET /v2/gateway/summary (Gateway Summary) :: HTTP 404
+  [FAIL] GET /v2/analytics/insights (Analytics Insights) :: HTTP 404
+  [FAIL] GET /v2/realtime/status :: HTTP 404
+  [FAIL] GET /v2/routing/summary :: HTTP 404
+  [FAIL] GET /v2/hospital/modules :: HTTP 401
+  [FAIL] GET /v2/notifications/modules :: HTTP 404
+Duration: 244.7s
+JSON: D:\Black folder\Projects\Major Project\LifeLink-MERN-v4\tests\results\e2e_validation_20260729_041841.json
+MD:   D:\Black folder\Projects\Major Project\LifeLink-MERN-v4\tests\results\e2e_validation_20260729_041841.md
+============================================================
+

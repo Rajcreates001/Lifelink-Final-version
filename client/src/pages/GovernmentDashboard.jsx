@@ -8,6 +8,7 @@ import MobileDrawer from '../components/layout/MobileDrawer';
 import LogoutConfirmDialog from '../components/ui/LogoutConfirmDialog';
 import NotificationHub from '../components/NotificationHub';
 import GovernmentProfileModal from '../components/GovernmentProfileModal';
+import { useWebSocket } from '../hooks/useWebSocket';
 
 // ── Lazy-loaded module workspace components ────────────────
 const DisasterDashboard = lazy(() => import('../components/government/modules/DisasterDashboard'));
@@ -76,6 +77,16 @@ const GovernmentDashboard = () => {
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showMobileModules, setShowMobileModules] = useState(false);
+
+  // Real-time WebSocket for government dashboard updates
+  const { isConnected: wsConnected, lastMessage: wsMessage } = useWebSocket('government', {
+    onMessage: (data) => {
+      if (data?.type === 'disaster' || data?.type === 'alert') {
+        // Trigger module refresh on real-time events
+        console.log('[Gov WS] Real-time update:', data.type);
+      }
+    },
+  });
 
   // Resolve default module
   const resolvedModule = activeModule && MODULE_COMPONENT_MAP[activeModule] ? activeModule : 'disaster-dashboard';

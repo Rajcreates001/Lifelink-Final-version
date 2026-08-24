@@ -57,6 +57,7 @@ from app.routes.v2.enterprise_auth import router as enterprise_auth_v2_router
 from app.routes.v2.lifelink_ai import router as lifelink_ai_v2_router
 from app.routes.v2.government_auth import router as government_auth_v2_router
 from app.routes.reports.reports import router as reports_router
+from app.routes.gps_tracking import router as gps_tracking_router
 
 # ─── Structured JSON Logging ───────────────────────────────
 class JsonFormatter(logging.Formatter):
@@ -196,6 +197,9 @@ app.include_router(lifelink_ai_v2_router, prefix="/v2")
 
 # Government Auth routes (enterprise-grade authentication for government organizations)
 app.include_router(government_auth_v2_router, prefix="/v2")
+
+# GPS Tracking simulation routes
+app.include_router(gps_tracking_router, prefix="/api/gps-tracking")
 
 
 @app.exception_handler(RequestValidationError)

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { GovKPICard, GovStatusBadge, GovSectionHeader, GovModuleHero, FORMAT_TIME } from '../shared/GovernmentShared';
 import { DetailModal, Toast, AnimatedLineChart } from '../shared/InteractiveComponents';
+import { useApiData } from '../../../hooks/useApiData';
 
 const LiveMonitoring = () => {
   const [timeRefresh, setTimeRefresh] = useState(Date.now());
@@ -9,6 +10,17 @@ const LiveMonitoring = () => {
   const [selectedCamera, setSelectedCamera] = useState(null);
   const [timeWindow, setTimeWindow] = useState('1m');
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
+
+  // Fetch real monitoring data from API
+  const { data: monitoringData, loading } = useApiData(
+    '/v2/government/command/monitoring/summary',
+    { pollInterval: 15000 }
+  );
+
+  const { data: feedData } = useApiData(
+    '/v2/government/command/monitoring/feed',
+    { pollInterval: 10000, transform: (d) => d?.data || [] }
+  );
 
   const showToast = useCallback((msg, type = 'success') => setToast({ visible: true, message: msg, type }), []);
 

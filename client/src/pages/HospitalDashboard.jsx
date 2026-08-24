@@ -45,6 +45,7 @@ import RevenueIntelligence from '../components/ui/RevenueIntelligence';
 import EmergencyCommandCenter from '../components/ui/EmergencyCommandCenter';
 import PatientDischargeWorkflow from '../components/PatientDischargeWorkflow';
 import StaffSchedulingModule from '../components/StaffSchedulingModule';
+import { useWebSocket } from '../hooks/useWebSocket';
 
 const hospitalModuleSets = {
     ceo: [
@@ -250,6 +251,15 @@ const MobileHospitalDashboard = () => {
     const [refreshKeys, setRefreshKeys] = useState({});
     const [menuOpen, setMenuOpen] = useState(false);
     const [showChat, setShowChat] = useState(false);
+
+    // Real-time WebSocket for hospital updates
+    const { isConnected: wsConnected, lastMessage: wsMessage } = useWebSocket('hospital', {
+        onMessage: (data) => {
+            if (data?.type === 'alert' || data?.type === 'update') {
+                setRefreshKeys((prev) => ({ ...prev, [data.module || 'overview']: Date.now() }));
+            }
+        },
+    });
     const [showProfile, setShowProfile] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
