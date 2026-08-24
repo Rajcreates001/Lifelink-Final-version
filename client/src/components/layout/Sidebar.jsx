@@ -1,4 +1,6 @@
 import React from 'react';
+import { useTheme } from '../../context/ThemeContext';
+import { LanguageSwitcherInline } from '../ui/LanguageSwitcher';
 
 // Icon color mapping per spec
 const ICON_COLORS = {
@@ -27,15 +29,16 @@ const Sidebar = ({
     onLogoClick,
     className = '',
 }) => {
+    const { isDark, toggleTheme } = useTheme();
     const isNotificationsActive = activeKey === 'notifications';
     const isProfileActive = activeKey === 'profile';
     const isHistoryActive = activeKey === 'history';
 
     return (
-        <aside className={`w-full lg:w-72 lg:h-screen lg:overflow-y-auto lg:sticky lg:top-0 bg-white/70 backdrop-blur-xl border-b lg:border-b-0 lg:border-r border-[#E5E7EB] flex flex-col transition-all duration-300 ${className}`}
+        <aside className={`w-full lg:w-72 lg:h-screen lg:overflow-y-auto lg:sticky lg:top-0 bg-white/70 dark:bg-slate-900/80 backdrop-blur-xl border-b lg:border-b-0 lg:border-r border-[#E5E7EB] dark:border-slate-700/50 flex flex-col transition-all duration-300 ${className}`}
             style={{ boxShadow: '0 0 0 1px rgba(0,0,0,0.02), 4px 0 24px rgba(0,0,0,0.04), 8px 0 48px rgba(0,0,0,0.02)' }}>
             {/* ─── Glass gradient overlay for depth ──────────────── */}
-            <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-transparent to-white/20 pointer-events-none" aria-hidden="true"></div>
+            <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-transparent to-white/20 dark:from-slate-800/40 dark:to-slate-900/20 pointer-events-none" aria-hidden="true"></div>
 
             {/* ─── Logo Section ─────────────────────────────── */}
             <div className="relative px-5 py-5 border-b border-[#E5E7EB] animate-fade-in shrink-0">
@@ -44,8 +47,8 @@ const Sidebar = ({
                         <i className="fas fa-heartbeat text-xl"></i>
                     </div>
                     <div>
-                        <h1 className="text-lg font-bold text-gray-900 group-hover:text-[#2563EB] transition-colors duration-300">LifeLink</h1>
-                        <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-[0.08em]">
+                        <h1 className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-[#2563EB] transition-colors duration-300">LifeLink</h1>
+                        <p className="text-[10px] text-gray-400 dark:text-slate-400 font-semibold uppercase tracking-[0.08em]">
                             {user?.role ? `${user.role} portal` : 'Portal'}{user?.subRole ? ` • ${user.subRole}` : ''}
                         </p>
                     </div>
@@ -68,7 +71,7 @@ const Sidebar = ({
                             className={`w-full flex items-center gap-3.5 px-4 h-[56px] rounded-[14px] text-sm font-semibold text-left transition-all duration-200 ease-out animate-fade-in-up relative overflow-hidden group ${
                                 isActive
                                     ? 'bg-gradient-to-r from-[#2563EB] to-[#7C3AED] text-white shadow-lg hover:from-[#1D4ED8] hover:to-[#6D28D9] shadow-[0_0_12px_rgba(37,99,235,0.3)]'
-                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80 hover:-translate-y-0.5 hover:scale-[1.02]'
+                                    : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/80 dark:hover:bg-slate-700/50 hover:-translate-y-0.5 hover:scale-[1.02]'
                             } active:scale-[0.98]`}
                             aria-current={isActive ? 'page' : undefined}
                         >
@@ -132,13 +135,24 @@ const Sidebar = ({
                                 ? 'bg-gradient-to-r from-[#2563EB] to-[#7C3AED] text-white shadow-md'
                                 : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
                         }`}
-                    >
-                        <i className={`fas fa-history text-[16px] w-5 text-center transition-all duration-300 ${
+                    >                            <i className={`fas fa-history text-[16px] w-5 text-center transition-all duration-300 ${
                             isHistoryActive ? 'text-white' : 'text-indigo-500 group-hover:scale-110'
                         }`}></i>
                         Life Timeline
                     </button>
                 )}
+
+                {/* ─── Dark Mode Toggle ───────────────────── */}
+                <button
+                    onClick={toggleTheme}
+                    className="w-full flex items-center gap-3 px-4 h-[42px] rounded-[12px] text-sm font-semibold text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/80 dark:hover:bg-slate-700/50 transition-all duration-200 ease-out active:scale-[0.98] group"
+                >
+                    <i className={`fas ${isDark ? 'fa-sun text-amber-400' : 'fa-moon text-indigo-400'} text-[16px] w-5 text-center transition-all duration-300 group-hover:scale-110`}></i>
+                    {isDark ? 'Light Mode' : 'Dark Mode'}
+                </button>
+
+                {/* ─── Language Switcher ─────────────────── */}
+                <LanguageSwitcherInline />
 
                 {onProfile && (
                     <button
@@ -146,7 +160,7 @@ const Sidebar = ({
                         className={`w-full flex items-center gap-3 px-4 h-[42px] rounded-[12px] text-sm font-semibold transition-all duration-200 ease-out active:scale-[0.98] group ${
                             isProfileActive
                                 ? 'bg-gradient-to-r from-[#2563EB] to-[#7C3AED] text-white shadow-md'
-                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+                                : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/80 dark:hover:bg-slate-700/50'
                         }`}
                     >
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 shrink-0 ${

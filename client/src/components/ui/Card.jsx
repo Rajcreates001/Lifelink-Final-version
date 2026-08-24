@@ -3,7 +3,7 @@ import React from 'react';
 const Card = ({ children, className = '', hoverable = false, animate = false, colorFlow = false }) => (
     <div
         className={`
-            bg-white p-6 rounded-[18px] border border-[#E5E7EB] 
+            bg-white dark:bg-slate-800/80 p-6 rounded-[18px] border border-[#E5E7EB] dark:border-slate-700/50
             min-w-0 max-w-full overflow-hidden
             transition-all duration-200 ease-out
             shadow-[0_0_0_1px_rgba(0,0,0,0.02),0_4px_24px_rgba(0,0,0,0.06),0_1px_4px_rgba(0,0,0,0.03)]

@@ -5,6 +5,29 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Dark Mode Base Styles ───────────────────────────── */
+.dark {
+    color-scheme: dark;
+}
+.dark body {
+    background-color: #0f172a;
+    color: #e2e8f0;
+}
+.dark ::-webkit-scrollbar {
+    width: 6px;
+}
+.dark ::-webkit-scrollbar-track {
+    background: #1e293b;
+}
+.dark ::-webkit-scrollbar-thumb {
+    background: #475569;
+    border-radius: 3px;
+}
+.dark ::selection {
+    background-color: rgba(37, 99, 235, 0.3);
+    color: #e2e8f0;
+}
+
 :root {
     --font-display: "Plus Jakarta Sans", "Segoe UI", sans-serif;
     --font-body: "Plus Jakarta Sans", "Segoe UI", sans-serif;

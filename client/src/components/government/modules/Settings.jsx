@@ -1,7 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GovSectionHeader, GovModuleHero } from '../shared/GovernmentShared';
+import { useAuth } from '../../../context/AuthContext';
+import { apiFetch } from '../../../config/api';
 
 const Settings = () => {
+  const { user } = useAuth();
+  const [profile, setProfile] = useState(null);
+  const [preferences, setPreferences] = useState({
+    darkMode: false, notifications: true, autoSync: true, commandModeDefault: false, compactView: true,
+  });
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const res = await apiFetch('/v2/gov/auth/profile');
+        if (res.ok) setProfile(res.data);
+      } catch (err) { /* use defaults */ }
+    };
+    loadProfile();
+  }, []);
+
+  const displayName = profile?.name || user?.name || user?.fullName || 'Admin User';
+  const displayEmail = profile?.email || user?.email || 'admin@lifelink.gov.in';
+  const displayRole = profile?.role || user?.role || user?.subRole || 'National Admin';
+  const displayOrg = profile?.organization || user?.organization || 'NDMA';
+  const initials = displayName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
   return (
     <div className="space-y-5">
       <GovModuleHero
@@ -23,18 +46,18 @@ const Settings = () => {
           <GovSectionHeader icon="fa-user" label="Profile" />
           <div className="space-y-3">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-sm">AK</div>
+              <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-sm">{initials}</div>
               <div>
-                <p className="text-sm font-semibold text-slate-800">Admin User</p>
-                <p className="text-[10px] text-slate-400">National Command Centre</p>
+                <p className="text-sm font-semibold text-slate-800">{displayName}</p>
+                <p className="text-[10px] text-slate-400">{displayOrg}</p>
               </div>
             </div>
             <div className="space-y-1.5">
               {[
-                { label: 'Full Name', value: 'Rajesh Kumar' },
-                { label: 'Email', value: 'admin@lifelink.gov.in' },
-                { label: 'Role', value: 'National Admin' },
-                { label: 'Organization', value: 'NDMA' },
+                { label: 'Full Name', value: displayName },
+                { label: 'Email', value: displayEmail },
+                { label: 'Role', value: displayRole },
+                { label: 'Organization', value: displayOrg },
               ].map((f, i) => (
                 <div key={i} className="flex justify-between">
                   <span className="text-[10px] text-slate-400">{f.label}</span>
@@ -50,16 +73,16 @@ const Settings = () => {
           <GovSectionHeader icon="fa-sliders" label="Preferences" />
           <div className="space-y-3">
             {[
-              { label: 'Dark Mode', enabled: false },
-              { label: 'Notifications', enabled: true },
-              { label: 'Auto-Sync', enabled: true },
-              { label: 'Command Mode Default', enabled: false },
-              { label: 'Compact View', enabled: true },
+              { key: 'darkMode', label: 'Dark Mode' },
+              { key: 'notifications', label: 'Notifications' },
+              { key: 'autoSync', label: 'Auto-Sync' },
+              { key: 'commandModeDefault', label: 'Command Mode Default' },
+              { key: 'compactView', label: 'Compact View' },
             ].map((p, i) => (
               <div key={i} className="flex items-center justify-between">
                 <span className="text-xs text-slate-600">{p.label}</span>
-                <div className={`w-8 h-4 rounded-full transition-colors cursor-pointer ${p.enabled ? 'bg-indigo-600' : 'bg-slate-200'}`}>
-                  <div className={`w-3.5 h-3.5 rounded-full bg-white shadow-sm mt-0.5 transition-transform ${p.enabled ? 'translate-x-[14px]' : 'translate-x-0.5'}`} />
+                <div className={`w-8 h-4 rounded-full transition-colors cursor-pointer ${preferences[p.key] ? 'bg-indigo-600' : 'bg-slate-200'}`} onClick={() => setPreferences(prev => ({ ...prev, [p.key]: !prev[p.key] }))}>
+                  <div className={`w-3.5 h-3.5 rounded-full bg-white shadow-sm mt-0.5 transition-transform ${preferences[p.key] ? 'translate-x-[14px]' : 'translate-x-0.5'}`} />
                 </div>
               </div>
             ))}

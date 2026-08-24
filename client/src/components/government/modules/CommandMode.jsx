@@ -1,14 +1,33 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { GovStatusBadge, GovSectionHeader, FORMAT_TIME } from '../shared/GovernmentShared';
 import { DetailModal, Toast, ConfirmDialog, AIExplainPanel } from '../shared/InteractiveComponents';
+import { apiFetch } from '../../../config/api';
 
 const CommandMode = () => {
-  const [messages, setMessages] = useState([
-    { from: 'NDMA Director', msg: 'Cyclone update: Path shifted 50km south. Adjust evacuation zones.', time: '2m ago', direct: true },
-    { from: 'Air Force', msg: '2× C-130J on standby at Mangaluru airbase. Ready for airlift.', time: '5m ago', direct: true },
-    { from: 'Navy', msg: 'INS Sahyadri deployed to coastal zone. Rescue teams ready.', time: '8m ago', direct: true },
-    { from: 'State Control', msg: 'Evacuation of coastal villages 60% complete. ETA 4 hours.', time: '12m ago', direct: true },
-  ]);
+  const [messages, setMessages] = useState([]);
+
+  useEffect(() => {
+    const loadMessages = async () => {
+      try {
+        const res = await apiFetch('/v2/government/command/overview');
+        if (res.ok && res.data?.messages) {
+          setMessages(res.data.messages.map(m => ({
+            from: m.from || m.sender || 'System',
+            msg: m.msg || m.message || m.text || '',
+            time: m.time || (m.createdAt ? new Date(m.createdAt).toLocaleTimeString() : 'Recent'),
+            direct: true,
+          })));
+        }
+      } catch (err) { /* use defaults */ }
+    };
+    loadMessages();
+    setMessages([
+      { from: 'NDMA Director', msg: 'Cyclone update: Path shifted 50km south. Adjust evacuation zones.', time: '2m ago', direct: true },
+      { from: 'Air Force', msg: '2× C-130J on standby at Mangaluru airbase. Ready for airlift.', time: '5m ago', direct: true },
+      { from: 'Navy', msg: 'INS Sahyadri deployed to coastal zone. Rescue teams ready.', time: '8m ago', direct: true },
+      { from: 'State Control', msg: 'Evacuation of coastal villages 60% complete. ETA 4 hours.', time: '12m ago', direct: true },
+    ]);
+  }, []);
   const [chatInput, setChatInput] = useState('');
   const [showConfirm, setShowConfirm] = useState(null);
   const [showAIModal, setShowAIModal] = useState(false);
@@ -17,10 +36,17 @@ const CommandMode = () => {
 
   const showToast = useCallback((msg, type = 'success') => setToast({ visible: true, message: msg, type }), []);
 
-  const sendMessage = useCallback(() => {
+  const sendMessage = useCallback(async () => {
     if (!chatInput.trim()) return;
-    setMessages(prev => [{ from: 'Command Centre', msg: chatInput, time: 'Just now', direct: true }, ...prev]);
+    const msg = chatInput;
+    setMessages(prev => [{ from: 'Command Centre', msg, time: 'Just now', direct: true }, ...prev]);
     setChatInput('');
+    try {
+      await apiFetch('/v2/government/disaster/broadcast', {
+        method: 'POST',
+        body: JSON.stringify({ message: msg, type: 'command' }),
+      });
+    } catch (err) { /* message already shown locally */ }
     showToast('Message sent on secure channel', 'success');
   }, [chatInput, showToast]);
 

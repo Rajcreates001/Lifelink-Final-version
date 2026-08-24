@@ -1,9 +1,11 @@
 import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth, getLoginRoute, getWorkspaceRoute } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { getAuthToken } from './config/api';
 import ErrorBoundary from './components/ErrorBoundary';
 import './styles/responsive.css';
+import './i18n'; // Initialize i18n
 
 // Pages
 const Signup = lazy(() => import('./pages/Signup'));
@@ -17,6 +19,7 @@ const ApiTest = lazy(() => import('./pages/ApiTest'));
 const HospitalRoleSelect = lazy(() => import('./pages/HospitalRoleSelect'));
 const GovernmentRoleSelect = lazy(() => import('./pages/GovernmentRoleSelect'));
 const SwitchPortal = lazy(() => import('./pages/SwitchPortal'));
+const StatusPage = lazy(() => import('./pages/StatusPage'));
 
 // Protected Route Component
 // ... existing imports
@@ -96,7 +99,9 @@ const PageLoader = () => (
 );
 
 const App = () => {
-    return (    <AuthProvider>
+    return (
+        <ThemeProvider>
+        <AuthProvider>
       <Router>
         <ErrorBoundary>
         <Suspense fallback={<PageLoader />}>
@@ -220,6 +225,9 @@ const App = () => {
                     {/* API Test Page */}
                     <Route path="/api-test" element={<ApiTest />} />
 
+                    {/* Public Status Page */}
+                    <Route path="/status" element={<StatusPage />} />
+
                     {/* Switch Portal */}
                     <Route
                         path="/switch-portal"
@@ -237,6 +245,7 @@ const App = () => {
         </ErrorBoundary>
             </Router>
         </AuthProvider>
+        </ThemeProvider>
     );
 };
 

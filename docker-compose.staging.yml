@@ -1,108 +1,77 @@
 # LifeLink Staging Environment
-# Usage: docker compose -f docker-compose.staging.yml up -d
-#
-# Differences from dev:
-#   - Single replica (no HPA)
-#   - Debug logging disabled
-#   - Sentry DSN configured
-#   - Encryption enabled
-#   - Stricter health checks
+# docker-compose -f docker-compose.staging.yml up -d
 
 services:
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    ports:
-      - "4002:4002"
-    env_file:
-      - ./backend/.env
-    environment:
-      - JWT_SECRET=${JWT_SECRET:-staging-jwt-secret-change-me}
-      - DATABASE_URL=postgresql://lifelink:lifelink@postgres:5432/lifelink
-      - MONGO_URI=mongodb://mongo:27017/lifelink
-      - REDIS_URL=redis://redis:6379
-      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-}
-      - SENTRY_DSN=${SENTRY_DSN:-}
-      - LLM_PROVIDER=${LLM_PROVIDER:-groq}
-      - GROQ_API_KEY=${GROQ_API_KEY:-}
-      - LOG_LEVEL=WARNING
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4002/health')"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 1.5G
-          cpus: "1.0"
-
-  frontend:
-    build:
-      context: ./client
-      dockerfile: Dockerfile
-      args:
-        - VITE_API_URL=${VITE_API_URL:-http://localhost:4002}
-    ports:
-      - "5000:5000"
-    depends_on:
-      - backend
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5000/"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-    restart: unless-stopped
-
+  # ─── PostgreSQL ─────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
+    container_name: lifelink-staging-postgres
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: lifelink
       POSTGRES_USER: lifelink
-      POSTGRES_PASSWORD: lifelink
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-staging_password}
+      POSTGRES_DB: lifelink
     volumes:
-      - postgres_staging_data:/var/lib/postgresql/data
+      - pgdata_staging:/var/lib/postgresql/data
     ports:
-      - "5433:5432"
+      - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U lifelink -d lifelink"]
+      test: ["CMD-SHELL", "pg_isready -U lifelink"]
       interval: 10s
       timeout: 5s
       retries: 5
-    restart: unless-stopped
 
-  mongo:
-    image: mongo:7
-    volumes:
-      - mongo_staging_data:/data/db
-    ports:
-      - "27018:27017"
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
+  # ─── Redis ──────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
+    container_name: lifelink-staging-redis
+    restart: unless-stopped
     ports:
-      - "6380:6379"
+      - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # ─── Backend (FastAPI) ──────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: lifelink-staging-backend
     restart: unless-stopped
+    ports:
+      - "4002:4002"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://lifelink:${POSTGRES_PASSWORD:-staging_password}@postgres:5432/lifelink
+      - MONGODB_URI=mongodb://mongo:27017/lifelink
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:-staging-jwt-secret-change-in-production}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-}
+      - APP_ENV=staging
+      - CORS_ORIGINS=["http://localhost:5000","https://staging.lifelink.example.com"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - ml_models:/app/ml
+
+  # ─── Frontend (Nginx) ──────────────────────────────────────
+  frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: lifelink-staging-frontend
+    restart: unless-stopped
+    ports:
+      - "5000:80"
+    depends_on:
+      - backend
 
 volumes:
-  postgres_staging_data:
-  mongo_staging_data:
+  pgdata_staging:
+  ml_models:
