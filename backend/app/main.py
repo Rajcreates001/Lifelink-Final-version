@@ -58,6 +58,7 @@ from app.routes.v2.lifelink_ai import router as lifelink_ai_v2_router
 from app.routes.v2.government_auth import router as government_auth_v2_router
 from app.routes.reports.reports import router as reports_router
 from app.routes.gps_tracking import router as gps_tracking_router
+from app.services.prometheus_metrics import PrometheusMiddleware, get_metrics
 
 # ─── Structured JSON Logging ───────────────────────────────
 class JsonFormatter(logging.Formatter):
@@ -130,6 +131,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Prometheus metrics middleware
+app.add_middleware(PrometheusMiddleware)
+
 
 # ─── Request ID Middleware ────────────────────────────────
 @app.middleware("http")
@@ -200,6 +204,12 @@ app.include_router(government_auth_v2_router, prefix="/v2")
 
 # GPS Tracking simulation routes
 app.include_router(gps_tracking_router, prefix="/api/gps-tracking")
+
+
+# ─── Prometheus Metrics Endpoint ─────────────────────────
+@app.get("/metrics")
+async def metrics():
+    return get_metrics()
 
 
 @app.exception_handler(RequestValidationError)
