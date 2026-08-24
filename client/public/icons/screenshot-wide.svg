@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <rect width="1280" height="720" fill="#0f172a"/>
+  <rect x="40" y="40" width="280" height="640" rx="16" fill="#1e293b"/>
+  <rect x="340" y="40" width="900" height="640" rx="16" fill="#1e293b"/>
+  <text x="640" y="380" text-anchor="middle" fill="#64748b" font-family="system-ui" font-size="24">LifeLink Dashboard</text>
+</svg>

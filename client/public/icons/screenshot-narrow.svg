@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 1280" width="720" height="1280">
+  <rect width="720" height="1280" fill="#0f172a"/>
+  <rect x="20" y="20" width="680" height="1240" rx="16" fill="#1e293b"/>
+  <text x="360" y="660" text-anchor="middle" fill="#64748b" font-family="system-ui" font-size="20">LifeLink Mobile</text>
+</svg>

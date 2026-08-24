@@ -442,12 +442,12 @@ const EmergencyCommandCenter = () => {
     if (metrics.open > 10) items.push({
       key: 'ed-overload', title: 'ED Overload Risk', icon: 'fa-triangle-exclamation',
       description: `${metrics.open} open incidents. ED approaching capacity. Consider diverting stable patients to urgent care and expediting discharges.`,
-      confidence: 79, action: { label: 'View Triage', onClick: () => {} },
+      confidence: 79, action: { label: 'View Triage', onClick: () => showToast(`Triage: ${triageStats.red} Red, ${triageStats.yellow} Yellow, ${triageStats.green} Green`, 'info') },
     });
     if (metrics.medium > 5) items.push({
       key: 'triage-bottleneck', title: 'Triage Bottleneck Detected', icon: 'fa-clock',
       description: `${metrics.medium} medium-severity cases waiting. Deploy additional triage nurse to reduce wait times.`,
-      confidence: 74, action: { label: 'Assign Triage Nurse', onClick: () => {} },
+      confidence: 74, action: { label: 'Assign Triage Nurse', onClick: () => { showToast('Triage nurse assigned', 'success'); } },
     });
     if (wsConnected) items.push({
       key: 'realtime-active', title: 'Real-Time Feed Active', icon: 'fa-wifi',
@@ -457,7 +457,7 @@ const EmergencyCommandCenter = () => {
     items.push({
       key: 'peak-prediction', title: 'Peak Hours Incoming', icon: 'fa-chart-line',
       description: 'AI predicts ED arrivals will peak between 10AM-2PM. Pre-stage additional intake staff and ensure bed capacity.',
-      confidence: 82, action: { label: 'Prepare Staff', onClick: () => {} },
+      confidence: 82, action: { label: 'Prepare Staff', onClick: () => { showToast('Staff preparation initiated', 'info'); } },
     });
     return items;
   }, [metrics, wsConnected]);

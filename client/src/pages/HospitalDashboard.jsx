@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, Suspense } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -9,100 +9,115 @@ import MobileDrawer from '../components/layout/MobileDrawer';
 import LifelinkAiChat from '../components/LifelinkAiChat';
 import NotificationHub from '../components/NotificationHub';
 import HospitalProfileModal from '../components/HospitalProfileModal';
-
-// --- CHECK THESE IMPORTS CAREFULLY ---
-import HospitalOverview from '../components/HospitalOverview';
-import HospitalAnalytics from '../components/HospitalAnalytics'; // Ensure this points to the Analytics file
-import HospitalPatients from '../components/HospitalPatients';
-import HospitalResources from '../components/HospitalResources';
-import HospitalCommunications from '../components/HospitalCommunications';
-import AmbulanceETARoute from '../components/AmbulanceETARoute';
-import HospitalBedManagement from '../components/HospitalBedManagement';
-import {
-    HospitalDepartmentAnalytics,
-    HospitalFinanceOverview,
-    HospitalStaffManagement,
-    HospitalReports,
-    HospitalBillingSystem,
-    HospitalRevenueAnalytics,
-    HospitalInsuranceClaims,
-    HospitalLiveEmergencyFeed,
-    HospitalOPDScheduling,
-    HospitalDoctorManagement,
-    HospitalOPDQueue,
-    HospitalConsultationRecords,
-    HospitalICULiveMonitoring,
-    HospitalICUAlerts,
-    HospitalICUVitals,
-    HospitalICURiskPanel,
-    HospitalRadiologyRequests,
-    HospitalRadiologyReportUpload,
-    HospitalRadiologyAIInsights,
-    HospitalOTSurgeryScheduling,
-    HospitalOTStaffAllocation,
-} from '../components/hospitalOps';
-import RevenueIntelligence from '../components/ui/RevenueIntelligence';
-import EmergencyCommandCenter from '../components/ui/EmergencyCommandCenter';
-import PatientDischargeWorkflow from '../components/PatientDischargeWorkflow';
-import StaffSchedulingModule from '../components/StaffSchedulingModule';
 import { useWebSocket } from '../hooks/useWebSocket';
+import { useTranslation } from 'react-i18next';
+
+// ─── Lazy-loaded module components (code-split per module) ───
+const HospitalOverview = React.lazy(() => import('../components/HospitalOverview'));
+const HospitalAnalytics = React.lazy(() => import('../components/HospitalAnalytics'));
+const HospitalPatients = React.lazy(() => import('../components/HospitalPatients'));
+const HospitalResources = React.lazy(() => import('../components/HospitalResources'));
+const HospitalCommunications = React.lazy(() => import('../components/HospitalCommunications'));
+const AmbulanceETARoute = React.lazy(() => import('../components/AmbulanceETARoute'));
+const HospitalBedManagement = React.lazy(() => import('../components/HospitalBedManagement'));
+const RevenueIntelligence = React.lazy(() => import('../components/ui/RevenueIntelligence'));
+const EmergencyCommandCenter = React.lazy(() => import('../components/ui/EmergencyCommandCenter'));
+const PatientDischargeWorkflow = React.lazy(() => import('../components/PatientDischargeWorkflow'));
+const StaffSchedulingModule = React.lazy(() => import('../components/StaffSchedulingModule'));
+
+// Hospital ops barrel — lazy-load individual modules
+const HospitalDepartmentAnalytics = React.lazy(() => import('../components/hospitalOps').then(m => ({ default: m.HospitalDepartmentAnalytics })));
+const HospitalFinanceOverview = React.lazy(() => import('../components/hospitalOps').then(m => ({ default: m.HospitalFinanceOverview })));
+const HospitalStaffManagement = React.lazy(() => import('../components/hospitalOps').then(m => ({ default: m.HospitalStaffManagement })));
+const HospitalReports = React.lazy(() => import('../components/hospitalOps').then(m => ({ default: m.HospitalReports })));
+const HospitalBillingSystem = React.lazy(() => import('../components/hospitalOps').then(m => ({ default: m.HospitalBillingSystem })));
+const HospitalRevenueAnalytics = React.lazy(() => import('../components/hospitalOps').then(m => ({ default: m.HospitalRevenueAnalytics })));
+const HospitalInsuranceClaims = React.lazy(() => import('../components/hospitalOps').then(m => ({ default: m.HospitalInsuranceClaims })));
+const HospitalLiveEmergencyFeed = React.lazy(() => import('../components/hospitalOps').then(m => ({ default: m.HospitalLiveEmergencyFeed })));
+const HospitalOPDScheduling = React.lazy(() => import('../components/hospitalOps').then(m => ({ default: m.HospitalOPDScheduling })));
+const HospitalDoctorManagement = React.lazy(() => import('../components/hospitalOps').then(m => ({ default: m.HospitalDoctorManagement })));
+const HospitalOPDQueue = React.lazy(() => import('../components/hospitalOps').then(m => ({ default: m.HospitalOPDQueue })));
+const HospitalConsultationRecords = React.lazy(() => import('../components/hospitalOps').then(m => ({ default: m.HospitalConsultationRecords })));
+const HospitalICULiveMonitoring = React.lazy(() => import('../components/hospitalOps').then(m => ({ default: m.HospitalICULiveMonitoring })));
+const HospitalICUAlerts = React.lazy(() => import('../components/hospitalOps').then(m => ({ default: m.HospitalICUAlerts })));
+const HospitalICUVitals = React.lazy(() => import('../components/hospitalOps').then(m => ({ default: m.HospitalICUVitals })));
+const HospitalICURiskPanel = React.lazy(() => import('../components/hospitalOps').then(m => ({ default: m.HospitalICURiskPanel })));
+const HospitalRadiologyRequests = React.lazy(() => import('../components/hospitalOps').then(m => ({ default: m.HospitalRadiologyRequests })));
+const HospitalRadiologyReportUpload = React.lazy(() => import('../components/hospitalOps').then(m => ({ default: m.HospitalRadiologyReportUpload })));
+const HospitalRadiologyAIInsights = React.lazy(() => import('../components/hospitalOps').then(m => ({ default: m.HospitalRadiologyAIInsights })));
+const HospitalOTSurgeryScheduling = React.lazy(() => import('../components/hospitalOps').then(m => ({ default: m.HospitalOTSurgeryScheduling })));
+const HospitalOTStaffAllocation = React.lazy(() => import('../components/hospitalOps').then(m => ({ default: m.HospitalOTStaffAllocation })));
+
+// ─── Module loading skeleton ─────────────────────────────────
+const ModuleSkeleton = () => (
+    <div className="flex items-center justify-center py-20">
+        <div className="flex flex-col items-center gap-3">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600" />
+            <p className="text-xs text-slate-500 font-medium">Loading module...</p>
+        </div>
+    </div>
+);
+
+const LazyModule = ({ children }) => (
+    <Suspense fallback={<ModuleSkeleton />}>{children}</Suspense>
+);
 
 const hospitalModuleSets = {
     ceo: [
-        { key: 'global-overview', label: 'Global Overview', icon: 'fa-chart-pie', render: () => <HospitalOverview /> },
-        { key: 'ai-insights', label: 'AI Insights', icon: 'fa-brain', render: () => <HospitalAnalytics /> },
-        { key: 'department-analytics', label: 'Department Analytics', icon: 'fa-chart-line', render: () => <HospitalDepartmentAnalytics /> },
-        { key: 'bed-management', label: 'Bed Management', icon: 'fa-bed', render: () => <HospitalBedManagement /> },
-        { key: 'resource-management', label: 'Resource Management', icon: 'fa-warehouse', render: () => <HospitalResources /> },
+        { key: 'global-overview', label: 'Global Overview', icon: 'fa-chart-pie', render: () => <LazyModule><HospitalOverview /></LazyModule> },
+        { key: 'ai-insights', label: 'AI Insights', icon: 'fa-brain', render: () => <LazyModule><HospitalAnalytics /></LazyModule> },
+        { key: 'department-analytics', label: 'Department Analytics', icon: 'fa-chart-line', render: () => <LazyModule><HospitalDepartmentAnalytics /></LazyModule> },
+        { key: 'bed-management', label: 'Bed Management', icon: 'fa-bed', render: () => <LazyModule><HospitalBedManagement /></LazyModule> },
+        { key: 'resource-management', label: 'Resource Management', icon: 'fa-warehouse', render: () => <LazyModule><HospitalResources /></LazyModule> },
         { key: 'ambulance-coordination', label: 'Ambulance Coordination', icon: 'fa-ambulance', render: ({ user }) => (
-            <AmbulanceETARoute
+            <LazyModule><AmbulanceETARoute
                 currentHospitalId={user?._id || user?.id}
                 currentHospitalName={user?.name}
                 hospitalLocation={{ lat: 12.9716, lng: 77.5946 }}
-            />
+            /></LazyModule>
         ) },
-        { key: 'finance-overview', label: 'Finance Overview', icon: 'fa-coins', render: () => <HospitalFinanceOverview /> },
-        { key: 'staff-management', label: 'Staff Management', icon: 'fa-user-nurse', render: () => <HospitalStaffManagement /> },
-        { key: 'reports', label: 'Reports', icon: 'fa-file-alt', render: () => <HospitalReports /> },
+        { key: 'finance-overview', label: 'Finance Overview', icon: 'fa-coins', render: () => <LazyModule><HospitalFinanceOverview /></LazyModule> },
+        { key: 'staff-management', label: 'Staff Management', icon: 'fa-user-nurse', render: () => <LazyModule><HospitalStaffManagement /></LazyModule> },
+        { key: 'reports', label: 'Reports', icon: 'fa-file-alt', render: () => <LazyModule><HospitalReports /></LazyModule> },
         { key: 'multi-hospital-network', label: 'Multi-Hospital Network', icon: 'fa-network-wired', render: ({ user }) => (
-            <HospitalCommunications
+            <LazyModule><HospitalCommunications
                 currentHospitalId={user?._id || user?.id}
                 currentHospitalName={user?.name}
-            />
+            /></LazyModule>
         ) },
-        { key: 'patient-discharge', label: 'Patient Discharge', icon: 'fa-right-from-bracket', render: () => <PatientDischargeWorkflow /> },
-        { key: 'staff-scheduling', label: 'Staff Scheduling', icon: 'fa-calendar-days', render: () => <StaffSchedulingModule /> },
+        { key: 'patient-discharge', label: 'Patient Discharge', icon: 'fa-right-from-bracket', render: () => <LazyModule><PatientDischargeWorkflow /></LazyModule> },
+        { key: 'staff-scheduling', label: 'Staff Scheduling', icon: 'fa-calendar-days', render: () => <LazyModule><StaffSchedulingModule /></LazyModule> },
     ],
     emergency: [
-        { key: 'emergency-command-center', label: 'Emergency Command Center', icon: 'fa-tower-broadcast', render: () => <EmergencyCommandCenter /> },
+        { key: 'emergency-command-center', label: 'Emergency Command Center', icon: 'fa-tower-broadcast', render: () => <LazyModule><EmergencyCommandCenter /></LazyModule> },
     ],
     finance: [
-        { key: 'revenue-intelligence', label: 'Revenue Intelligence', icon: 'fa-coins', render: () => <RevenueIntelligence /> },
+        { key: 'revenue-intelligence', label: 'Revenue Intelligence', icon: 'fa-coins', render: () => <LazyModule><RevenueIntelligence /></LazyModule> },
     ],
     opd: [
-        { key: 'appointment-scheduling', label: 'Appointment Scheduling', icon: 'fa-calendar-check', render: () => <HospitalOPDScheduling /> },
-        { key: 'doctor-management', label: 'Doctor Management', icon: 'fa-user-doctor', render: () => <HospitalDoctorManagement /> },
-        { key: 'patient-queue', label: 'Patient Queue', icon: 'fa-list-check', render: () => <HospitalOPDQueue /> },
-        { key: 'consultation-records', label: 'Consultation Records', icon: 'fa-notes-medical', render: () => <HospitalConsultationRecords /> },
+        { key: 'appointment-scheduling', label: 'Appointment Scheduling', icon: 'fa-calendar-check', render: () => <LazyModule><HospitalOPDScheduling /></LazyModule> },
+        { key: 'doctor-management', label: 'Doctor Management', icon: 'fa-user-doctor', render: () => <LazyModule><HospitalDoctorManagement /></LazyModule> },
+        { key: 'patient-queue', label: 'Patient Queue', icon: 'fa-list-check', render: () => <LazyModule><HospitalOPDQueue /></LazyModule> },
+        { key: 'consultation-records', label: 'Consultation Records', icon: 'fa-notes-medical', render: () => <LazyModule><HospitalConsultationRecords /></LazyModule> },
     ],
     icu: [
-        { key: 'live-patient-monitoring', label: 'Live Patient Monitoring', icon: 'fa-heart-pulse', render: () => <HospitalICULiveMonitoring /> },
-        { key: 'critical-alerts', label: 'Critical Alerts', icon: 'fa-bell', render: () => <HospitalICUAlerts /> },
-        { key: 'ai-risk-prediction', label: 'AI Risk Prediction', icon: 'fa-brain', render: () => <HospitalICURiskPanel /> },
-        { key: 'vitals-dashboard', label: 'Vitals Dashboard', icon: 'fa-wave-square', render: () => <HospitalICUVitals /> },
+        { key: 'live-patient-monitoring', label: 'Live Patient Monitoring', icon: 'fa-heart-pulse', render: () => <LazyModule><HospitalICULiveMonitoring /></LazyModule> },
+        { key: 'critical-alerts', label: 'Critical Alerts', icon: 'fa-bell', render: () => <LazyModule><HospitalICUAlerts /></LazyModule> },
+        { key: 'ai-risk-prediction', label: 'AI Risk Prediction', icon: 'fa-brain', render: () => <LazyModule><HospitalICURiskPanel /></LazyModule> },
+        { key: 'vitals-dashboard', label: 'Vitals Dashboard', icon: 'fa-wave-square', render: () => <LazyModule><HospitalICUVitals /></LazyModule> },
     ],
     radiology: [
-        { key: 'scan-requests', label: 'Scan Requests', icon: 'fa-x-ray', render: () => <HospitalRadiologyRequests /> },
-        { key: 'report-upload', label: 'Report Upload', icon: 'fa-file-upload', render: () => <HospitalRadiologyReportUpload /> },
-        { key: 'ai-scan-insights', label: 'AI Scan Insights', icon: 'fa-robot', render: () => <HospitalRadiologyAIInsights /> },
+        { key: 'scan-requests', label: 'Scan Requests', icon: 'fa-x-ray', render: () => <LazyModule><HospitalRadiologyRequests /></LazyModule> },
+        { key: 'report-upload', label: 'Report Upload', icon: 'fa-file-upload', render: () => <LazyModule><HospitalRadiologyReportUpload /></LazyModule> },
+        { key: 'ai-scan-insights', label: 'AI Scan Insights', icon: 'fa-robot', render: () => <LazyModule><HospitalRadiologyAIInsights /></LazyModule> },
     ],
     ot: [
-        { key: 'surgery-scheduling', label: 'Surgery Scheduling', icon: 'fa-user-nurse', render: () => <HospitalOTSurgeryScheduling /> },
-        { key: 'staff-allocation', label: 'Staff Allocation', icon: 'fa-users', render: () => <HospitalOTStaffAllocation /> },
-        { key: 'equipment-tracking', label: 'Equipment Tracking', icon: 'fa-briefcase-medical', render: () => <HospitalResources /> },
+        { key: 'surgery-scheduling', label: 'Surgery Scheduling', icon: 'fa-user-nurse', render: () => <LazyModule><HospitalOTSurgeryScheduling /></LazyModule> },
+        { key: 'staff-allocation', label: 'Staff Allocation', icon: 'fa-users', render: () => <LazyModule><HospitalOTStaffAllocation /></LazyModule> },
+        { key: 'equipment-tracking', label: 'Equipment Tracking', icon: 'fa-briefcase-medical', render: () => <LazyModule><HospitalResources /></LazyModule> },
     ],
     default: [
-        { key: 'global-overview', label: 'Global Overview', icon: 'fa-chart-pie', render: () => <HospitalOverview /> },
+        { key: 'global-overview', label: 'Global Overview', icon: 'fa-chart-pie', render: () => <LazyModule><HospitalOverview /></LazyModule> },
     ],
 };
 
@@ -128,6 +143,7 @@ const useIsDesktop = () => {
 
 const DesktopHospitalDashboard = () => {
     const { user } = useAuth();
+    const { t } = useTranslation();
 
     const navigate = useNavigate();
     const { module } = useParams();
@@ -136,8 +152,9 @@ const DesktopHospitalDashboard = () => {
 
     const subRole = user?.subRole?.toLowerCase();
     const moduleSet = useMemo(() => {
-        return hospitalModuleSets[subRole] || hospitalModuleSets.default;
-    }, [subRole]);
+        const sets = hospitalModuleSets[t] || hospitalModuleSets;
+        return sets[subRole] || sets.default;
+    }, [subRole, t]);
     const allowedTabs = useMemo(() => moduleSet.map((item) => item.key), [moduleSet]);
     const defaultTab = allowedTabs[0] || 'overview';
     const moduleKey = (module || defaultTab).toLowerCase();

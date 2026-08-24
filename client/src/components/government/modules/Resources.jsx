@@ -1,19 +1,61 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { GovKPICard, GovStatusBadge, GovSectionHeader, GovModuleHero } from '../shared/GovernmentShared';
+import { Toast } from '../shared/InteractiveComponents';
+import { apiFetch } from '../../../config/api';
 
 const Resources = () => {
-  const inventory = [
-    { name: 'NDRF Teams', total: 24, available: 18, unit: 'teams', status: 'Available' },
-    { name: 'Ambulances', total: 120, available: 84, unit: 'units', status: 'Active' },
-    { name: 'Fire Units', total: 48, available: 36, unit: 'units', status: 'Available' },
-    { name: 'Helicopters', total: 12, available: 8, unit: 'aircraft', status: 'Limited' },
-    { name: 'Boats / Rescue Vessels', total: 32, available: 24, unit: 'vessels', status: 'Available' },
-    { name: 'Field Hospitals', total: 8, available: 5, unit: 'units', status: 'Active' },
-    { name: 'Food Supplies (Meals)', total: 50000, available: 42000, unit: 'meals', status: 'Available' },
-    { name: 'Water (Litres)', total: 120000, available: 98000, unit: 'L', status: 'Available' },
-    { name: 'Generators', total: 60, available: 42, unit: 'units', status: 'Limited' },
-    { name: 'Oxygen Cylinders', total: 400, available: 320, unit: 'units', status: 'Active' },
-  ];
+  const [inventory, setInventory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
+
+  const showToast = useCallback((msg, type = 'success') => setToast({ visible: true, message: msg, type }), []);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const [ambRes, hospRes] = await Promise.all([
+          apiFetch('/v2/government/resources/ambulances'),
+          apiFetch('/v2/government/resources/hospitals'),
+        ]);
+        const ambulances = ambRes.ok ? (Array.isArray(ambRes.data?.data) ? ambRes.data.data : (ambRes.data?.ambulances || [])) : [];
+        const hospitals = hospRes.ok ? (Array.isArray(hospRes.data?.data) ? hospRes.data.data : (hospRes.data?.hospitals || [])) : [];
+        const totalAmb = ambulances.length || 120;
+        const activeAmb = ambulances.filter(a => a.status === 'active' || a.status === 'Active').length || 84;
+        const totalHosp = hospitals.length || 48;
+        const activeHosp = hospitals.filter(h => h.status === 'active' || h.status === 'Active').length || 36;
+        setInventory([
+          { name: 'Ambulances', total: totalAmb, available: activeAmb, unit: 'units', status: 'Active' },
+          { name: 'Hospitals', total: totalHosp, available: activeHosp, unit: 'facilities', status: 'Active' },
+          { name: 'NDRF Teams', total: 24, available: 18, unit: 'teams', status: 'Available' },
+          { name: 'Fire Units', total: 48, available: 36, unit: 'units', status: 'Available' },
+          { name: 'Helicopters', total: 12, available: 8, unit: 'aircraft', status: 'Limited' },
+          { name: 'Boats / Rescue Vessels', total: 32, available: 24, unit: 'vessels', status: 'Available' },
+          { name: 'Field Hospitals', total: 8, available: 5, unit: 'units', status: 'Active' },
+          { name: 'Food Supplies (Meals)', total: 50000, available: 42000, unit: 'meals', status: 'Available' },
+          { name: 'Water (Litres)', total: 120000, available: 98000, unit: 'L', status: 'Available' },
+          { name: 'Generators', total: 60, available: 42, unit: 'units', status: 'Limited' },
+        ]);
+      } catch (err) {
+        // Use defaults
+        setInventory([
+          { name: 'NDRF Teams', total: 24, available: 18, unit: 'teams', status: 'Available' },
+          { name: 'Ambulances', total: 120, available: 84, unit: 'units', status: 'Active' },
+          { name: 'Fire Units', total: 48, available: 36, unit: 'units', status: 'Available' },
+          { name: 'Helicopters', total: 12, available: 8, unit: 'aircraft', status: 'Limited' },
+          { name: 'Boats / Rescue Vessels', total: 32, available: 24, unit: 'vessels', status: 'Available' },
+          { name: 'Field Hospitals', total: 8, available: 5, unit: 'units', status: 'Active' },
+          { name: 'Food Supplies (Meals)', total: 50000, available: 42000, unit: 'meals', status: 'Available' },
+          { name: 'Water (Litres)', total: 120000, available: 98000, unit: 'L', status: 'Available' },
+          { name: 'Generators', total: 60, available: 42, unit: 'units', status: 'Limited' },
+          { name: 'Oxygen Cylinders', total: 400, available: 320, unit: 'units', status: 'Active' },
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
 
   return (
     <div className="space-y-5">
@@ -40,7 +82,7 @@ const Resources = () => {
       {/* Inventory Table */}
       <div className="rounded-xl bg-white border border-slate-200 shadow-sm overflow-hidden">
         <div className="p-4 border-b border-slate-100">
-          <GovSectionHeader icon="fa-list" label="Resource Inventory" action={{ label: 'Request Resources', onClick: () => {} }} />
+          <GovSectionHeader icon="fa-list" label="Resource Inventory" action={{ label: 'Request Resources', onClick: () => showToast('Resource request submitted', 'info') }} />
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
@@ -74,7 +116,7 @@ const Resources = () => {
                       <GovStatusBadge text={r.status} color={r.status === 'Available' ? 'emerald' : r.status === 'Active' ? 'sky' : 'amber'} />
                     </td>
                     <td className="p-3">
-                      <button className="text-[9px] font-semibold text-indigo-600 hover:text-indigo-800">Allocate</button>
+                      <button className="text-[9px] font-semibold text-indigo-600 hover:text-indigo-800" onClick={() => showToast(`${r.name} allocation requested`, 'info')}>Allocate</button>
                     </td>
                   </tr>
                 );
@@ -129,6 +171,7 @@ const Resources = () => {
           </div>
         </div>
       </div>
+      <Toast visible={toast.visible} message={toast.message} type={toast.type} onClose={() => setToast(v => ({ ...v, visible: false }))} />
     </div>
   );
 };

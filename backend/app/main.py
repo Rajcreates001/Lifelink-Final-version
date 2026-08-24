@@ -58,6 +58,9 @@ from app.routes.v2.lifelink_ai import router as lifelink_ai_v2_router
 from app.routes.v2.government_auth import router as government_auth_v2_router
 from app.routes.reports.reports import router as reports_router
 from app.routes.gps_tracking import router as gps_tracking_router
+from app.routes.ml_pipeline import router as ml_pipeline_router
+from app.routes.backup import router as backup_router
+from app.routes.status import router as status_router
 from app.services.prometheus_metrics import PrometheusMiddleware, get_metrics
 
 # ─── Structured JSON Logging ───────────────────────────────
@@ -118,8 +121,84 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title=settings.app_name,
+    title="LifeLink — AI-Powered Emergency Healthcare Platform",
+    description="""
+## LifeLink Backend API
+
+Comprehensive API for AI-powered emergency healthcare management across India.
+
+### 🏥 Core Capabilities
+- **Hospital Operations** — CEO dashboard, Emergency, ICU, OPD, OT, Radiology, Finance, Staff, Beds, Equipment
+- **Ambulance Services** — Real-time dispatch, GPS tracking, navigation AI, patient monitoring
+- **Government Command** — Disaster management, intelligence, simulation, policy, resource allocation
+- **AI/ML Platform** — 28 trained models for healthcare predictions, triage, and optimization
+
+### 🔐 Authentication
+- **MongoDB Auth** (v1) — Hospital, Ambulance, Public users via `/api/auth/`
+- **Enterprise Auth** (v2) — Hospital department workspaces via `/v2/enterprise/auth/`
+- **Government Auth** (v2) — Government organizations via `/v2/gov/auth/`
+
+### 🛡️ Security
+- JWT token authentication with role-based access control
+- Fernet AES-128 encryption for patient data at rest
+- PII data masking and sanitization
+- Rate limiting and audit trail
+
+### 📊 Monitoring
+- Prometheus metrics at `/metrics`
+- Grafana dashboards at port 3000
+- Real-time WebSocket updates across all dashboards
+
+### 🗺️ GPS Tracking
+- Software-based ambulance GPS simulation (no hardware required)
+- Realistic Bangalore routes with traffic and weather effects
+""",
     version="0.1.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+    openapi_tags=[
+        {"name": "health", "description": "Health check and system status"},
+        {"name": "auth", "description": "User authentication (login, signup, JWT tokens)"},
+        {"name": "enterprise-auth", "description": "Hospital department workspace authentication"},
+        {"name": "government-auth", "description": "Government organization authentication (ABDM-aligned)"},
+        {"name": "ambulance", "description": "Ambulance dispatch, tracking, and assignments"},
+        {"name": "hospital-ops", "description": "Hospital operations — CEO, Emergency, ICU, OPD, OT, Radiology, Finance, Staff, Beds, Equipment"},
+        {"name": "discharge", "description": "Patient discharge workflow, readiness, and summaries"},
+        {"name": "government-ops", "description": "Government operations — hospitals, emergencies, resources"},
+        {"name": "government", "description": "Government V2 — disasters, monitoring, predictions, policies"},
+        {"name": "government-command", "description": "Government command center — overview, broadcast, decisions"},
+        {"name": "Simulation", "description": "Disaster simulation engine — run, step, stop, after-action reviews"},
+        {"name": "compliance", "description": "Data compliance — encryption, PII masking, HIPAA, NDHM"},
+        {"name": "gps-tracking", "description": "GPS ambulance tracking simulation — positions, routes, stats"},
+        {"name": "realtime", "description": "WebSocket connections and real-time event streaming"},
+        {"name": "ai", "description": "AI chat, insights, and hospital ML predictions"},
+        {"name": "ai-platform", "description": "AI platform — model management, inference, analytics"},
+        {"name": "ml", "description": "Machine learning model serving and predictions"},
+        {"name": "LifeLink AI", "description": "LifeLink AI chat assistant (isolated from public AI)"},
+        {"name": "rag", "description": "Retrieval-Augmented Generation for medical knowledge"},
+        {"name": "integrations", "description": "External integrations — maps, traffic, weather, geocoding"},
+        {"name": "routing", "description": "Route optimization for ambulances"},
+        {"name": "agents", "description": "Multi-agent AI system for healthcare coordination"},
+        {"name": "notifications", "description": "Push notifications and alert management"},
+        {"name": "reports", "description": "Report generation and analytics exports"},
+        {"name": "search", "description": "Full-text search across all entities"},
+        {"name": "modules", "description": "Module configuration and management"},
+        {"name": "analytics", "description": "Analytics dashboards and data pipelines"},
+        {"name": "users", "description": "User profile management"},
+        {"name": "system", "description": "System administration and cache management"},
+        {"name": "gateway", "description": "API gateway — versioning, rate limiting"},
+        {"name": "history", "description": "Activity timeline and audit history"},
+        {"name": "public", "description": "Public endpoints (no auth required)"},
+        {"name": "admin", "description": "Admin operations — user management, system config"},
+        {"name": "alerts", "description": "Alert management and notification dispatch"},
+        {"name": "dashboard", "description": "Dashboard data aggregation"},
+        {"name": "donors", "description": "Blood/organ donor management"},
+        {"name": "family", "description": "Family monitoring and patient tracking"},
+        {"name": "hospital-communication", "description": "Inter-hospital communication and messaging"},
+        {"name": "hospital-ml", "description": "Hospital-specific ML models and predictions"},
+        {"name": "requests", "description": "Internal request management"},
+    ],
     lifespan=lifespan,
 )
 
@@ -204,6 +283,15 @@ app.include_router(government_auth_v2_router, prefix="/v2")
 
 # GPS Tracking simulation routes
 app.include_router(gps_tracking_router, prefix="/api/gps-tracking")
+
+# ML Pipeline — model registry, versioning, and automated retraining
+app.include_router(ml_pipeline_router, prefix="/v2/ml-pipeline")
+
+# Backup & Restore — database backup management
+app.include_router(backup_router, prefix="/api")
+
+# Public status page (no auth required)
+app.include_router(status_router)
 
 
 # ─── Prometheus Metrics Endpoint ─────────────────────────

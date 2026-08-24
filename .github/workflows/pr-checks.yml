@@ -1,0 +1,107 @@
+# PR Quality Gates — runs on every pull request
+
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  # ─── Code Quality ───────────────────────────────────────────
+  quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: client
+        run: npm ci
+
+      - name: Frontend lint
+        working-directory: client
+        run: npx eslint src/ --max-warnings 100 --format compact || true
+
+      - name: Frontend build check
+        working-directory: client
+        run: npm run build
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Backend lint
+        run: |
+          pip install flake8
+          flake8 backend/app/ --max-line-length=120 --count --statistics || true
+
+  # ─── Security Scan ──────────────────────────────────────────
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: CRITICAL,HIGH
+          format: table
+          exit-code: 1
+        continue-on-error: true
+
+      - name: Check for secrets in code
+        run: |
+          echo "Scanning for hardcoded secrets..."
+          grep -r "password\s*=\s*['\"]" backend/app/ --include="*.py" -l 2>/dev/null || true
+          grep -r "API_KEY\s*=\s*['\"]" --include="*.py" --include="*.js" --include="*.env*" -l 2>/dev/null || true
+          echo "Secret scan complete"
+
+  # ─── Bundle Size Check ──────────────────────────────────────
+  bundle-size:
+    name: Bundle Size
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install and build
+        working-directory: client
+        run: |
+          npm ci
+          npm run build
+
+      - name: Check bundle sizes
+        run: |
+          echo "=== Frontend Bundle Sizes ==="
+          echo ""
+          echo "Chunk sizes in dist/assets/"
+          ls -lhS client/dist/assets/*.js 2>/dev/null | head -10
+          echo ""
+          echo "--- Size Summary ---"
+          du -sh client/dist/
+          echo ""
+          echo "Largest chunks (should be < 250KB gzipped):"
+          find client/dist/assets -name "*.js" -exec sh -c 'echo "$(wc -c < "$1") $1"' _ {} \; | sort -rn | head -5

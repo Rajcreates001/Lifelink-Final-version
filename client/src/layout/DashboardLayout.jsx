@@ -14,10 +14,14 @@ import AutoSaveIndicator from '../components/ui/AutoSaveIndicator';
 import LogoutToast from '../components/ui/LogoutToast';
 
 import ProfileEditModal from '../components/ProfileEditModal';
+import GlobalSearchModal from '../components/ui/GlobalSearchModal';
+import { LanguageSwitcherCompact } from '../components/ui/LanguageSwitcher';
+import { useTranslation } from 'react-i18next';
 
 const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, onRefresh, refreshLabel = 'Refresh', onAiChat, ...rest }) => {
     const { user, logout, performLogout } = useAuth();
     const navigate = useNavigate();
+    const { t } = useTranslation();
 
     const [hasUnread, setHasUnread] = useState(false);
 
@@ -55,6 +59,7 @@ const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, on
     const [showProfileEditModal, setShowProfileEditModal] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [showLogoutToast, setShowLogoutToast] = useState(false);
+    const [showGlobalSearch, setShowGlobalSearch] = useState(false);
 
     useEffect(() => {
         const checkUnread = async () => {
@@ -74,6 +79,18 @@ const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, on
         };
         if (user?.role !== 'government') checkUnread();
     }, [user?.id, user?.role]);
+
+    // Global search keyboard shortcut (Ctrl+K / Cmd+K)
+    useEffect(() => {
+        const handler = (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                setShowGlobalSearch((prev) => !prev);
+            }
+        };
+        document.addEventListener('keydown', handler);
+        return () => document.removeEventListener('keydown', handler);
+    }, []);
 
     useEffect(() => {
         if (typeof navigator === 'undefined' || !navigator.geolocation) return;
@@ -207,7 +224,7 @@ const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, on
     const subtitle = user?.role ? `${user.role} portal${user?.subRole ? ` • ${user.subRole}` : ''}` : 'Portal';
 
     return (
-        <div className="gradient-background-universal min-h-screen">
+        <div className="gradient-background-universal dark:bg-slate-950 min-h-screen dark:text-slate-100">
             <div className="flex flex-col lg:flex-row min-h-screen lg:h-screen lg:overflow-hidden">
                 <ResponsiveSidebar
                     isOpen={isDrawerOpen}
@@ -238,7 +255,7 @@ const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, on
                         />
 
                         {isMobileSearchOpen && (
-                            <div className="lg:hidden bg-white/90 backdrop-blur-lg border-b border-[#E5E7EB] px-4 pb-3">
+                            <div className="lg:hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border-b border-[#E5E7EB] dark:border-slate-700/50 px-4 pb-3">
                                 <div className="flex items-center gap-3">
                                     <div className="flex-1 min-w-0">
                                         <SearchBar
@@ -277,7 +294,7 @@ const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, on
                             </div>
                         )}
 
-                        <div className="hidden lg:block sticky top-0 z-30 bg-white/90 backdrop-blur-lg border-b border-[#E5E7EB] shrink-0">
+                        <div className="hidden lg:block sticky top-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border-b border-[#E5E7EB] dark:border-slate-700/50 shrink-0">
                             <div className="px-6 sm:px-8 py-4">
                                 <div className="flex items-center gap-3">
                                     <div className="flex-1 min-w-0">
@@ -290,6 +307,21 @@ const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, on
                                             loading={searchLoading}
                                         />
                                     </div>
+
+                                    {/* ── Language Switcher ── */}
+                                    <LanguageSwitcherCompact />
+
+                                    {/* ── Global Search Trigger ── */}
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowGlobalSearch(true)}
+                                        className="hidden lg:flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-indigo-300 dark:hover:border-indigo-600 hover:text-indigo-500 transition-all duration-200 shrink-0"
+                                        title={t('nav.search_hint')}
+                                    >
+                                        <i className="fas fa-search text-[10px]" />
+                                        <span>{t('common.search')}</span>
+                                        <kbd className="hidden xl:inline px-1.5 py-0.5 text-[9px] font-mono bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded ml-1">⌘K</kbd>
+                                    </button>
 
                                     {/* ── Reassuring Auto-Save Indicator ── */}
                                     {user && <AutoSaveIndicator className="hidden xl:inline-flex shrink-0" />}
@@ -352,10 +384,8 @@ const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, on
                             )}
                             </div>
                         </div>
-                    </main>
-                    <aside
-                        className={`hidden lg:flex flex-col absolute right-0 top-0 h-full w-[360px] bg-white/95 backdrop-blur-lg border-l border-[#E5E7EB] shadow-2xl transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${isAiPanelOpen ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}
-                    >
+                    </main>                    <aside
+                        className={`hidden lg:flex flex-col absolute right-0 top-0 h-full w-[360px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-l border-[#E5E7EB] dark:border-slate-700/50 shadow-2xl transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${isAiPanelOpen ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}>
                         <div className="p-4 h-full">
                             <LifeLinkAICopilot
                                 variant="panel"
@@ -369,7 +399,7 @@ const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, on
             </div>
             {isAiPanelOpen && (
                 <div className="lg:hidden fixed inset-0 z-50 bg-gray-900/30 backdrop-blur-sm animate-fade-in">
-                    <div className="absolute right-0 top-0 h-full w-full sm:max-w-md bg-white shadow-2xl p-4 animate-slide-in-right">
+                    <div className="absolute right-0 top-0 h-full w-full sm:max-w-md bg-white dark:bg-slate-900 shadow-2xl p-4 animate-slide-in-right">
                         <LifeLinkAICopilot
                             variant="panel"
                             onClose={() => setIsAiPanelOpen(false)}
@@ -399,6 +429,13 @@ const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, on
             <LogoutToast
                 open={showLogoutToast}
                 onClose={() => setShowLogoutToast(false)}
+            />
+
+            {/* Global Search Modal (Ctrl+K) */}
+            <GlobalSearchModal
+                open={showGlobalSearch}
+                onClose={() => setShowGlobalSearch(false)}
+                userRole={user?.role}
             />
         </div>
     );

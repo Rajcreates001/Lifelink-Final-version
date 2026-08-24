@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GovKPICard, GovStatusBadge, GovSectionHeader, GovModuleHero } from '../shared/GovernmentShared';
 import { DetailModal, ConfirmDialog, Toast, AnimatedBarChart, AnimatedLineChart, AIExplainPanel, LiveTimer, PhaseProgress } from '../shared/InteractiveComponents';
+import { apiFetch } from '../../../config/api';
 
 // ── AI Simulation Engine — generates realistic disaster scenarios ──
 const SIMULATION_TYPES = {
@@ -203,18 +204,25 @@ const SimulationCenter = () => {
       if (state.completed) {
         clearInterval(timerRef.current);
         setSimResult(state);
+        apiFetch('/v2/government/simulation/stop/' + (activeSim?.sessionId || 'current'), { method: 'POST' }).catch(() => {});
         showToast('Simulation completed successfully!', 'success');
       }
     }, 1200);
     return () => clearInterval(timerRef.current);
   }, [engine, showToast]);
 
-  const startSimulation = useCallback((type, severity, region, population) => {
+  const startSimulation = useCallback(async (type, severity, region, population) => {
     const newEngine = new SimulationEngine(type, severity, region, population);
     setEngine(newEngine);
     setActiveSim({ type, severity, region, population, startedAt: Date.now() });
     setSimState(null);
     setSimResult(null);
+    try {
+      await apiFetch('/v2/government/simulation/start', {
+        method: 'POST',
+        body: JSON.stringify({ type, severity, region, population }),
+      });
+    } catch (err) { /* simulation still runs locally */ }
     showToast(`${SIMULATION_TYPES[type].name} simulation started!`, 'info');
   }, [showToast]);
 

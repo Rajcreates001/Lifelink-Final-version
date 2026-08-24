@@ -326,7 +326,7 @@ const RevenueIntelligence = () => {
           icon: 'fa-triangle-exclamation',
           description: `${worst.name} shows low profitability (${worst.margin}% margin). Review supply chain costs and staffing levels.`,
           confidence: 76,
-          action: { label: 'Review Department', onClick: () => {} },
+          action: { label: 'Review Department', onClick: () => showToast(`Reviewing ${worst.name} department — low margin at ${worst.margin}%`, 'info') },
         });
       }
     }
@@ -337,7 +337,7 @@ const RevenueIntelligence = () => {
         icon: 'fa-shield-exclamation',
         description: `${fraudAlerts.length} anomalies flagged. Duplicate billing patterns detected in submitted invoices.`,
         confidence: 91,
-        action: { label: 'Review Alerts', onClick: () => {} },
+        action: { label: 'Review Alerts', onClick: () => showToast(`${fraudAlerts.length} fraud alerts flagged — opening review panel`, 'info') },
       });
     }
     return items;
