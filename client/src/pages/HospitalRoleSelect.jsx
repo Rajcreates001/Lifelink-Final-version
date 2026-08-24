@@ -95,21 +95,41 @@ const HospitalRoleSelect = () => {
     }
   }, [allowSwitch, user?.subRole, user?.role, navigate]);
 
-  const handleSelect = useCallback(async (subRole) => {
+  // Store enterprise token from WorkspaceAuthModal login for use in select-role
+  const enterpriseTokenRef = React.useRef(null);
+
+  const handleSelect = useCallback(async (subRole, enterpriseUser, enterpriseToken) => {
     setLoading(true);
     setError('');
     try {
+      // If we have an enterprise token from WorkspaceAuthModal, store it and use it
+      if (enterpriseToken) {
+        enterpriseTokenRef.current = enterpriseToken;
+        sessionStorage.setItem('lifelink_token', enterpriseToken);
+      }
+
+      const useToken = enterpriseToken || enterpriseTokenRef.current || sessionStorage.getItem('lifelink_token') || localStorage.getItem('lifelink_token') || '';
+
       const { ok, data } = await apiFetch('/v2/auth/select-role', {
         method: 'POST',
         body: JSON.stringify({ subRole }),
+        headers: useToken ? { Authorization: `Bearer ${useToken}` } : {},
       });
       if (!ok) {
+        // If select-role fails with enterprise token, try to use enterprise user data directly
+        if (enterpriseUser && enterpriseToken) {
+          login(enterpriseUser, enterpriseToken);
+          const dept = DEPARTMENTS.find((d) => d.key === subRole);
+          setAuthModalDept(null);
+          setTransitionDept(dept || { key: subRole, title: subRole, icon: 'fa-building' });
+          return;
+        }
         setError(data?.detail || data?.error || 'Authentication failed');
         setLoading(false);
         return;
       }
       const nextUser = { ...data.user, role: 'hospital', subRole: data.user?.subRole || subRole };
-      const token = data.token || sessionStorage.getItem('lifelink_token') || localStorage.getItem('lifelink_token') || '';
+      const token = data.token || enterpriseToken || sessionStorage.getItem('lifelink_token') || localStorage.getItem('lifelink_token') || '';
       login(nextUser, token);
       // Start transition animation
       const dept = DEPARTMENTS.find((d) => d.key === subRole);
