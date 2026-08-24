@@ -30,13 +30,3 @@ scrape_configs:
         labels:
           service: 'lifelink-backend'
           environment: 'development'
-
-  # ─── LifeLink Backend Health ─────────────────────────────
-  - job_name: 'lifelink-health'
-    metrics_path: '/health'
-    scrape_interval: 30s
-    static_configs:
-      - targets: ['host.docker.internal:4002']
-        labels:
-          service: 'lifelink-backend'
-          type: 'health'
