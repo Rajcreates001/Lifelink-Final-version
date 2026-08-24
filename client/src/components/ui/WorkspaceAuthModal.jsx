@@ -155,10 +155,11 @@ const WorkspaceAuthModal = ({ department, onClose, onLogin, loading }) => {
         return;
       }
 
-      // Verify workspace access with backend
+      // Verify workspace access with backend — must use the enterprise token, not the old JWT
       const verifyRes = await apiFetch('/v2/enterprise/auth/verify', {
         method: 'POST',
         body: JSON.stringify({ department_key: targetWorkspace.department_key }),
+        headers: { Authorization: `Bearer ${token}` },
         timeoutMs: 10000,
       });
 
