@@ -1,0 +1,949 @@
+{
+  "summary": {
+    "total": 108,
+    "passed": 48,
+    "failed": 60,
+    "success_rate": 44.4,
+    "timestamp": "2026-07-29T04:14:18.700871",
+    "base_url": "http://localhost:3001",
+    "duration_seconds": 261.8
+  },
+  "categories": {
+    "AI/ML v1": {
+      "passed": 21,
+      "failed": 3,
+      "total": 24
+    },
+    "Additional V2": {
+      "passed": 0,
+      "failed": 4,
+      "total": 4
+    },
+    "Ambulance": {
+      "passed": 5,
+      "failed": 2,
+      "total": 7
+    },
+    "Auth": {
+      "passed": 6,
+      "failed": 12,
+      "total": 18
+    },
+    "Government": {
+      "passed": 1,
+      "failed": 12,
+      "total": 13
+    },
+    "Health": {
+      "passed": 2,
+      "failed": 2,
+      "total": 4
+    },
+    "History": {
+      "passed": 1,
+      "failed": 0,
+      "total": 1
+    },
+    "Hospital": {
+      "passed": 0,
+      "failed": 8,
+      "total": 8
+    },
+    "LifeLink AI": {
+      "passed": 7,
+      "failed": 0,
+      "total": 7
+    },
+    "Notifications": {
+      "passed": 2,
+      "failed": 1,
+      "total": 3
+    },
+    "Search/Public": {
+      "passed": 0,
+      "failed": 4,
+      "total": 4
+    },
+    "Simulation": {
+      "passed": 0,
+      "failed": 3,
+      "total": 3
+    },
+    "V2 Agents": {
+      "passed": 3,
+      "failed": 2,
+      "total": 5
+    },
+    "V2 ML": {
+      "passed": 0,
+      "failed": 7,
+      "total": 7
+    }
+  },
+  "results": [
+    {
+      "test": "GET /api/health",
+      "status": "PASS",
+      "category": "Health",
+      "timestamp": "2026-07-29T04:10:01.026548",
+      "detail": "HTTP 200",
+      "response_preview": "{\"status\":\"ok\",\"service\":\"lifelink-fastapi\",\"version\":\"0.1.0\",\"timestamp\":\"2026-07-29T04:10:01.023692Z\"}"
+    },
+    {
+      "test": "GET /api/health/ready",
+      "status": "PASS",
+      "category": "Health",
+      "timestamp": "2026-07-29T04:10:03.818161",
+      "detail": "HTTP 200",
+      "response_preview": "{\"error\":{\"status\":\"ready\",\"service\":\"lifelink-fastapi\",\"version\":\"0.1.0\",\"timestamp\":\"2026-07-29T04:10:03.816880Z\",\"checks\":{\"database\":{\"status\":\"healthy\"},\"ml_models\":{\"status\":\"degraded\",\"note\":\"M"
+    },
+    {
+      "test": "GET /v2/system/health",
+      "status": "FAIL",
+      "category": "Health",
+      "timestamp": "2026-07-29T04:10:05.867789",
+      "detail": "HTTP 404",
+      "response_preview": "{\"detail\":\"Not Found\"}"
+    },
+    {
+      "test": "GET /v2/system/info",
+      "status": "FAIL",
+      "category": "Health",
+      "timestamp": "2026-07-29T04:10:07.906346",
+      "detail": "HTTP 404",
+      "response_preview": "{\"detail\":\"Not Found\"}"
+    },
+    {
+      "test": "POST /api/auth/signup (Public)",
+      "status": "FAIL",
+      "category": "Auth",
+      "timestamp": "2026-07-29T04:10:09.959916",
+      "detail": "HTTP 400",
+      "response_preview": "{\"error\":\"User already exists\"}"
+    },
+    {
+      "test": "POST /api/auth/signup (Hospital)",
+      "status": "FAIL",
+      "category": "Auth",
+      "timestamp": "2026-07-29T04:10:12.019202",
+      "detail": "HTTP 400",
+      "response_preview": "{\"error\":\"User already exists\"}"
+    },
+    {
+      "test": "POST /api/auth/signup (Ambulance)",
+      "status": "FAIL",
+      "category": "Auth",
+      "timestamp": "2026-07-29T04:10:14.076226",
+      "detail": "HTTP 429",
+      "response_preview": "{\"error\":{\"error\":\"Too many requests\",\"retry_after_seconds\":295.9}}"
+    },
+    {
+      "test": "POST /api/auth/login (Public)",
+      "status": "PASS",
+      "category": "Auth",
+      "timestamp": "2026-07-29T04:10:16.513241",
+      "detail": "HTTP 200, has_token=True",
+      "response_preview": "{\"token\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhNjk3YmQyNzdkYTFiMjkzMDEyNmM4NCIsInJvbGUiOiJwdWJsaWMiLCJleHAiOjE3ODUzMDE4MTZ9.xGsP_WDWJbBbmFPoxLH4gce_-WyyiXa-02XkiBOiL64\",\"user\":{\"id\":\"6a697"
+    },
+    {
+      "test": "POST /api/auth/login (Hospital)",
+      "status": "FAIL",
+      "category": "Auth",
+      "timestamp": "2026-07-29T04:10:18.962137",
+      "detail": "HTTP 403, has_token=False",
+      "response_preview": "{\"error\":\"Account pending Government verification.\"}"
+    },
+    {
+      "test": "POST /api/auth/login (Government)",
+      "status": "FAIL",
+      "category": "Auth",
+      "timestamp": "2026-07-29T04:10:21.026475",
+      "detail": "HTTP 400, has_token=False",
+      "response_preview": "{\"error\":\"User not found\"}"
+    },
+    {
+      "test": "POST /v2/auth/signup (Hospital V2)",
+      "status": "FAIL",
+      "category": "Auth",
+      "timestamp": "2026-07-29T04:10:23.073113",
+      "detail": "HTTP 429",
+      "response_preview": "{\"error\":{\"error\":\"Too many requests\",\"retry_after_seconds\":286.9}}"
+    },
+    {
+      "test": "POST /v2/auth/login (Hospital V2)",
+      "status": "FAIL",
+      "category": "Auth",
+      "timestamp": "2026-07-29T04:10:25.115007",
+      "detail": "HTTP 400, has_token=False",
+      "response_preview": "{\"error\":\"Hospital ID is required\"}"
+    },
+    {
+      "test": "POST /api/predict_health_risk",
+      "status": "FAIL",
+      "category": "AI/ML v1",
+      "timestamp": "2026-07-29T04:10:27.187085",
+      "detail": "HTTP 200 | Schema: risk_level=None not in ['Low', 'Medium', 'High', 'Critical']; risk_score is None",
+      "response_preview": "{\"status\":\"queued\",\"error\":\"Prediction queued; direct model execution failed: Unknown ML command: predict_risk\",\"meta\":{\"confidence\":0.0,\"reasoning\":[\"Prediction queued for background processing.\"],\"references\":[{\"title\":\"Task\",\"detail\":\"system.generate_predictions::predict_risk\"}]}}"
+    },
+    {
+      "test": "POST /api/predict_health_risk (invalid payload)",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-07-29T04:10:29.230737",
+      "detail": "HTTP 422 (expected 422)",
+      "response_preview": "{\"error\":{\"error\":\"Input validation failed: impossible values detected.\",\"warnings\":[\"Age (999) exceeds maximum plausible human lifespan (120). Please verify the patient's date of birth.\"]}}"
+    },
+    {
+      "test": "POST /api/predict_user_cluster",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-07-29T04:10:31.275042",
+      "detail": "HTTP 200, cluster=Moderate",
+      "response_preview": "{\"cluster_label\":\"Moderate\",\"cluster_id\":2,\"meta\":{\"command\":\"predict_cluster\",\"confidence\":1.0,\"data_completeness\":1.0,\"reasoning\":[\"Prediction generated from model outputs and provided inputs.\",\"Input completeness: 3/3 features provided.\"],\"references\":[{\"title\":\"Model\",\"detail\":\"ml/ai_ml.py::pred"
+    },
+    {
+      "test": "POST /api/predict_user_forecast",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-07-29T04:10:33.332578",
+      "detail": "HTTP 200",
+      "response_preview": "{\"status\":\"queued\",\"error\":\"Prediction queued; direct model execution failed: Unknown ML command: predict_forecast\",\"meta\":{\"confidence\":0.0,\"reasoning\":[\"Prediction queued for background processing.\""
+    },
+    {
+      "test": "POST /api/predict_donation_forecast",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-07-29T04:10:35.485014",
+      "detail": "HTTP 200, score=56.3",
+      "response_preview": "{\"forecast_days\":6,\"availability_score\":56.3,\"status\":\"Moderate\",\"meta\":{\"command\":\"predict_availability\",\"confidence\":1.0,\"data_completeness\":1.0,\"reasoning\":[\"Prediction generated from model outputs and provided inputs.\",\"Input completeness: 5/5 features provided.\"],\"references\":[{\"title\":\"Dataset"
+    },
+    {
+      "test": "POST /api/hosp/predict_severity",
+      "status": "FAIL",
+      "category": "AI/ML v1",
+      "timestamp": "2026-07-29T04:10:37.534051",
+      "detail": "HTTP 200 | severity_level is missing; severity_score is missing; ambulance_type is missing",
+      "response_preview": "{\"status\":\"queued\",\"error\":\"Prediction queued; direct model execution failed: Unknown ML command: predict_hosp_severity\",\"meta\":{\"confidence\":0.0,\"reasoning\":[\"Prediction queued for background processing.\"],\"references\":[{\"title\":\"Task\",\"detail\":\"system.generate_predictions::predict_hosp_severity\"}]"
+    },
+    {
+      "test": "POST /api/hosp/predict_policy",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-07-29T04:10:39.610428",
+      "detail": "HTTP 200",
+      "response_preview": "{\"error\":\"Prediction error: \\\"None of [Index(['emergency_rate', 'avg_response_time', 'hospital_bed_occupancy'], dtype='str')] are in the [columns]\\\"\",\"meta\":{\"command\":\"predict_policy_seg\",\"confidence"
+    },
+    {
+      "test": "POST /api/hosp/predict_outbreak",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-07-29T04:10:41.668830",
+      "detail": "HTTP 200",
+      "response_preview": "{\"status\":\"queued\",\"error\":\"Prediction queued; direct model execution failed: Unknown ML command: predict_forecast_outbreak\",\"meta\":{\"confidence\":0.0,\"reasoning\":[\"Prediction queued for background pro"
+    },
+    {
+      "test": "POST /api/hosp/optimize_ambulance",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-07-29T04:10:43.712663",
+      "detail": "HTTP 200",
+      "response_preview": "{\"status\":\"queued\",\"error\":\"Prediction queued; direct model execution failed: Unknown ML command: predict_allocation\",\"meta\":{\"confidence\":0.0,\"reasoning\":[\"Prediction queued for background processing"
+    },
+    {
+      "test": "POST /api/hosp/detect_anomaly",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-07-29T04:10:45.816517",
+      "detail": "HTTP 200",
+      "response_preview": "{\"error\":\"Prediction error: columns are missing: {'daily_emergency_count', 'hospital_admissions', 'region', 'disease_reports'}\",\"meta\":{\"command\":\"predict_anomaly\",\"confidence\":1.0,\"data_completeness\""
+    },
+    {
+      "test": "POST /api/gov/predict_outbreak",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-07-29T04:10:47.890340",
+      "detail": "HTTP 200",
+      "response_preview": "{\"status\":\"queued\",\"error\":\"Prediction queued; direct model execution failed: Unknown ML command: predict_forecast_outbreak\",\"meta\":{\"confidence\":0.0,\"reasoning\":[\"Prediction queued for background pro"
+    },
+    {
+      "test": "POST /api/gov/predict_severity",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-07-29T04:10:50.009208",
+      "detail": "HTTP 200",
+      "response_preview": "{\"error\":\"Prediction error: columns are missing: {'respiratory_rate', 'trauma_type', 'blood_pressure_sys', 'chief_complaint', 'age', 'heart_rate', 'oxygen_saturation', 'glasgow_coma_scale'}\",\"meta\":{\""
+    },
+    {
+      "test": "POST /api/gov/predict_availability",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-07-29T04:10:52.168542",
+      "detail": "HTTP 200",
+      "response_preview": "{\"error\":\"Prediction error: columns are missing: {'resource_type', 'hospital_stock_level', 'region', 'donation_frequency', 'month'}\",\"meta\":{\"command\":\"predict_availability\",\"confidence\":1.0,\"data_com"
+    },
+    {
+      "test": "POST /api/gov/predict_allocation",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-07-29T04:10:54.214333",
+      "detail": "HTTP 200",
+      "response_preview": "{\"status\":\"queued\",\"error\":\"Prediction queued; direct model execution failed: Unknown ML command: predict_allocation\",\"meta\":{\"confidence\":0.0,\"reasoning\":[\"Prediction queued for background processing"
+    },
+    {
+      "test": "POST /api/gov/predict_policy_segment",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-07-29T04:10:56.268185",
+      "detail": "HTTP 200",
+      "response_preview": "{\"error\":\"Prediction error: \\\"None of [Index(['emergency_rate', 'avg_response_time', 'hospital_bed_occupancy'], dtype='str')] are in the [columns]\\\"\",\"meta\":{\"command\":\"predict_policy_seg\",\"confidence"
+    },
+    {
+      "test": "POST /api/gov/predict_performance_score",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-07-29T04:10:58.332476",
+      "detail": "HTTP 200",
+      "response_preview": "{\"status\":\"queued\",\"error\":\"Prediction queued; direct model execution failed: Unknown ML command: predict_perf_score\",\"meta\":{\"confidence\":0.0,\"reasoning\":[\"Prediction queued for background processing"
+    },
+    {
+      "test": "POST /api/gov/predict_anomaly",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-07-29T04:11:00.429346",
+      "detail": "HTTP 200",
+      "response_preview": "{\"error\":\"Prediction error: columns are missing: {'daily_emergency_count', 'hospital_admissions', 'region', 'disease_reports'}\",\"meta\":{\"command\":\"predict_anomaly\",\"confidence\":1.0,\"data_completeness\""
+    },
+    {
+      "test": "POST /api/hospital/patient/recovery (Patient Recovery)",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-07-29T04:11:02.479086",
+      "detail": "HTTP 200",
+      "response_preview": "{\"error\":\"Prediction error: columns are missing: {'bmi', 'diagnosis', 'blood_pressure', 'heart_rate', 'treatment_type'}\",\"meta\":{\"command\":\"predict_recovery\",\"confidence\":1.0,\"data_completeness\":1.0,\""
+    },
+    {
+      "test": "POST /api/hospital/patient/stay (Patient Stay)",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-07-29T04:11:04.617072",
+      "detail": "HTTP 200",
+      "response_preview": "{\"predicted_stay_days\":11,\"meta\":{\"command\":\"predict_stay\",\"confidence\":1.0,\"data_completeness\":1.0,\"reasoning\":[\"Prediction generated from model outputs and provided inputs.\",\"Input completeness: 3/3"
+    },
+    {
+      "test": "POST /api/hospital/inventory/predict (Inventory Predict)",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-07-29T04:11:06.706111",
+      "detail": "HTTP 200",
+      "response_preview": "{\"item_name\":\"Unknown\",\"current_quantity\":0,\"min_threshold\":0,\"category\":\"Consumables\",\"predicted_next_week_stock\":1,\"days_left\":999,\"usage_rate_per_day\":0.1,\"status\":\"Critical - Order Immediately\",\"a"
+    },
+    {
+      "test": "POST /api/ml/predict-eta (ML ETA)",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-07-29T04:11:08.785749",
+      "detail": "HTTP 200",
+      "response_preview": "{\"eta_minutes\":37.98,\"meta\":{\"command\":\"predict_eta\",\"confidence\":1.0,\"data_completeness\":1.0,\"reasoning\":[\"Prediction generated from model outputs and provided inputs.\",\"Input completeness: 1/1 featu"
+    },
+    {
+      "test": "POST /api/check_compatibility",
+      "status": "FAIL",
+      "category": "AI/ML v1",
+      "timestamp": "2026-07-29T04:11:10.844743",
+      "detail": "HTTP 404, has_score=False",
+      "response_preview": "{\"error\":\"User not found\"}"
+    },
+    {
+      "test": "POST /api/analyze_report",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-07-29T04:11:12.892021",
+      "detail": "HTTP 200, has_analysis=True",
+      "response_preview": "{\"risk_level\":\"Moderate\",\"risk_score\":42,\"primary_category\":\"General\",\"detected_conditions\":[],\"summary\":\"Automated summary generated from the submitted report. Overall risk estimate: Moderate (42/100). This is a text-only screening, not a diagnosis.\",\"explanation\":[],\"next_steps\":[\"Share this repor"
+    },
+    {
+      "test": "GET /api/gov/emergency_hotspots",
+      "status": "PASS",
+      "category": "AI/ML v1",
+      "timestamp": "2026-07-29T04:11:14.948947",
+      "detail": "HTTP 200",
+      "response_preview": "[{\"lat\":12.9716,\"lng\":77.5946,\"emergency_type\":\"accident\",\"severity\":\"High\",\"timestamp\":\"2025-11-10T08:30:00\",\"cluster_label\":\"Unknown\",\"cluster_id\":-1},{\"lat\":12.972,\"lng\":77.595,\"emergency_type\":\"ac"
+    },
+    {
+      "test": "POST /v2/ml/health-risk (fast)",
+      "status": "FAIL",
+      "category": "V2 ML",
+      "timestamp": "2026-07-29T04:11:16.980405",
+      "detail": "HTTP 401 | risk_level=None not in ['Low', 'Medium', 'High', 'Critical']; risk_score is None",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "POST /v2/ml/health-risk (full)",
+      "status": "FAIL",
+      "category": "V2 ML",
+      "timestamp": "2026-07-29T04:11:19.042669",
+      "detail": "HTTP 401 | risk_level=None not in ['Low', 'Medium', 'High', 'Critical']; risk_score is None",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "POST /v2/ml/health-risk/async",
+      "status": "FAIL",
+      "category": "V2 ML",
+      "timestamp": "2026-07-29T04:11:21.081392",
+      "detail": "HTTP 401, has_job=False",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "POST /v2/ml/emergency-detection",
+      "status": "FAIL",
+      "category": "V2 ML",
+      "timestamp": "2026-07-29T04:11:23.117264",
+      "detail": "HTTP 401 | severity_level is missing; severity_score is missing; ambulance_type is missing",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "POST /v2/ml/eta",
+      "status": "FAIL",
+      "category": "V2 ML",
+      "timestamp": "2026-07-29T04:11:25.158959",
+      "detail": "HTTP 401, no eta",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "POST /v2/ml/hospital-load",
+      "status": "FAIL",
+      "category": "V2 ML",
+      "timestamp": "2026-07-29T04:11:27.196793",
+      "detail": "HTTP 401",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "POST /v2/ml/heatmap",
+      "status": "FAIL",
+      "category": "V2 ML",
+      "timestamp": "2026-07-29T04:11:29.247593",
+      "detail": "HTTP 401",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "GET /v2/lifelink-ai/context (no auth)",
+      "status": "PASS",
+      "category": "LifeLink AI",
+      "timestamp": "2026-07-29T04:11:31.298320",
+      "detail": "HTTP 401 (expected 401/403)",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "GET /v2/lifelink-ai/context/refresh (no auth)",
+      "status": "PASS",
+      "category": "LifeLink AI",
+      "timestamp": "2026-07-29T04:11:33.346969",
+      "detail": "HTTP 401 (expected 401/403)",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "GET /v2/lifelink-ai/conversations (no auth)",
+      "status": "PASS",
+      "category": "LifeLink AI",
+      "timestamp": "2026-07-29T04:11:35.411360",
+      "detail": "HTTP 401 (expected 401/403)",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "POST /v2/lifelink-ai/conversations (no auth)",
+      "status": "PASS",
+      "category": "LifeLink AI",
+      "timestamp": "2026-07-29T04:11:37.462886",
+      "detail": "HTTP 401 (expected 401/403)",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "GET /v2/lifelink-ai/memory (no auth)",
+      "status": "PASS",
+      "category": "LifeLink AI",
+      "timestamp": "2026-07-29T04:11:39.532556",
+      "detail": "HTTP 401 (expected 401/403)",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "POST /v2/lifelink-ai/ask (no auth)",
+      "status": "PASS",
+      "category": "LifeLink AI",
+      "timestamp": "2026-07-29T04:11:41.580060",
+      "detail": "HTTP 401 (expected 401/403)",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "LIFELINK AI GOV AUTH (NO TOKEN)",
+      "status": "PASS",
+      "category": "LifeLink AI",
+      "timestamp": "2026-07-29T04:11:57.775227",
+      "detail": "Skipped: no gov token available (expected without auth session)",
+      "response_preview": ""
+    },
+    {
+      "test": "POST /v2/agents/analyze",
+      "status": "PASS",
+      "category": "V2 Agents",
+      "timestamp": "2026-07-29T04:11:59.959629",
+      "detail": "HTTP 401",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "POST /v2/agents/decision",
+      "status": "PASS",
+      "category": "V2 Agents",
+      "timestamp": "2026-07-29T04:12:02.290683",
+      "detail": "HTTP 401",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "POST /v2/agents/workflow",
+      "status": "PASS",
+      "category": "V2 Agents",
+      "timestamp": "2026-07-29T04:12:04.612169",
+      "detail": "HTTP 401",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "GET /v2/agents/chat/sessions",
+      "status": "FAIL",
+      "category": "V2 Agents",
+      "timestamp": "2026-07-29T04:12:06.927094",
+      "detail": "HTTP 401",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "POST /v2/agents/ask",
+      "status": "FAIL",
+      "category": "V2 Agents",
+      "timestamp": "2026-07-29T04:12:16.977812",
+      "detail": "HTTP 0, has_answer=False",
+      "response_preview": "Timeout"
+    },
+    {
+      "test": "GET /v2/government/overview (Overview)",
+      "status": "FAIL",
+      "category": "Government",
+      "timestamp": "2026-07-29T04:12:21.316222",
+      "detail": "HTTP 401",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "GET /v2/government/disaster/recent (Recent Disasters)",
+      "status": "FAIL",
+      "category": "Government",
+      "timestamp": "2026-07-29T04:12:23.674273",
+      "detail": "HTTP 401",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "GET /v2/government/resources/hospitals (Hospital Resources)",
+      "status": "FAIL",
+      "category": "Government",
+      "timestamp": "2026-07-29T04:12:26.026188",
+      "detail": "HTTP 401",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "GET /v2/government/resources/ambulances (Ambulance Resources)",
+      "status": "FAIL",
+      "category": "Government",
+      "timestamp": "2026-07-29T04:12:28.376778",
+      "detail": "HTTP 401",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "GET /v2/government/monitoring/summary (Monitoring Summary)",
+      "status": "FAIL",
+      "category": "Government",
+      "timestamp": "2026-07-29T04:12:30.728013",
+      "detail": "HTTP 401",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "GET /v2/government/monitoring/feed (Monitoring Feed)",
+      "status": "FAIL",
+      "category": "Government",
+      "timestamp": "2026-07-29T04:12:33.083518",
+      "detail": "HTTP 401",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "GET /v2/government/command/overview",
+      "status": "FAIL",
+      "category": "Government",
+      "timestamp": "2026-07-29T04:12:35.442697",
+      "detail": "HTTP 401",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "POST /v2/government/command/seed",
+      "status": "FAIL",
+      "category": "Government",
+      "timestamp": "2026-07-29T04:12:37.841685",
+      "detail": "HTTP 401",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "POST /v2/government/decision/engine",
+      "status": "FAIL",
+      "category": "Government",
+      "timestamp": "2026-07-29T04:12:40.216116",
+      "detail": "HTTP 401",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "POST /v2/government/disaster/detect (Detect)",
+      "status": "FAIL",
+      "category": "Government",
+      "timestamp": "2026-07-29T04:12:42.587980",
+      "detail": "HTTP 401",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "POST /v2/government/disaster/trigger (Trigger)",
+      "status": "FAIL",
+      "category": "Government",
+      "timestamp": "2026-07-29T04:12:44.904162",
+      "detail": "HTTP 401",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "POST /v2/government/disaster/broadcast (Broadcast)",
+      "status": "FAIL",
+      "category": "Government",
+      "timestamp": "2026-07-29T04:12:47.233203",
+      "detail": "HTTP 401",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "GET /v2/government/verification/pending",
+      "status": "PASS",
+      "category": "Government",
+      "timestamp": "2026-07-29T04:12:49.583838",
+      "detail": "HTTP 401",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "POST /v2/government/simulation/start",
+      "status": "FAIL",
+      "category": "Simulation",
+      "timestamp": "2026-07-29T04:12:51.925055",
+      "detail": "HTTP 401, has_session=False",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "POST /v2/government/simulation/run",
+      "status": "FAIL",
+      "category": "Simulation",
+      "timestamp": "2026-07-29T04:12:54.268807",
+      "detail": "HTTP 401",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "POST /v2/government/simulation/multi-phase",
+      "status": "FAIL",
+      "category": "Simulation",
+      "timestamp": "2026-07-29T04:12:56.630131",
+      "detail": "HTTP 401",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "POST /v2/search (db)",
+      "status": "FAIL",
+      "category": "Search/Public",
+      "timestamp": "2026-07-29T04:12:59.041141",
+      "detail": "HTTP 401, has_results=False",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "POST /v2/search (ai)",
+      "status": "FAIL",
+      "category": "Search/Public",
+      "timestamp": "2026-07-29T04:13:01.408172",
+      "detail": "HTTP 401, has_answer=False",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "GET /v2/public/overview (Public Overview)",
+      "status": "FAIL",
+      "category": "Search/Public",
+      "timestamp": "2026-07-29T04:13:03.761730",
+      "detail": "HTTP 404",
+      "response_preview": "{\"detail\":\"Not Found\"}"
+    },
+    {
+      "test": "GET /v2/public/summary (Public Summary)",
+      "status": "FAIL",
+      "category": "Search/Public",
+      "timestamp": "2026-07-29T04:13:06.122870",
+      "detail": "HTTP 404",
+      "response_preview": "{\"detail\":\"Not Found\"}"
+    },
+    {
+      "test": "GET /api/ambulance/ (List)",
+      "status": "PASS",
+      "category": "Ambulance",
+      "timestamp": "2026-07-29T04:13:08.935477",
+      "detail": "HTTP 200",
+      "response_preview": "{\"success\":true,\"count\":1000,\"data\":[{\"_id\":\"1f03720ab5dd47959abc43a5c1e8cd9e\",\"ambulanceId\":\"AMB-6911\",\"status\":\"busy\",\"currentLocation\":{\"latitude\":13.150885003906271,\"longitude\":77.54322185613435}}"
+    },
+    {
+      "test": "GET /api/ambulance/emergency-status (Emergency Status)",
+      "status": "PASS",
+      "category": "Ambulance",
+      "timestamp": "2026-07-29T04:13:12.068523",
+      "detail": "HTTP 200",
+      "response_preview": "{\"count\":200,\"severityCounts\":{\"Critical\":0,\"High\":52,\"Medium\":148,\"Low\":0},\"alerts\":[{\"_id\":\"6a66ec7b77da1b2c6850927b\",\"user\":\"69d1572477da1b58e8c0cda2\",\"status\":\"assigned\",\"vitals\":null,\"message\":\"A"
+    },
+    {
+      "test": "GET /api/ambulance/assignments (Assignments)",
+      "status": "PASS",
+      "category": "Ambulance",
+      "timestamp": "2026-07-29T04:13:14.851506",
+      "detail": "HTTP 200",
+      "response_preview": "{\"count\":200,\"data\":[{\"_id\":\"6a5fabc677da1b8ca8f89e66\",\"pickup\":\"Central Zone\",\"status\":\"Completed\",\"eventId\":null,\"hospital\":\"69d1572477da1b58e8c0ce6b\",\"createdAt\":\"2026-07-21T17:26:16.624870\",\"updat"
+    },
+    {
+      "test": "GET /api/ambulance/patient-info",
+      "status": "PASS",
+      "category": "Ambulance",
+      "timestamp": "2026-07-29T04:13:17.587969",
+      "detail": "HTTP 200",
+      "response_preview": "{\"count\":50,\"data\":[{\"id\":\"6a5fabc777da1b8ca8f89eaf\",\"patient\":null,\"emergencyType\":null,\"status\":\"Active\",\"patientVitals\":{}},{\"id\":\"6a5fabc677da1b8ca8f89e68\",\"patient\":null,\"emergencyType\":null,\"sta"
+    },
+    {
+      "test": "GET /api/ambulance/history",
+      "status": "PASS",
+      "category": "Ambulance",
+      "timestamp": "2026-07-29T04:13:20.344242",
+      "detail": "HTTP 200",
+      "response_preview": "{\"count\":200,\"data\":[{\"_id\":\"6a5fabc777da1b8ca8f89ead\",\"pickup\":\"Central Zone\",\"status\":\"Completed\",\"eventId\":null,\"hospital\":\"69d1572477da1b58e8c0ce6b\",\"createdAt\":\"2026-07-21T17:26:16.624870\",\"updat"
+    },
+    {
+      "test": "GET /v2/ambulance/pending (Pending)",
+      "status": "FAIL",
+      "category": "Ambulance",
+      "timestamp": "2026-07-29T04:13:22.388578",
+      "detail": "HTTP 404",
+      "response_preview": "{\"detail\":\"Not Found\"}"
+    },
+    {
+      "test": "GET /v2/ambulance/modules (Modules)",
+      "status": "FAIL",
+      "category": "Ambulance",
+      "timestamp": "2026-07-29T04:13:24.411961",
+      "detail": "HTTP 401",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "GET /api/hospital/stats (Stats)",
+      "status": "FAIL",
+      "category": "Hospital",
+      "timestamp": "2026-07-29T04:13:26.466559",
+      "detail": "HTTP 404",
+      "response_preview": "{\"detail\":\"Not Found\"}"
+    },
+    {
+      "test": "GET /api/hospital/alerts (Alerts)",
+      "status": "FAIL",
+      "category": "Hospital",
+      "timestamp": "2026-07-29T04:13:28.514549",
+      "detail": "HTTP 404",
+      "response_preview": "{\"detail\":\"Not Found\"}"
+    },
+    {
+      "test": "GET /api/hospital-ops/hospitals (Ops Hospitals)",
+      "status": "FAIL",
+      "category": "Hospital",
+      "timestamp": "2026-07-29T04:13:30.567816",
+      "detail": "HTTP 404",
+      "response_preview": "{\"detail\":\"Not Found\"}"
+    },
+    {
+      "test": "GET /api/hospital-ops/emergencies (Ops Emergencies)",
+      "status": "FAIL",
+      "category": "Hospital",
+      "timestamp": "2026-07-29T04:13:32.619417",
+      "detail": "HTTP 404",
+      "response_preview": "{\"detail\":\"Not Found\"}"
+    },
+    {
+      "test": "GET /api/hospital-ops/ambulances (Ops Ambulances)",
+      "status": "FAIL",
+      "category": "Hospital",
+      "timestamp": "2026-07-29T04:13:34.668519",
+      "detail": "HTTP 404",
+      "response_preview": "{\"detail\":\"Not Found\"}"
+    },
+    {
+      "test": "GET /v2/hospital/modules (Modules)",
+      "status": "FAIL",
+      "category": "Hospital",
+      "timestamp": "2026-07-29T04:13:36.715362",
+      "detail": "HTTP 401",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "GET /v2/hospital/overview (Overview)",
+      "status": "FAIL",
+      "category": "Hospital",
+      "timestamp": "2026-07-29T04:13:38.763828",
+      "detail": "HTTP 401",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "GET /api/hospital-ops/reports",
+      "status": "FAIL",
+      "category": "Hospital",
+      "timestamp": "2026-07-29T04:13:40.812944",
+      "detail": "HTTP 422",
+      "response_preview": "{\"error\":\"Validation failed\",\"details\":[{\"type\":\"missing\",\"loc\":[\"query\",\"hospitalId\"],\"msg\":\"Field required\",\"input\":null}]}"
+    },
+    {
+      "test": "POST /api/alerts",
+      "status": "FAIL",
+      "category": "Notifications",
+      "timestamp": "2026-07-29T04:13:42.863020",
+      "detail": "HTTP 422",
+      "response_preview": "{\"error\":\"Validation failed\",\"details\":[{\"type\":\"missing\",\"loc\":[\"body\",\"userId\"],\"msg\":\"Field required\",\"input\":{\"message\":\"E2E Test alert - flood warning in Mangaluru\",\"severity\":\"High\",\"location\":\""
+    },
+    {
+      "test": "GET /api/donors (Donors List)",
+      "status": "PASS",
+      "category": "Notifications",
+      "timestamp": "2026-07-29T04:13:44.934127",
+      "detail": "HTTP 200",
+      "response_preview": "[{\"user_id\":\"69d1572477da1b58e8c0cda2\",\"name\":\"Michelle Barajas\",\"location\":\"New Benjamin\",\"blood_group\":\"O+\",\"phone\":\"2982899600\",\"age\":null,\"gender\":null,\"availability\":\"Available\",\"lastDonation\":\"2"
+    },
+    {
+      "test": "GET /api/donors/forecast (Donors Forecast)",
+      "status": "PASS",
+      "category": "Notifications",
+      "timestamp": "2026-07-29T04:13:47.014321",
+      "detail": "HTTP 200",
+      "response_preview": "{\"blood_group\":\"All\",\"supply\":103,\"demand\":184,\"availability_score\":28,\"demand_index\":81,\"forecast_days\":1,\"meta\":{\"confidence\":0.6,\"reasoning\":[\"Availability derived from active donor count and recen"
+    },
+    {
+      "test": "GET /v2/gov/auth/status (Status)",
+      "status": "PASS",
+      "category": "Auth",
+      "timestamp": "2026-07-29T04:13:49.071880",
+      "detail": "HTTP 200",
+      "response_preview": "{\"tables\":{\"enterprise_users\":370,\"enterprise_roles\":48,\"enterprise_permissions\":108,\"enterprise_departments\":79,\"enterprise_user_departments\":370,\"enterprise_sessions\":26,\"enterprise_audit_logs\":29},"
+    },
+    {
+      "test": "GET /v2/gov/auth/organizations (Organizations)",
+      "status": "PASS",
+      "category": "Auth",
+      "timestamp": "2026-07-29T04:13:51.129078",
+      "detail": "HTTP 200",
+      "response_preview": "{\"count\":68,\"organizations\":[{\"key\":\"ministry_health\",\"name\":\"Ministry of Health & Family Welfare\",\"description\":\"National health policy & governance\",\"category\":\"national\",\"location\":\"New Delhi\",\"sta"
+    },
+    {
+      "test": "GET /v2/gov/auth/profile (Profile)",
+      "status": "FAIL",
+      "category": "Auth",
+      "timestamp": "2026-07-29T04:13:53.559012",
+      "detail": "HTTP 401",
+      "response_preview": "{\"error\":\"Missing authorization\"}"
+    },
+    {
+      "test": "GET /v2/gov/auth/dev-creds (Dev Creds)",
+      "status": "PASS",
+      "category": "Auth",
+      "timestamp": "2026-07-29T04:13:56.120830",
+      "detail": "HTTP 200",
+      "response_preview": "{\"credentials\":[{\"department\":\"air_force_liaison\",\"department_name\":\"Air Force Liaison\",\"role\":\"military_liaison\",\"email\":\"air.force.liaison.admin@gov.lifelink.demo\",\"password\":\"LifeLink@123\",\"name\":\""
+    },
+    {
+      "test": "GET /v2/enterprise/auth/status (Status)",
+      "status": "PASS",
+      "category": "Auth",
+      "timestamp": "2026-07-29T04:13:58.170138",
+      "detail": "HTTP 200",
+      "response_preview": "{\"tables\":{\"enterprise_users\":370,\"enterprise_roles\":48,\"enterprise_permissions\":108,\"enterprise_departments\":79,\"enterprise_user_departments\":370,\"enterprise_sessions\":26,\"enterprise_audit_logs\":31}}"
+    },
+    {
+      "test": "GET /v2/enterprise/auth/workspaces (Workspaces)",
+      "status": "FAIL",
+      "category": "Auth",
+      "timestamp": "2026-07-29T04:14:00.208601",
+      "detail": "HTTP 401",
+      "response_preview": "{\"error\":\"Missing or invalid authorization\"}"
+    },
+    {
+      "test": "GET /v2/enterprise/auth/dev-creds (Dev Creds)",
+      "status": "PASS",
+      "category": "Auth",
+      "timestamp": "2026-07-29T04:14:02.336638",
+      "detail": "HTTP 200",
+      "response_preview": "{\"credentials\":[{\"department\":\"air_force_liaison\",\"role\":\"military_liaison\",\"email\":\"air.force.liaison.admin@gov.lifelink.demo\",\"password\":\"Password123\",\"name\":\"Admin ? Air Force Liaison\"},{\"departmen"
+    },
+    {
+      "test": "GET /v2/gateway/portals (Portals)",
+      "status": "FAIL",
+      "category": "Auth",
+      "timestamp": "2026-07-29T04:14:04.385716",
+      "detail": "HTTP 404",
+      "response_preview": "{\"detail\":\"Not Found\"}"
+    },
+    {
+      "test": "GET /v2/gateway/summary (Gateway Summary)",
+      "status": "FAIL",
+      "category": "Auth",
+      "timestamp": "2026-07-29T04:14:06.430586",
+      "detail": "HTTP 404",
+      "response_preview": "{\"detail\":\"Not Found\"}"
+    },
+    {
+      "test": "GET /v2/analytics/insights (Analytics Insights)",
+      "status": "FAIL",
+      "category": "Auth",
+      "timestamp": "2026-07-29T04:14:08.477169",
+      "detail": "HTTP 404",
+      "response_preview": "{\"detail\":\"Not Found\"}"
+    },
+    {
+      "test": "GET /v2/history",
+      "status": "PASS",
+      "category": "History",
+      "timestamp": "2026-07-29T04:14:10.519388",
+      "detail": "HTTP 404",
+      "response_preview": "{\"detail\":\"Not Found\"}"
+    },
+    {
+      "test": "GET /v2/realtime/status",
+      "status": "FAIL",
+      "category": "Additional V2",
+      "timestamp": "2026-07-29T04:14:12.549272",
+      "detail": "HTTP 404",
+      "response_preview": "{\"detail\":\"Not Found\"}"
+    },
+    {
+      "test": "GET /v2/routing/summary",
+      "status": "FAIL",
+      "category": "Additional V2",
+      "timestamp": "2026-07-29T04:14:14.609852",
+      "detail": "HTTP 404",
+      "response_preview": "{\"detail\":\"Not Found\"}"
+    },
+    {
+      "test": "GET /v2/hospital/modules",
+      "status": "FAIL",
+      "category": "Additional V2",
+      "timestamp": "2026-07-29T04:14:16.652692",
+      "detail": "HTTP 401",
+      "response_preview": "{\"error\":\"Missing Authorization header\"}"
+    },
+    {
+      "test": "GET /v2/notifications/modules",
+      "status": "FAIL",
+      "category": "Additional V2",
+      "timestamp": "2026-07-29T04:14:18.700306",
+      "detail": "HTTP 404",
+      "response_preview": "{\"detail\":\"Not Found\"}"
+    }
+  ]
+}

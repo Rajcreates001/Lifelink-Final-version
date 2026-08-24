@@ -22,6 +22,7 @@ const Resources = lazy(() => import('../components/ambulance/modules/Resources')
 const Reports = lazy(() => import('../components/ambulance/modules/Reports'));
 const Simulation = lazy(() => import('../components/ambulance/modules/Simulation'));
 const Settings = lazy(() => import('../components/ambulance/modules/Settings'));
+const GPSTracking = lazy(() => import('../components/ambulance/GPSTrackingSimulator'));
 
 // ─── Module Metadata ──────────────────────────────────────────
 // ─── Module Route Keys (must match user's spec exactly) ─────
@@ -38,6 +39,7 @@ const MODULE_KEYS = [
   'activity',
   'reports',
   'simulation',
+  'gps-tracking',
   'settings',
 ];
 
@@ -53,6 +55,7 @@ const moduleLabels = {
   'activity': 'Activity Feed',
   'reports': 'Reports',
   'simulation': 'Simulation',
+  'gps-tracking': 'GPS Tracking',
   'settings': 'Settings',
 };
 
@@ -68,6 +71,7 @@ const moduleIcons = {
   'activity': 'fa-timeline',
   'reports': 'fa-file-alt',
   'simulation': 'fa-play',
+  'gps-tracking': 'fa-satellite-dish',
   'settings': 'fa-cog',
 };
 
@@ -90,6 +94,7 @@ const MODULE_COMPONENT_MAP = {
   'activity': ActivityFeed,
   'reports': Reports,
   'simulation': Simulation,
+  'gps-tracking': GPSTracking,
   'settings': Settings,
 };
 
@@ -312,11 +317,11 @@ const DesktopAmbulanceDashboard = () => {
                 </Suspense>
               ) : (
                 <Comp
-                  vehicle={DEMO_VEHICLE}
-                  incident={DEMO_INCIDENT}
-                  hospital={DEMO_HOSPITAL}
-                  toIncident={DEMO_TO_INCIDENT}
-                  toHospital={DEMO_TO_HOSPITAL}
+                  vehicle={undefined}
+                  incident={undefined}
+                  hospital={undefined}
+                  toIncident={undefined}
+                  toHospital={undefined}
                   missionStart={missionStart}
                   patientStatus="Critical"
                   goldenHour
@@ -449,11 +454,11 @@ const MobileAmbulanceDashboard = () => {
                 {isActive ? (
                   <Suspense fallback={<ModuleFallback />}>
                     <Comp
-                      vehicle={DEMO_VEHICLE}
-                      incident={DEMO_INCIDENT}
-                      hospital={DEMO_HOSPITAL}
-                      toIncident={DEMO_TO_INCIDENT}
-                      toHospital={DEMO_TO_HOSPITAL}
+                      vehicle={undefined}
+                      incident={undefined}
+                      hospital={undefined}
+                      toIncident={undefined}
+                      toHospital={undefined}
                       missionStart={missionStart}
                       patientStatus="Critical"
                       goldenHour

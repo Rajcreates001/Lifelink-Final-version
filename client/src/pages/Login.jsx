@@ -102,7 +102,7 @@ const Login = () => {
         setLoading(true);
         try {
             if (!API_BASE_URL) {
-                setError('API URL not configured. Set VITE_API_URL in client/.env (e.g. http://localhost:3001) and restart Vite.');
+                setError('API URL not configured. Set VITE_API_URL in client/.env (e.g. the backend server) and restart Vite.');
                 return;
             }
             if (formData.role === 'hospital' && !formData.hospitalId.trim()) {
@@ -142,7 +142,7 @@ const Login = () => {
         } catch (err) {
             const msg = err.message || '';
             setError(msg === 'Failed to fetch'
-                ? 'Cannot reach server. Ensure the backend is running on http://localhost:3001.'
+                ? 'Cannot reach server. Ensure the backend is running on the backend server.'
                 : msg);
         } finally {
             setLoading(false);

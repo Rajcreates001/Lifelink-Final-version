@@ -762,5 +762,193 @@
         "created_at": "2026-04-06T15:45:01.678661"
       }
     }
+  },
+  {
+    "timestamp": "2026-08-22T16:35:05.260834",
+    "test": "anonymization",
+    "status": "FAIL",
+    "details": "PII removed from anonymized payload",
+    "input": {
+      "id": "emg-1",
+      "name": "Jane Doe",
+      "phone": "+100000000",
+      "address": "123 Test St",
+      "severity": "High",
+      "location": "12.9,77.5",
+      "patient_id": "p-999"
+    },
+    "output": {
+      "error": "Invalid token"
+    },
+    "pii_found": false
+  },
+  {
+    "timestamp": "2026-08-22T16:35:34.214562",
+    "test": "differential_privacy",
+    "status": "FAIL",
+    "details": "No weight variation detected",
+    "input": {
+      "hospital_id": "demo-hospital",
+      "weight_count": 8,
+      "noise_std": 0.08
+    },
+    "output": {
+      "first": null,
+      "second": null
+    },
+    "difference_detected": false
+  },
+  {
+    "timestamp": "2026-08-22T16:35:34.271738",
+    "test": "federated_privacy",
+    "status": "FAIL",
+    "details": "PII detected in response",
+    "input": {
+      "hospital_id": "demo-hospital",
+      "metrics": {
+        "samples": 120
+      },
+      "weights": [
+        0.1,
+        0.2,
+        0.3
+      ],
+      "name": "Jane Doe",
+      "phone": "+100000000",
+      "patient_id": "p-123"
+    },
+    "output": {
+      "error": "Invalid token"
+    }
+  },
+  {
+    "timestamp": "2026-08-22T16:41:06.528122",
+    "test": "anonymization",
+    "status": "PASS",
+    "details": "PII removed from anonymized payload",
+    "input": {
+      "id": "emg-1",
+      "name": "Jane Doe",
+      "phone": "+100000000",
+      "address": "123 Test St",
+      "severity": "High",
+      "location": "12.9,77.5",
+      "patient_id": "p-999"
+    },
+    "output": {
+      "status": "stored",
+      "anonymized": {
+        "hashed_id": "ebb020287e16b669a699cb9bbcfb4ef72a93e9f77015030d6660f9a97e147da0",
+        "severity": "High",
+        "location": "12.9,77.5"
+      }
+    },
+    "pii_found": false
+  },
+  {
+    "timestamp": "2026-08-22T16:41:10.993518",
+    "test": "differential_privacy",
+    "status": "PASS",
+    "details": "Noise detected in weights",
+    "input": {
+      "hospital_id": "demo-hospital",
+      "weight_count": 8,
+      "noise_std": 0.08
+    },
+    "output": {
+      "first": {
+        "id": "f70ac8677df3469887ce8eed89217ea9",
+        "type": "federated_local",
+        "result": {
+          "hospital_id": "demo-hospital",
+          "weights": [
+            0.4591463490525174,
+            -0.8384177099562184,
+            -0.9641660284089003,
+            0.659620664676654,
+            0.3834965612133052,
+            1.0198689432092634,
+            0.19965612885155593,
+            -1.0153450645035942
+          ],
+          "samples": 120
+        },
+        "confidence": 0.75,
+        "created_at": "2026-08-22T16:41:06.896950"
+      },
+      "second": {
+        "id": "96688d1af8eb4059a609598fdbc01242",
+        "type": "federated_local",
+        "result": {
+          "hospital_id": "demo-hospital",
+          "weights": [
+            -0.27975776184303197,
+            -0.14154749839931313,
+            -0.33013017959218505,
+            0.7073893189336526,
+            -0.31215293316145726,
+            -0.19984988467838824,
+            -0.7646130616169189,
+            0.4906425178387147
+          ],
+          "samples": 120
+        },
+        "confidence": 0.75,
+        "created_at": "2026-08-22T16:41:08.960047"
+      }
+    },
+    "difference_detected": true
+  },
+  {
+    "timestamp": "2026-08-22T16:41:11.051442",
+    "test": "federated_privacy",
+    "status": "PASS",
+    "details": "Only weights transmitted",
+    "input": {
+      "hospital_id": "demo-hospital",
+      "metrics": {
+        "samples": 120
+      },
+      "weights": [
+        0.1,
+        0.2,
+        0.3
+      ],
+      "name": "Jane Doe",
+      "phone": "+100000000",
+      "patient_id": "p-123"
+    },
+    "output": {
+      "job_id": "4d2b0c6d-987a-420b-abc4-a19f98609717",
+      "status": "PENDING",
+      "fallback": {
+        "id": "52d0a59eea5d4a03b80405613c87eb6d",
+        "type": "federated_local",
+        "result": {
+          "hospital_id": "demo-hospital",
+          "weights": [
+            0.16238241578129803,
+            -0.9667002280952138,
+            0.3206183396359726,
+            -0.4947966725949394,
+            0.8921522368120193,
+            -0.12364973812011171,
+            -0.7700344629884489,
+            -0.19776112087505268,
+            0.898954902753121,
+            0.4884980895635006,
+            -0.612426400031934,
+            0.8805726631288597,
+            -0.6162145990533235,
+            -0.1778869854407094,
+            0.024978311634227333,
+            0.28537108840741365
+          ],
+          "samples": 120
+        },
+        "confidence": 0.75,
+        "created_at": "2026-08-22T16:41:11.047099"
+      }
+    }
   }
 ]

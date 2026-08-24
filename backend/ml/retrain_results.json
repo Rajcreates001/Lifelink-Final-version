@@ -1,0 +1,182 @@
+[
+  {
+    "model": "health_risk",
+    "status": "FAIL",
+    "accuracy": null,
+    "r2": null,
+    "mae": null,
+    "rows": null,
+    "extra": "Invalid classes inferred from unique values of `y`.  Expected: [0 1 2], got ['high' 'low' 'moderate'"
+  },
+  {
+    "model": "bed_forecast",
+    "status": "PASS",
+    "accuracy": null,
+    "r2": 0.9997241497039795,
+    "mae": 1.3633226156234741,
+    "rows": 10000,
+    "extra": null
+  },
+  {
+    "model": "eta",
+    "status": "PASS",
+    "accuracy": null,
+    "r2": -0.015441921793132085,
+    "mae": 12.844557754516602,
+    "rows": 10000,
+    "extra": null
+  },
+  {
+    "model": "emergency_severity",
+    "status": "PASS",
+    "accuracy": 0.231,
+    "r2": null,
+    "mae": null,
+    "rows": 10000,
+    "extra": null
+  },
+  {
+    "model": "inventory",
+    "status": "PASS",
+    "accuracy": null,
+    "r2": 0.9839202213572807,
+    "mae": 28.791424986853002,
+    "rows": 10000,
+    "extra": null
+  },
+  {
+    "model": "compatibility",
+    "status": "PASS",
+    "accuracy": 0.475,
+    "r2": null,
+    "mae": null,
+    "rows": 2000,
+    "extra": null
+  },
+  {
+    "model": "hospital_recommendation",
+    "status": "PASS",
+    "accuracy": 0.4975,
+    "r2": null,
+    "mae": null,
+    "rows": 2000,
+    "extra": null
+  },
+  {
+    "model": "activity_cluster",
+    "status": "PASS",
+    "accuracy": null,
+    "r2": null,
+    "mae": null,
+    "rows": 2000,
+    "extra": "k=5"
+  },
+  {
+    "model": "behavior_forecast",
+    "status": "PASS",
+    "accuracy": null,
+    "r2": -0.00012733959298460995,
+    "mae": null,
+    "rows": 2000,
+    "extra": null
+  },
+  {
+    "model": "emergency_hotspot",
+    "status": "PASS",
+    "accuracy": null,
+    "r2": null,
+    "mae": null,
+    "rows": 2000,
+    "extra": "k=8"
+  },
+  {
+    "model": "policy_segmentation",
+    "status": "PASS",
+    "accuracy": null,
+    "r2": null,
+    "mae": null,
+    "rows": 2000,
+    "extra": "k=4"
+  },
+  {
+    "model": "healthcare_performance",
+    "status": "PASS",
+    "accuracy": null,
+    "r2": -0.006576351584383078,
+    "mae": null,
+    "rows": 2000,
+    "extra": null
+  },
+  {
+    "model": "anomaly_detection",
+    "status": "PASS",
+    "accuracy": null,
+    "r2": null,
+    "mae": null,
+    "rows": 2000,
+    "extra": null
+  },
+  {
+    "model": "hospital_severity",
+    "status": "PASS",
+    "accuracy": 0.36,
+    "r2": null,
+    "mae": null,
+    "rows": 2000,
+    "extra": null
+  },
+  {
+    "model": "staff_allocation",
+    "status": "PASS",
+    "accuracy": 0.3375,
+    "r2": null,
+    "mae": null,
+    "rows": 2000,
+    "extra": null
+  },
+  {
+    "model": "hospital_performance",
+    "status": "PASS",
+    "accuracy": null,
+    "r2": null,
+    "mae": null,
+    "rows": 2000,
+    "extra": "k=4"
+  },
+  {
+    "model": "recovery",
+    "status": "PASS",
+    "accuracy": 0.455,
+    "r2": null,
+    "mae": null,
+    "rows": 2000,
+    "extra": null
+  },
+  {
+    "model": "stay_duration",
+    "status": "PASS",
+    "accuracy": null,
+    "r2": -0.15297940981560054,
+    "mae": 4.068538214285715,
+    "rows": 2000,
+    "extra": null
+  },
+  {
+    "model": "donor_availability",
+    "status": "PASS",
+    "accuracy": null,
+    "r2": -0.19798097422790706,
+    "mae": null,
+    "rows": 2000,
+    "extra": null
+  },
+  {
+    "model": "allocation_qtable",
+    "status": "PASS",
+    "accuracy": null,
+    "r2": null,
+    "mae": null,
+    "rows": 40,
+    "extra": "Q-table 10x4"
+  }
+]

@@ -543,5 +543,170 @@
       "created_at": "2026-04-06T15:44:55.761887"
     },
     "valid": true
+  },
+  {
+    "timestamp": "2026-08-22T16:33:54.177519",
+    "test": "ai_output",
+    "status": "FAIL",
+    "details": "Prediction exists and is retrievable",
+    "input": {
+      "type": "demand_forecast",
+      "payload": {
+        "series": [
+          12,
+          15,
+          18,
+          22
+        ],
+        "steps": 4
+      }
+    },
+    "output": {
+      "trigger": {
+        "error": "Invalid token"
+      },
+      "latest": null
+    }
+  },
+  {
+    "timestamp": "2026-08-22T16:34:52.559082",
+    "test": "ai_output",
+    "status": "FAIL",
+    "details": "Prediction exists and is retrievable",
+    "input": {
+      "type": "demand_forecast",
+      "payload": {
+        "series": [
+          12,
+          15,
+          18,
+          22
+        ],
+        "steps": 4
+      }
+    },
+    "output": {
+      "trigger": {
+        "error": "Invalid token"
+      },
+      "latest": null
+    }
+  },
+  {
+    "timestamp": "2026-08-22T16:35:05.194565",
+    "test": "ai_reasoning",
+    "status": "FAIL",
+    "details": "Prediction contains confidence and reasoning",
+    "input": {
+      "type": "demand_forecast",
+      "payload": {
+        "series": [
+          9,
+          12,
+          14,
+          20
+        ],
+        "steps": 4
+      }
+    },
+    "output": null,
+    "valid": false
+  },
+  {
+    "timestamp": "2026-08-22T16:41:05.411980",
+    "test": "ai_output",
+    "status": "PASS",
+    "details": "Prediction exists and is retrievable",
+    "input": {
+      "type": "demand_forecast",
+      "payload": {
+        "series": [
+          12,
+          15,
+          18,
+          22
+        ],
+        "steps": 4
+      }
+    },
+    "output": {
+      "trigger": {
+        "job_id": "098462e7-b772-4580-8ad1-90b38a6f2fcd",
+        "status": "PENDING",
+        "fallback": {
+          "id": "2b88125d1a8a4bca95e15953dc448909",
+          "type": "demand_forecast",
+          "result": {
+            "prediction": "High emergency risk",
+            "confidence": 0.86,
+            "reasoning": "Spike in incidents + hospital load trend",
+            "suggested_action": "Deploy 3 ambulances",
+            "forecast": [
+              25.0,
+              28.3,
+              31.599999999999998,
+              34.9
+            ]
+          },
+          "confidence": 0.86,
+          "created_at": "2026-08-22T16:41:04.357041"
+        }
+      },
+      "latest": {
+        "id": "2b88125d1a8a4bca95e15953dc448909",
+        "type": "demand_forecast",
+        "result": {
+          "prediction": "High emergency risk",
+          "confidence": 0.86,
+          "reasoning": "Spike in incidents + hospital load trend",
+          "suggested_action": "Deploy 3 ambulances",
+          "forecast": [
+            25.0,
+            28.3,
+            31.599999999999998,
+            34.9
+          ]
+        },
+        "confidence": 0.86,
+        "created_at": "2026-08-22T16:41:04.357041"
+      }
+    }
+  },
+  {
+    "timestamp": "2026-08-22T16:41:06.475596",
+    "test": "ai_reasoning",
+    "status": "PASS",
+    "details": "Prediction contains confidence and reasoning",
+    "input": {
+      "type": "demand_forecast",
+      "payload": {
+        "series": [
+          9,
+          12,
+          14,
+          20
+        ],
+        "steps": 4
+      }
+    },
+    "output": {
+      "id": "3b4fd481665e449b9d427e4d5b2c537a",
+      "type": "demand_forecast",
+      "result": {
+        "prediction": "High emergency risk",
+        "confidence": 0.86,
+        "reasoning": "Spike in incidents + hospital load trend",
+        "suggested_action": "Deploy 3 ambulances",
+        "forecast": [
+          22.5,
+          26.0,
+          29.5,
+          33.0
+        ]
+      },
+      "confidence": 0.86,
+      "created_at": "2026-08-22T16:41:05.447514"
+    },
+    "valid": true
   }
 ]

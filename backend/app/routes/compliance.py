@@ -13,6 +13,8 @@ from app.services.healthcare_compliance import (
     DataPrivacyService,
     ConsentType,
 )
+from app.services.encryption import encrypt_field, decrypt_field, encrypt_patient_data, decrypt_patient_data, is_encryption_enabled
+from app.services.data_masking import mask_dict, mask_list, sanitize_for_log
 
 router = APIRouter(tags=["compliance"])
 
@@ -143,3 +145,43 @@ async def ndhm_standards():
         "compliance_level": "scaffolded",
         "note": "Full ABDM integration requires sandbox credentials from abdm.gov.in",
     }
+
+
+@router.get("/compliance/encryption/status")
+async def encryption_status():
+    """Check encryption service status."""
+    return {
+        "enabled": is_encryption_enabled(),
+        "algorithm": "Fernet (AES-128-CBC)",
+        "sensitive_fields": 12,
+        "note": "Patient data encrypted at rest when ENCRYPTION_KEY is set",
+    }
+
+
+@router.post("/compliance/encrypt/patient")
+async def encrypt_patient(payload: dict = Body(default_factory=dict)):
+    """Encrypt sensitive fields in a patient record."""
+    encrypted = encrypt_patient_data(payload)
+    return {"encrypted": encrypted, "fields_encrypted": list(set(payload.keys()) & {'name', 'phone', 'email', 'address', 'patient_id'})}
+
+
+@router.post("/compliance/decrypt/patient")
+async def decrypt_patient(payload: dict = Body(default_factory=dict)):
+    """Decrypt sensitive fields in a patient record."""
+    decrypted = decrypt_patient_data(payload)
+    return {"decrypted": decrypted}
+
+
+@router.post("/compliance/mask")
+async def mask_pii(payload: dict = Body(default_factory=dict)):
+    """Mask PII fields in data for safe API responses."""
+    data = payload.get("data", payload)
+    masked = mask_dict(data) if isinstance(data, dict) else mask_list(data) if isinstance(data, list) else data
+    return {"masked": masked}
+
+
+@router.post("/compliance/sanitize-log")
+async def sanitize_log(payload: dict = Body(default_factory=dict)):
+    """Sanitize data for safe logging (removes all PII)."""
+    sanitized = sanitize_for_log(payload)
+    return {"sanitized": sanitized}
