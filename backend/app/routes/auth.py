@@ -6,7 +6,7 @@ import jwt
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.config import get_settings
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.schemas.user import LoginRequest, SignupRequest
 from app.db.models import GovVerificationRequest
 from app.services.collections import HOSPITALS, USERS
@@ -31,7 +31,7 @@ async def signup(
     payload: SignupRequest,
     _: None = Depends(rate_limit_signup.dependency())
 ):
-    db = get_db()
+    db = require_db()
     user_repo = MongoRepository(db, USERS)
     hospital_repo = MongoRepository(db, HOSPITALS)
 
@@ -53,7 +53,7 @@ async def signup(
         "location": payload.location,
         "phone": payload.phone,
         "isVerified": is_verified,
-        "createdAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
     }
 
     if role == "hospital":
@@ -76,8 +76,8 @@ async def signup(
                     requested_by=str(created["_id"]),
                     reviewed_by=None,
                     reviewed_at=None,
-                    created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow()
+                    created_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(timezone.utc)
                 )
             )
             await session.commit()
@@ -85,8 +85,8 @@ async def signup(
     if role == "hospital":
         hospital_doc = {
             "user": created["_id"],
-            "createdAt": datetime.utcnow(),
-            "updatedAt": datetime.utcnow(),
+            "createdAt": datetime.now(timezone.utc),
+            "updatedAt": datetime.now(timezone.utc),
         }
         await hospital_repo.insert_one(hospital_doc)
         return {"message": "Signup successful! Pending Government verification."}
@@ -106,15 +106,15 @@ async def login(
     payload: LoginRequest,
     _: None = Depends(rate_limit_login.dependency())
 ):
-    db = get_db()
+    db = require_db()
     user_repo = MongoRepository(db, USERS)
 
     user = await user_repo.find_one({"email": payload.email})
     if not user:
-        raise HTTPException(status_code=400, detail="User not found")
+        raise HTTPException(status_code=401, detail="Invalid email or password")
 
     if not bcrypt.checkpw(payload.password.encode("utf-8"), user["password"].encode("utf-8")):
-        raise HTTPException(status_code=400, detail="Invalid credentials")
+        raise HTTPException(status_code=401, detail="Invalid email or password")
 
     if payload.role:
         if payload.role.lower() != user["role"].lower():

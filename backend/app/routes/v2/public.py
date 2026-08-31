@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from bson import ObjectId
@@ -12,7 +12,7 @@ from app.core.auth import get_optional_user, require_roles
 from app.core.config import get_settings
 from app.core.dependencies import get_public_service, get_realtime_service, get_routing_service, get_weather_service
 from app.core.rbac import AuthContext
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.services.cache_store import CacheStore
 from app.services.collections import (
     ALERTS,
@@ -210,9 +210,9 @@ def _days_since_date(date_val: Any) -> int | None:
         return None
     try:
         if isinstance(date_val, datetime):
-            return (datetime.utcnow() - date_val).days
+            return (datetime.now(timezone.utc) - date_val).days
         d = datetime.fromisoformat(str(date_val).replace('Z', '+00:00'))
-        return (datetime.utcnow() - d).days
+        return (datetime.now(timezone.utc) - d).days
     except (ValueError, TypeError):
         return None
 
@@ -256,7 +256,7 @@ async def _log_activity(
             "module": module,
             "action": action,
             "metadata": metadata or {},
-            "createdAt": datetime.utcnow(),
+            "createdAt": datetime.now(timezone.utc),
         }
     )
 
@@ -271,8 +271,8 @@ async def _seed_ambulances(db, center_lat: float, center_lng: float, count: int 
             "ambulanceId": f"AMB-{1000 + idx}",
             "status": "Available",
             "location": {"lat": round(lat, 6), "lng": round(lng, 6)},
-            "createdAt": datetime.utcnow(),
-            "updatedAt": datetime.utcnow(),
+            "createdAt": datetime.now(timezone.utc),
+            "updatedAt": datetime.now(timezone.utc),
         }
         await repo.insert_one(doc)
         inserted += 1
@@ -293,8 +293,8 @@ async def _seed_hospitals(db, center_lat: float, center_lng: float, count: int =
             "beds_total": beds_total,
             "beds_available": beds_available,
             "rating": round(random.uniform(3.8, 4.9), 1),
-            "createdAt": datetime.utcnow(),
-            "updatedAt": datetime.utcnow(),
+            "createdAt": datetime.now(timezone.utc),
+            "updatedAt": datetime.now(timezone.utc),
         }
         await repo.insert_one(doc)
         inserted += 1
@@ -334,7 +334,7 @@ async def create_sos(
     if ctx and payload.userId and payload.userId != ctx.user_id:
         raise HTTPException(status_code=403, detail="Invalid user context")
 
-    db = get_db()
+    db = require_db()
     alert_repo = MongoRepository(db, ALERTS)
     ambulance_repo = MongoRepository(db, AMBULANCES)
     assignment_repo = MongoRepository(db, AMBULANCE_ASSIGNMENTS)
@@ -355,7 +355,7 @@ async def create_sos(
                     "type": "sos_alert",
                     "title": title,
                     "message": message_text,
-                    "createdAt": datetime.utcnow(),
+                    "createdAt": datetime.now(timezone.utc),
                     "read": False,
                     "metadata": {
                         **(metadata_base or {}),
@@ -505,8 +505,8 @@ async def create_sos(
         "recommended_hospital": selected_hospital["name"] if selected_hospital else None,
         "vitals": payload.vitals,
         "status": "assigned" if selected_ambulance else "pending",
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
     created_alert = await alert_repo.insert_one(alert_doc)
     if ctx:
@@ -531,7 +531,7 @@ async def create_sos(
                 "eta_minutes": selected_hospital.get("eta_minutes"),
                 "distance_km": selected_hospital.get("distance_km"),
                 "status": "Assigned",
-                "createdAt": datetime.utcnow(),
+                "createdAt": datetime.now(timezone.utc),
             }
         )
         await ambulance_repo.update_one(
@@ -546,7 +546,7 @@ async def create_sos(
                 "type": "sos_update",
                 "title": "Ambulance Assigned" if selected_ambulance else "SOS Received",
                 "message": f"ETA {selected_hospital.get('eta_minutes')} mins" if selected_hospital else "We are locating help.",
-                "createdAt": datetime.utcnow(),
+                "createdAt": datetime.now(timezone.utc),
                 "read": False,
                 "metadata": {
                     "alert_id": created_alert.get("_id"),
@@ -565,7 +565,7 @@ async def create_sos(
                     "type": "family_alert",
                     "title": "Family SOS Triggered",
                     "message": payload.message,
-                    "createdAt": datetime.utcnow(),
+                    "createdAt": datetime.now(timezone.utc),
                     "read": False,
                     "metadata": {"alert_id": created_alert.get("_id"), "relation": member.get("relation")},
                 }
@@ -610,7 +610,7 @@ async def create_sos(
             "severity": severity_result.get("severity_level"),
             "status": "Active",
             "source": "public",
-            "createdAt": datetime.utcnow(),
+            "createdAt": datetime.now(timezone.utc),
         }
     )
 
@@ -673,7 +673,7 @@ async def sos_status(
     ctx: AuthContext = Depends(require_roles("public")),
     routing: RoutingService = Depends(get_routing_service)
 ) -> dict:
-    db = get_db()
+    db = require_db()
     alert_repo = MongoRepository(db, ALERTS)
     assignment_repo = MongoRepository(db, AMBULANCE_ASSIGNMENTS)
     ambulance_repo = MongoRepository(db, AMBULANCES)
@@ -724,7 +724,7 @@ async def donor_match(
     ctx: AuthContext | None = Depends(get_optional_user),
     routing: RoutingService = Depends(get_routing_service)
 ) -> dict:
-    db = get_db()
+    db = require_db()
     user_repo = MongoRepository(db, USERS)
     users = await user_repo.find_many({"role": "public"}, projection={"name": 1, "location": 1, "publicProfile": 1})
 
@@ -808,7 +808,7 @@ async def donor_profile(
     acceptance likelihood, and medical restrictions — all derived from
     real user data instead of verified-based fallbacks.
     """
-    db = get_db()
+    db = require_db()
     user_repo = MongoRepository(db, USERS)
 
     donor_oid = _as_object_id(donor_id)
@@ -932,7 +932,7 @@ async def notify_donor(
     if payload.requester_id and payload.requester_id != ctx.user_id:
         raise HTTPException(status_code=403, detail="Invalid requester context")
 
-    db = get_db()
+    db = require_db()
     notification_repo = MongoRepository(db, NOTIFICATIONS)
 
     message = payload.message.strip()
@@ -945,7 +945,7 @@ async def notify_donor(
             "type": "donor_request",
             "title": "Donor availability request",
             "message": message,
-            "createdAt": datetime.utcnow(),
+            "createdAt": datetime.now(timezone.utc),
             "read": False,
             "metadata": {
                 "requester_id": payload.requester_id or ctx.user_id,
@@ -967,7 +967,7 @@ async def notify_donor(
 
 @router.get("/health/summary")
 async def public_health_summary() -> dict:
-    db = get_db()
+    db = require_db()
     alert_repo = MongoRepository(db, ALERTS)
     request_repo = MongoRepository(db, RESOURCE_REQUESTS)
     donation_repo = MongoRepository(db, DONATIONS)
@@ -983,5 +983,5 @@ async def public_health_summary() -> dict:
         "health_records": await health_repo.collection.count_documents({}),
         "hospitals": await hospital_repo.collection.count_documents({}),
         "ambulances": await ambulance_repo.collection.count_documents({}),
-        "checkedAt": datetime.utcnow().isoformat(),
+        "checkedAt": datetime.now(timezone.utc).isoformat(),
     }

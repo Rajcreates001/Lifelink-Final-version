@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import random
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from app.core.auth import get_optional_user, require_roles, require_scopes
 from app.core.dependencies import get_hospital_service, get_routing_service
 from app.core.rbac import AuthContext
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.services.collections import ANALYTICS_EVENTS, HOSPITALS, HOSPITAL_WAIT_TIMES, RESOURCES
 from app.services.hospital_service import HospitalService
 from app.services.indian_locale import SECONDARY_CITIES, PRIMARY_CITY
@@ -108,8 +108,8 @@ async def _seed_hospitals(db, center_lat: float, center_lng: float, count: int =
             "beds_total": beds_total,
             "beds_available": beds_available,
             "rating": round(random.uniform(3.6, 4.9), 1),
-            "createdAt": datetime.utcnow(),
-            "updatedAt": datetime.utcnow(),
+            "createdAt": datetime.now(timezone.utc),
+            "updatedAt": datetime.now(timezone.utc),
         }
         await repo.insert_one(doc)
         inserted += 1
@@ -124,7 +124,7 @@ async def _log_activity(db, user_id: str, metadata: dict) -> None:
             "module": "hospital_finder",
             "action": "nearby_search",
             "metadata": metadata,
-            "createdAt": datetime.utcnow(),
+            "createdAt": datetime.now(timezone.utc),
         }
     )
 
@@ -199,7 +199,7 @@ async def nearby_hospitals(
 ) -> dict:
     latitude = _parse_float(lat, "lat")
     longitude = _parse_float(lng, "lng")
-    db = get_db()
+    db = require_db()
     await _ensure_hospital_locations(db, latitude, longitude)
     repo = MongoRepository(db, HOSPITALS)
     docs = await repo.collection.find({}).to_list(length=500)
@@ -302,13 +302,13 @@ async def report_wait_time(
     payload: WaitTimeReport,
     ctx: AuthContext = Depends(require_scopes("dashboard:read"))
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, HOSPITAL_WAIT_TIMES)
     doc = {
         "hospital_id": payload.hospital_id,
         "wait_time_minutes": payload.wait_time_minutes,
         "reported_by": payload.reported_by or ctx.user_id,
-        "createdAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
     }
     await repo.insert_one(doc)
     return {"status": "ok"}
@@ -319,7 +319,7 @@ async def bed_availability(
     hospital_id: int | None = Query(None),
     ctx: AuthContext = Depends(require_scopes("dashboard:read"))
 ) -> dict:
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, RESOURCES)
     query: dict[str, Any] = {}
     if hospital_id is not None:

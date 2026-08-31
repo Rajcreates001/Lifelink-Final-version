@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from bson import ObjectId
@@ -230,7 +230,7 @@ class PgCollection:
             doc_data = to_serializable(document)
             doc_id = doc_data.get("_id") or str(ObjectId())
             doc_data["_id"] = doc_id
-            created_at = _ensure_datetime(doc_data.get("createdAt") or datetime.utcnow())
+            created_at = _ensure_datetime(doc_data.get("createdAt") or datetime.now(timezone.utc))
             updated_at = _ensure_datetime(doc_data.get("updatedAt") or created_at)
             record = Document(
                 id=str(doc_id),
@@ -257,7 +257,7 @@ class PgCollection:
             next_data = dict(record.data or {})
             next_data.update(to_serializable(set_data))
             record.data = next_data
-            record.updated_at = datetime.utcnow()
+            record.updated_at = datetime.now(timezone.utc)
             await session.commit()
             return type("UpdateResult", (), {"modified_count": 1})()
 

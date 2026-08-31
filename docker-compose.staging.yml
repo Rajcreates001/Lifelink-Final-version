@@ -1,6 +1,20 @@
 # LifeLink Staging Environment
 # docker-compose -f docker-compose.staging.yml up -d
 
+# ─── Shared Configuration ─────────────────────────────────
+x-backend-env: &backend-env
+  POSTGRES_URL: postgresql+asyncpg://lifelink:${POSTGRES_PASSWORD:-staging_password}@postgres:5432/lifelink
+  REDIS_URL: redis://redis:6379/0
+  CELERY_BROKER_URL: redis://redis:6379/0
+  CELERY_RESULT_BACKEND: redis://redis:6379/1
+  JWT_SECRET: ${JWT_SECRET:-staging-jwt-secret-change-in-production}
+  PRIVACY_SALT: ${PRIVACY_SALT:-staging-privacy-salt}
+  ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+  APP_ENV: staging
+  PORT: "3001"
+  FRONTEND_URL: http://localhost:5000
+  HOST: "0.0.0.0"
+
 services:
   # ─── PostgreSQL ─────────────────────────────────────────────
   postgres:
@@ -16,16 +30,19 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U lifelink"]
+      test: ["CMD-SHELL", "pg_isready -U lifelink -d lifelink"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
 
   # ─── Redis ──────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     container_name: lifelink-staging-redis
     restart: unless-stopped
+    volumes:
+      - redis_staging_data:/data
     ports:
       - "6379:6379"
     healthcheck:
@@ -33,24 +50,20 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 5s
 
   # ─── Backend (FastAPI) ──────────────────────────────────────
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: lifelink-staging-backend
     restart: unless-stopped
     ports:
-      - "4002:4002"
+      - "3001:3001"
     environment:
-      - DATABASE_URL=postgresql+asyncpg://lifelink:${POSTGRES_PASSWORD:-staging_password}@postgres:5432/lifelink
-      - MONGODB_URI=mongodb://mongo:27017/lifelink
-      - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=${JWT_SECRET:-staging-jwt-secret-change-in-production}
-      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-}
-      - APP_ENV=staging
-      - CORS_ORIGINS=["http://localhost:5000","https://staging.lifelink.example.com"]
+      <<: *backend-env
+    command: ["api"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -58,20 +71,73 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
-      - ml_models:/app/ml
+      - ml_models_staging:/app/ml
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3001/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ─── Celery Worker ───────────────────────────────────────────
+  celery-worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: lifelink-staging-celery-worker
+    restart: unless-stopped
+    environment:
+      <<: *backend-env
+    command: ["worker"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - ml_models_staging:/app/ml
+    healthcheck:
+      test: ["CMD", "celery", "-A", "app.core.celery_app", "inspect", "ping", "--timeout=5"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ─── Celery Beat ────────────────────────────────────────────
+  celery-beat:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: lifelink-staging-celery-beat
+    restart: unless-stopped
+    environment:
+      <<: *backend-env
+    command: ["beat"]
+    depends_on:
+      redis:
+        condition: service_healthy
 
   # ─── Frontend (Nginx) ──────────────────────────────────────
   frontend:
     build:
-      context: ./client
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: client/Dockerfile
     container_name: lifelink-staging-frontend
     restart: unless-stopped
     ports:
       - "5000:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:80"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
 volumes:
   pgdata_staging:
-  ml_models:
+  redis_staging_data:
+  ml_models_staging:

@@ -15,7 +15,7 @@ ROOT = os.path.dirname(os.path.dirname(__file__))
 sys.path.append(ROOT)
 
 from app.core.config import get_settings  # noqa: E402
-from app.db.mongo import connect_to_mongo, close_mongo_connection  # noqa: E402
+from app.db.database import connect_to_mongo, close_mongo_connection  # noqa: E402
 from app.db.models import (  # noqa: E402
     Document,
     GovAmbulance,

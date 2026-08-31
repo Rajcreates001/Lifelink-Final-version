@@ -108,7 +108,7 @@ const HospitalRoleSelect = () => {
         sessionStorage.setItem('lifelink_token', enterpriseToken);
       }
 
-      const useToken = enterpriseToken || enterpriseTokenRef.current || sessionStorage.getItem('lifelink_token') || localStorage.getItem('lifelink_token') || '';
+      const useToken = enterpriseToken || enterpriseTokenRef.current || sessionStorage.getItem('lifelink_token') || '';
 
       const { ok, data } = await apiFetch('/v2/auth/select-role', {
         method: 'POST',
@@ -129,7 +129,7 @@ const HospitalRoleSelect = () => {
         return;
       }
       const nextUser = { ...data.user, role: 'hospital', subRole: data.user?.subRole || subRole };
-      const token = data.token || enterpriseToken || sessionStorage.getItem('lifelink_token') || localStorage.getItem('lifelink_token') || '';
+      const token = data.token || enterpriseToken || sessionStorage.getItem('lifelink_token') || '';
       login(nextUser, token);
       // Start transition animation
       const dept = DEPARTMENTS.find((d) => d.key === subRole);

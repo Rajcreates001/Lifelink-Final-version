@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 import re
 
 
@@ -631,7 +631,7 @@ GOVERNMENT_CATALOG = {
 
 
 def build_insights(role: str, module_key: str, sub_role: str | None = None) -> dict:
-    timestamp = datetime.utcnow().isoformat()
+    timestamp = datetime.now(timezone.utc).isoformat()
     role = (role or "public").lower()
     module_key = (module_key or "overview").lower()
     sub_role = (sub_role or "").lower() or None

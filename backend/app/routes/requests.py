@@ -1,10 +1,10 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.core.auth import get_current_user, AuthContext
 from app.services.collections import RESOURCE_REQUESTS
 from app.services.repository import MongoRepository
@@ -28,7 +28,7 @@ def _as_object_id(value: str) -> ObjectId:
 
 @router.post("/requests", status_code=201)
 async def create_request(payload: ResourceRequestCreate, ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, RESOURCE_REQUESTS)
 
     doc = {
@@ -37,8 +37,8 @@ async def create_request(payload: ResourceRequestCreate, ctx: AuthContext = Depe
         "details": payload.details,
         "urgency": payload.urgency,
         "status": "pending",
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
 
     await repo.insert_one(doc)

@@ -15,7 +15,7 @@ Usage:
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 logger = logging.getLogger("lifelink.reports")
@@ -33,7 +33,7 @@ class ReportGenerator:
     """Generate PDF reports using WeasyPrint from HTML templates."""
 
     def __init__(self) -> None:
-        self.now = datetime.utcnow()
+        self.now = datetime.now(timezone.utc)
 
     # ── HTML Templates ──────────────────────────────────────────
 

@@ -5,7 +5,7 @@ import asyncio
 import json
 import logging
 import random
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
@@ -129,7 +129,7 @@ async def _store_prediction_record(prediction_type: str, result: dict[str, Any],
             prediction_type,
             payload,
             confidence,
-            datetime.utcnow()
+            datetime.now(timezone.utc)
         )
     except Exception:
         conn = await asyncpg.connect(dsn=_postgres_dsn())
@@ -143,7 +143,7 @@ async def _store_prediction_record(prediction_type: str, result: dict[str, Any],
                 prediction_type,
                 payload,
                 confidence,
-                datetime.utcnow()
+                datetime.now(timezone.utc)
             )
         finally:
             await conn.close()
@@ -156,7 +156,7 @@ def _cache_prediction(prediction_type: str, result: dict[str, Any], confidence: 
         "type": prediction_type,
         "result": result,
         "confidence": float(confidence),
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
     }
     _cache.set_prediction(f"latest:{prediction_type}", payload, ttl=60)
     return payload
@@ -342,12 +342,12 @@ async def anonymized_emergency(
                 timestamp = EXCLUDED.timestamp,
                 assigned_hospital = EXCLUDED.assigned_hospital
             """,
-            emergency_id or f"emg_{int(datetime.utcnow().timestamp())}",
+            emergency_id or f"emg_{int(datetime.now(timezone.utc).timestamp())}",
             payload.get("type") or "unknown",
             payload.get("severity") or "unknown",
             payload.get("location") or "unknown",
             payload.get("status") or "active",
-            datetime.utcnow(),
+            datetime.now(timezone.utc),
             payload.get("assigned_hospital")
         )
     except Exception:

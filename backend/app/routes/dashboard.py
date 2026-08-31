@@ -2,7 +2,7 @@ import bcrypt
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.core.auth import get_current_user, AuthContext
 from app.services.collections import (
     ALERTS,
@@ -46,11 +46,8 @@ def _empty_dashboard() -> dict:
 
 @router.get("/public/{user_id}/full")
 async def public_full_dashboard(user_id: str, ctx: AuthContext = Depends(get_current_user)):
-    try:
-        db = get_db()
-        if db is None:
-            return _empty_dashboard()
-    except Exception:
+    db = get_db()
+    if db is None:
         return _empty_dashboard()
     user_repo = MongoRepository(db, USERS)
     alert_repo = MongoRepository(db, ALERTS)
@@ -136,7 +133,7 @@ async def public_full_dashboard(user_id: str, ctx: AuthContext = Depends(get_cur
 
 @router.put("/profile/{user_id}")
 async def update_profile(user_id: str, payload: dict, ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    db = require_db()
     user_repo = MongoRepository(db, USERS)
 
     oid = _as_object_id(user_id)
@@ -237,7 +234,7 @@ async def hospital_stats(ctx: AuthContext = Depends(get_current_user)):
 
 @router.get("/hospital/alerts")
 async def hospital_alerts(ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    db = require_db()
     alert_repo = MongoRepository(db, ALERTS)
     alerts = await alert_repo.find_many({"status": {"$ne": "Resolved"}}, sort=[("createdAt", -1)])
     return alerts
@@ -245,7 +242,7 @@ async def hospital_alerts(ctx: AuthContext = Depends(get_current_user)):
 
 @router.put("/hospital/alert/{alert_id}")
 async def update_hospital_alert(alert_id: str, payload: dict, ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    db = require_db()
     alert_repo = MongoRepository(db, ALERTS)
     oid = _as_object_id(alert_id)
 
@@ -261,7 +258,7 @@ async def update_hospital_alert(alert_id: str, payload: dict, ctx: AuthContext =
 
 @router.get("/admin/pending-hospitals")
 async def admin_pending_hospitals(ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    db = require_db()
     user_repo = MongoRepository(db, USERS)
     pending = await user_repo.find_many({"role": "hospital", "isVerified": False})
     return pending
@@ -269,7 +266,7 @@ async def admin_pending_hospitals(ctx: AuthContext = Depends(get_current_user)):
 
 @router.put("/admin/verify/{user_id}")
 async def admin_verify_hospital(user_id: str, ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    db = require_db()
     user_repo = MongoRepository(db, USERS)
     oid = _as_object_id(user_id)
 
@@ -282,7 +279,7 @@ async def admin_verify_hospital(user_id: str, ctx: AuthContext = Depends(get_cur
 
 @router.post("/hospital/patient/admit", status_code=201)
 async def hospital_admit_patient(payload: dict, ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    db = require_db()
     patient_repo = MongoRepository(db, PATIENTS)
 
     hospital_id = payload.get("hospitalId")
@@ -313,7 +310,7 @@ async def hospital_admit_patient(payload: dict, ctx: AuthContext = Depends(get_c
 
 @router.get("/hospital/patients/{hospital_id}")
 async def hospital_patients(hospital_id: str, ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    db = require_db()
     patient_repo = MongoRepository(db, PATIENTS)
     oid = _as_object_id(hospital_id)
     patients = await patient_repo.find_many({"hospitalId": oid}, sort=[("admitDate", -1)])
@@ -322,7 +319,7 @@ async def hospital_patients(hospital_id: str, ctx: AuthContext = Depends(get_cur
 
 @router.post("/hospital/resource/add", status_code=201)
 async def hospital_add_resource(payload: dict, ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    db = require_db()
     resource_repo = MongoRepository(db, RESOURCES)
 
     hospital_id = payload.get("hospitalId")
@@ -347,7 +344,7 @@ async def hospital_add_resource(payload: dict, ctx: AuthContext = Depends(get_cu
 
 @router.get("/hospital/resources/{hospital_id}")
 async def hospital_resources(hospital_id: str, ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    db = require_db()
     resource_repo = MongoRepository(db, RESOURCES)
     oid = _as_object_id(hospital_id)
     resources = await resource_repo.find_many({"hospitalId": oid}, sort=[("category", 1)])
@@ -356,7 +353,7 @@ async def hospital_resources(hospital_id: str, ctx: AuthContext = Depends(get_cu
 
 @router.delete("/notification/{item_type}/{item_id}")
 async def delete_notification_item(item_type: str, item_id: str, ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    db = require_db()
     oid = _as_object_id(item_id)
 
     if item_type == "alert":

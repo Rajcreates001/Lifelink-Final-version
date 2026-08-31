@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Query, Depends
 from app.core.auth import get_current_user, AuthContext
 
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.services.repository import MongoRepository
 from app.services.collections import (
     OPD_QUEUE,
@@ -30,7 +30,7 @@ async def list_opd_appointments(
     sort_dir: str | None = Query(None),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     await _ensure_seeded(db, hospitalId)
     repo = MongoRepository(db, OPD_APPOINTMENTS)
     oid = _require_hospital_id(hospitalId)
@@ -66,13 +66,13 @@ async def list_opd_appointments(
 async def opd_appointment_insights(hospitalId: str = Query(...),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     await _ensure_seeded(db, hospitalId)
     repo = MongoRepository(db, OPD_APPOINTMENTS)
     oid = _require_hospital_id(hospitalId)
     records = await repo.find_many({"hospital": oid}, sort=[("createdAt", -1)], limit=500)
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     horizon_7 = now + timedelta(days=7)
     horizon_30 = now + timedelta(days=30)
 
@@ -125,7 +125,7 @@ async def opd_appointment_insights(hospitalId: str = Query(...),
 async def create_opd_appointment(payload: OpdAppointmentCreate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, OPD_APPOINTMENTS)
     oid = _require_hospital_id(payload.hospitalId)
     appt_time = _parse_datetime(payload.time)
@@ -143,8 +143,8 @@ async def create_opd_appointment(payload: OpdAppointmentCreate,
         "notes": payload.notes,
         "seasonTag": season_tag,
         "slotHour": appt_time.hour if appt_time else None,
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
     created = await repo.insert_one(doc)
     return created
@@ -154,7 +154,7 @@ async def create_opd_appointment(payload: OpdAppointmentCreate,
 async def update_opd_appointment(appointment_id: str, payload: OpdAppointmentUpdate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, OPD_APPOINTMENTS)
     oid = _as_object_id(appointment_id)
     update_data = _build_update(
@@ -175,7 +175,7 @@ async def update_opd_appointment(appointment_id: str, payload: OpdAppointmentUpd
 async def delete_opd_appointment(appointment_id: str,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, OPD_APPOINTMENTS)
     oid = _as_object_id(appointment_id)
     deleted = await repo.delete_one({"_id": oid})
@@ -195,7 +195,7 @@ async def list_opd_doctors(
     sort_dir: str | None = Query(None),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     await _ensure_seeded(db, hospitalId)
     repo = MongoRepository(db, OPD_DOCTORS)
     oid = _require_hospital_id(hospitalId)
@@ -223,7 +223,7 @@ async def list_opd_doctors(
 async def opd_doctor_coverage(hospitalId: str = Query(...),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     await _ensure_seeded(db, hospitalId)
     repo = MongoRepository(db, OPD_DOCTORS)
     oid = _require_hospital_id(hospitalId)
@@ -271,7 +271,7 @@ async def opd_doctor_coverage(hospitalId: str = Query(...),
 async def create_opd_doctor(payload: OpdDoctorCreate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, OPD_DOCTORS)
     oid = _require_hospital_id(payload.hospitalId)
     normalized_shift = _normalize_shift(payload.shift, payload.schedule)
@@ -283,8 +283,8 @@ async def create_opd_doctor(payload: OpdDoctorCreate,
         "shift": payload.shift or normalized_shift,
         "schedule": payload.schedule,
         "normalizedShift": normalized_shift,
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
     created = await repo.insert_one(doc)
     return created
@@ -294,7 +294,7 @@ async def create_opd_doctor(payload: OpdDoctorCreate,
 async def update_opd_doctor(doctor_id: str, payload: OpdDoctorUpdate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, OPD_DOCTORS)
     oid = _as_object_id(doctor_id)
     update_data = _build_update(payload, ["name", "specialty", "availability", "shift", "schedule"])
@@ -310,7 +310,7 @@ async def update_opd_doctor(doctor_id: str, payload: OpdDoctorUpdate,
 async def delete_opd_doctor(doctor_id: str,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, OPD_DOCTORS)
     oid = _as_object_id(doctor_id)
     deleted = await repo.delete_one({"_id": oid})
@@ -328,7 +328,7 @@ async def list_opd_consultations(
     sort_dir: str | None = Query(None),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     await _ensure_seeded(db, hospitalId)
     repo = MongoRepository(db, OPD_CONSULTATIONS)
     oid = _require_hospital_id(hospitalId)
@@ -352,7 +352,7 @@ async def list_opd_consultations(
 async def opd_consultation_insights(hospitalId: str = Query(...),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     await _ensure_seeded(db, hospitalId)
     repo = MongoRepository(db, OPD_CONSULTATIONS)
     oid = _require_hospital_id(hospitalId)
@@ -387,7 +387,7 @@ async def opd_consultation_insights(hospitalId: str = Query(...),
 async def create_opd_consultation(payload: OpdConsultationCreate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, OPD_CONSULTATIONS)
     oid = _require_hospital_id(payload.hospitalId)
     summary = payload.summary or _summarize_note(payload.notes)
@@ -399,15 +399,15 @@ async def create_opd_consultation(payload: OpdConsultationCreate,
         "patient": payload.patient,
         "doctor": payload.doctor,
         "notes": payload.notes,
-        "date": payload.date or datetime.utcnow().date().isoformat(),
+        "date": payload.date or datetime.now(timezone.utc).date().isoformat(),
         "status": payload.status or "Open",
         "summary": summary,
         "aiSummary": ai_summary,
         "keywords": keywords,
         "followUpPlan": follow_up,
         "followUpDate": payload.followUpDate,
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
     created = await repo.insert_one(doc)
     return created
@@ -417,7 +417,7 @@ async def create_opd_consultation(payload: OpdConsultationCreate,
 async def update_opd_consultation(consultation_id: str, payload: OpdConsultationUpdate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, OPD_CONSULTATIONS)
     oid = _as_object_id(consultation_id)
     update_data = _build_update(
@@ -440,7 +440,7 @@ async def update_opd_consultation(consultation_id: str, payload: OpdConsultation
 async def delete_opd_consultation(consultation_id: str,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, OPD_CONSULTATIONS)
     oid = _as_object_id(consultation_id)
     deleted = await repo.delete_one({"_id": oid})
@@ -459,7 +459,7 @@ async def opd_queue(
     sort_dir: str | None = Query(None),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     await _ensure_seeded(db, hospitalId)
     repo = MongoRepository(db, OPD_QUEUE)
     oid = _require_hospital_id(hospitalId)
@@ -499,10 +499,10 @@ async def opd_queue(
 async def create_opd_queue(payload: OpdQueueCreate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, OPD_QUEUE)
     oid = _require_hospital_id(payload.hospitalId)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     doc = {
         "hospital": oid,
         "patientName": payload.patientName,
@@ -523,12 +523,12 @@ async def create_opd_queue(payload: OpdQueueCreate,
 async def update_opd_queue(queue_id: str, payload: OpdQueueUpdate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, OPD_QUEUE)
     oid = _as_object_id(queue_id)
     update_data = _build_update(payload, ["status", "priority", "assignedDoctor", "notes"])
     if payload.status:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         if payload.status == "In Service":
             update_data["serviceStartedAt"] = now
         if payload.status in {"Completed", "Canceled"}:
@@ -543,7 +543,7 @@ async def update_opd_queue(queue_id: str, payload: OpdQueueUpdate,
 async def delete_opd_queue(queue_id: str,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, OPD_QUEUE)
     oid = _as_object_id(queue_id)
     deleted = await repo.delete_one({"_id": oid})

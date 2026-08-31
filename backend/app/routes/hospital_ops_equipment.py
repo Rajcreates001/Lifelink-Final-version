@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Query, Depends
 from app.core.auth import get_current_user, AuthContext
 
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.services.repository import MongoRepository
 from app.services.collections import (
     EQUIPMENT_INVENTORY
@@ -25,7 +25,7 @@ async def equipment_list(
     sort_dir: str | None = Query(None),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     await _ensure_seeded(db, hospitalId)
     repo = MongoRepository(db, EQUIPMENT_INVENTORY)
     oid = _require_hospital_id(hospitalId)
@@ -46,7 +46,7 @@ async def equipment_list(
 async def create_equipment(payload: EquipmentCreate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, EQUIPMENT_INVENTORY)
     oid = _require_hospital_id(payload.hospitalId)
     doc = {
@@ -56,8 +56,8 @@ async def create_equipment(payload: EquipmentCreate,
         "quantity": payload.quantity,
         "status": payload.status or "Available",
         "minThreshold": payload.minThreshold or 1,
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
     created = await repo.insert_one(doc)
     return created
@@ -67,7 +67,7 @@ async def create_equipment(payload: EquipmentCreate,
 async def update_equipment(equipment_id: str, payload: EquipmentUpdate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, EQUIPMENT_INVENTORY)
     oid = _as_object_id(equipment_id)
     update_data = _build_update(payload, ["quantity", "status", "minThreshold"])

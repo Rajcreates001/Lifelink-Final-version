@@ -12,7 +12,7 @@ import sentry_sdk
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 
 from app.core.config import get_settings, validate_jwt_secret
-from app.db.mongo import close_mongo_connection, connect_to_mongo
+from app.db.database import close_mongo_connection, connect_to_mongo
 from app.db.asyncpg_pool import close_asyncpg, connect_asyncpg
 from app.routes.admin import router as admin_router
 from app.routes.alerts import router as alerts_router
@@ -205,8 +205,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "X-Request-ID"],
 )
 
 # Prometheus metrics middleware
@@ -223,7 +223,6 @@ async def add_request_id(request: Request, call_next):
     return response
 
 
-app.include_router(health_router)
 app.include_router(health_router, prefix="/api")
 app.include_router(alerts_router, prefix="/api")
 app.include_router(ai_router, prefix="/api")
@@ -237,7 +236,6 @@ app.include_router(family_router, prefix="/api/family")
 app.include_router(government_ops_router, prefix="/api/government-ops")
 app.include_router(hospital_communication_router, prefix="/api/hospital-communication")
 app.include_router(hospital_ml_router, prefix="/api/hospital")
-app.include_router(hospital_ml_router, prefix="/api/hosp")
 app.include_router(hospital_ops_router, prefix="/api/hospital-ops")
 app.include_router(hospital_ops_discharge_router, prefix="/api/hospital-ops")
 app.include_router(compliance_router, prefix="/api")

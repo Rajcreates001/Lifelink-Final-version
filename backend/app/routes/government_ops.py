@@ -1,12 +1,12 @@
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.core.auth import get_current_user, AuthContext
 from app.services.collections import (
     ALERTS,
@@ -92,7 +92,7 @@ async def list_hospitals(
     sort_dir: str | None = Query(None),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     hospital_repo = MongoRepository(db, HOSPITALS)
     user_repo = MongoRepository(db, USERS)
 
@@ -154,7 +154,7 @@ async def list_emergencies(
     sort_dir: str | None = Query(None),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, ALERTS)
     query: dict[str, Any] = {"status": {"$ne": "Resolved"}}
     search_query = _build_search(search, ["message", "locationDetails"])
@@ -177,7 +177,7 @@ async def list_ambulances(
     sort_dir: str | None = Query(None),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, AMBULANCES)
     query: dict[str, Any] = {}
     search_query = _build_search(search, ["ambulanceId", "registrationNumber"])
@@ -210,7 +210,7 @@ async def list_reports(
     sort_dir: str | None = Query(None),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, GOVERNMENT_REPORTS)
     query: dict[str, Any] = {}
     search_query = _build_search(search, ["title", "summary"])
@@ -227,7 +227,7 @@ async def list_reports(
 
 @router.post("/reports", status_code=201)
 async def create_report(payload: GovernmentReportCreate, ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, GOVERNMENT_REPORTS)
 
     doc = {
@@ -235,8 +235,8 @@ async def create_report(payload: GovernmentReportCreate, ctx: AuthContext = Depe
         "scope": payload.scope,
         "summary": payload.summary or "Automated report generated.",
         "status": "Ready",
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
 
     created = await repo.insert_one(doc)
@@ -252,7 +252,7 @@ async def list_compliance(
     sort_dir: str | None = Query(None),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, GOVERNMENT_COMPLIANCE)
     query: dict[str, Any] = {}
     search_query = _build_search(search, ["hospitalId", "findings", "owner"])
@@ -269,7 +269,7 @@ async def list_compliance(
 
 @router.post("/compliance", status_code=201)
 async def create_compliance(payload: GovernmentComplianceCreate, ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, GOVERNMENT_COMPLIANCE)
 
     doc = {
@@ -277,8 +277,8 @@ async def create_compliance(payload: GovernmentComplianceCreate, ctx: AuthContex
         "status": payload.status,
         "findings": payload.findings,
         "owner": payload.owner,
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
 
     created = await repo.insert_one(doc)
@@ -287,13 +287,13 @@ async def create_compliance(payload: GovernmentComplianceCreate, ctx: AuthContex
 
 @router.patch("/compliance/{item_id}")
 async def update_compliance(item_id: str, payload: GovernmentComplianceUpdate, ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, GOVERNMENT_COMPLIANCE)
 
     update_data = {k: v for k, v in payload.model_dump().items() if v is not None}
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields provided for update")
-    update_data["updatedAt"] = datetime.utcnow()
+    update_data["updatedAt"] = datetime.now(timezone.utc)
 
     updated = await repo.update_one({"_id": _as_object_id(item_id)}, {"$set": update_data}, return_new=True)
     if not updated:

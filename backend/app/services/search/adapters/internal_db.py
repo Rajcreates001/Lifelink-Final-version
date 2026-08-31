@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 
-from app.db.mongo import get_db
+from app.db.database import get_db
 from app.services.collections import (
     ALERTS,
     AMBULANCES,

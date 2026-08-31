@@ -5,7 +5,7 @@ from bson import ObjectId
 
 from app.core.rbac import AuthContext, ensure_roles, ensure_scopes, resolve_scopes
 from app.core.security import decode_access_token
-from app.db.mongo import get_db
+from app.db.database import get_db
 from app.services.collections import USERS
 from app.services.repository import MongoRepository
 
@@ -75,12 +75,13 @@ async def get_current_user(authorization: str | None = Header(default=None)) -> 
     except Exception:
         lookup_id = user_id
     user = await user_repo.find_one({"_id": lookup_id})
-    if user:
-        scopes = resolve_scopes(role, sub_role)
-        return AuthContext(user_id=str(user_id), role=role, sub_role=sub_role, scopes=scopes)
-
-    # Fallback: build AuthContext from JWT claims without requiring a database record.
-    # This ensures v2 endpoints work immediately after login even without seeded users.
+    if not user:
+        # SECURITY: Do NOT fall back to JWT-only context.
+        # This prevents revoked/deleted users from accessing the system.
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found in database",
+        )
     scopes = resolve_scopes(role, sub_role)
     return AuthContext(user_id=str(user_id), role=role, sub_role=sub_role, scopes=scopes)
 

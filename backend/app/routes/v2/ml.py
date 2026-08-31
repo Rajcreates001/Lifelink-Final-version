@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from bson import ObjectId
 
@@ -14,7 +14,7 @@ from app.core.celery_app import celery_app
 from app.core.config import get_settings
 from app.core.dependencies import get_routing_service, get_weather_service
 from app.core.rbac import AuthContext
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.services.cache_store import CacheStore
 from app.services.collections import ANALYTICS_EVENTS, PREDICTIONS
 from app.services.prediction_store import get_latest_prediction
@@ -341,7 +341,7 @@ async def health_risk(payload: dict = Body(default_factory=dict), ctx: AuthConte
         except Exception as exc:
             raise HTTPException(status_code=400, detail="Invalid user_id") from exc
         stored_payload = {key: value for key, value in payload.items() if key not in {"fast", "mode"}}
-        db = get_db()
+        db = require_db()
         repo = MongoRepository(db, PREDICTIONS)
         await repo.insert_one(
             {
@@ -352,7 +352,7 @@ async def health_risk(payload: dict = Body(default_factory=dict), ctx: AuthConte
                 "drivers": drivers,
                 "explanation": explanation,
                 "payload": stored_payload,
-                "createdAt": datetime.utcnow(),
+                "createdAt": datetime.now(timezone.utc),
             }
         )
         await MongoRepository(db, ANALYTICS_EVENTS).insert_one(
@@ -364,7 +364,7 @@ async def health_risk(payload: dict = Body(default_factory=dict), ctx: AuthConte
                     "risk_level": risk_level,
                     "risk_score": risk_score,
                 },
-                "createdAt": datetime.utcnow(),
+                "createdAt": datetime.now(timezone.utc),
             }
         )
 
@@ -408,7 +408,7 @@ async def eta_prediction(
         "distance_km": distance_km or 1.0,
         "precipitation_mm": (weather_now or {}).get("precipitation_mm"),
         "wind_kph": (weather_now or {}).get("wind_kph"),
-        "hour": datetime.utcnow().hour,
+        "hour": datetime.now(timezone.utc).hour,
     }
     settings = get_settings()
     cache = CacheStore(settings.redis_url, namespace="ml")
@@ -449,7 +449,7 @@ async def eta_prediction_async(
         "distance_km": distance_km or 1.0,
         "precipitation_mm": (weather_now or {}).get("precipitation_mm"),
         "wind_kph": (weather_now or {}).get("wind_kph"),
-        "hour": datetime.utcnow().hour,
+        "hour": datetime.now(timezone.utc).hour,
     }
     job = celery_app.send_task("ml.run_model", args=["predict_eta", enriched_payload])
     return {"job_id": job.id, "status": job.status, "distance_km": distance_km}

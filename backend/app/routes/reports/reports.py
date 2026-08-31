@@ -10,13 +10,13 @@ All endpoints return application/pdf responses.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 
 from app.services.report_generator import ReportGenerator
-from app.core.dependencies import require_roles
+from app.core.auth import require_roles
 
 logger = logging.getLogger("lifelink.reports")
 router = APIRouter(tags=["Reports"])
@@ -47,7 +47,7 @@ async def hospital_daily_ops(
     """Generate Hospital Daily Operations Report PDF."""
     gen = ReportGenerator()
     pdf = gen.generate_hospital_daily_ops(data)
-    date_str = datetime.utcnow().strftime("%Y%m%d")
+    date_str = datetime.now(timezone.utc).strftime("%Y%m%d")
     return _pdf_response(pdf, f"hospital_daily_ops_{date_str}.pdf")
 
 
@@ -59,7 +59,7 @@ async def hospital_financial(
     """Generate Hospital Financial Report PDF."""
     gen = ReportGenerator()
     pdf = gen.generate_hospital_financial(data)
-    date_str = datetime.utcnow().strftime("%Y%m")
+    date_str = datetime.now(timezone.utc).strftime("%Y%m")
     return _pdf_response(pdf, f"hospital_financial_{date_str}.pdf")
 
 
@@ -71,7 +71,7 @@ async def hospital_compliance(
     """Generate Hospital Compliance Report PDF."""
     gen = ReportGenerator()
     pdf = gen.generate_hospital_compliance(data)
-    date_str = datetime.utcnow().strftime("%Y%m")
+    date_str = datetime.now(timezone.utc).strftime("%Y%m")
     return _pdf_response(pdf, f"hospital_compliance_{date_str}.pdf")
 
 
@@ -85,7 +85,7 @@ async def government_incident(
     """Generate Government Incident Report PDF."""
     gen = ReportGenerator()
     pdf = gen.generate_government_incident(data)
-    date_str = datetime.utcnow().strftime("%Y%m%d")
+    date_str = datetime.now(timezone.utc).strftime("%Y%m%d")
     return _pdf_response(pdf, f"gov_incident_report_{date_str}.pdf")
 
 
@@ -97,7 +97,7 @@ async def government_resource(
     """Generate Government Resource Report PDF."""
     gen = ReportGenerator()
     pdf = gen.generate_government_resource(data)
-    date_str = datetime.utcnow().strftime("%Y%m%d")
+    date_str = datetime.now(timezone.utc).strftime("%Y%m%d")
     return _pdf_response(pdf, f"gov_resource_report_{date_str}.pdf")
 
 
@@ -111,5 +111,5 @@ async def simulation_report(
     """Generate Simulation After-Action Report PDF."""
     gen = ReportGenerator()
     pdf = gen.generate_simulation_report(data)
-    date_str = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    date_str = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     return _pdf_response(pdf, f"simulation_after_action_{date_str}.pdf")

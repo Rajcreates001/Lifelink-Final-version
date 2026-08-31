@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from app.core.auth import require_scopes
 from app.core.config import get_settings
 from app.core.rbac import AuthContext
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.services.ai_platform import (
     EventStream,
     FeatureStore,
@@ -421,7 +421,7 @@ async def _module_data_summary(
     sub_role: str | None,
     user_id: str
 ) -> tuple[list[dict[str, Any]], list[str]]:
-    db = get_db()
+    db = require_db()
     summary: list[dict[str, Any]] = []
     sources: set[str] = set()
     role = (role or "public").lower()

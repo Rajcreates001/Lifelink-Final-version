@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from app.core.auth import require_scopes
 from app.core.rbac import AuthContext
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.services.collections import ALERTS, HEALTH_RECORDS, HOSPITALS, PATIENTS
 from app.services.rag.vector_store import reset_index, search as rag_search, upsert_documents
 from app.services.repository import MongoRepository
@@ -84,7 +84,7 @@ async def ingest(payload: RagIngestRequest, ctx: AuthContext = Depends(require_s
     if payload.reset:
         reset_index()
 
-    db = get_db()
+    db = require_db()
     docs: list[dict[str, Any]] = []
 
     if "hospitals" in sources:

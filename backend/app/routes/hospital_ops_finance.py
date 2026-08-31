@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Query, Depends
 from app.core.auth import get_current_user, AuthContext
 
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.services.repository import MongoRepository
 from app.services.collections import (
     BILLING_INVOICES,
@@ -32,7 +32,7 @@ async def finance_invoices(
     sort_dir: str | None = Query(None),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     await _ensure_seeded(db, hospitalId)
     repo = MongoRepository(db, BILLING_INVOICES)
     oid = _require_hospital_id(hospitalId)
@@ -53,7 +53,7 @@ async def finance_invoices(
 async def finance_create_invoice(payload: BillingInvoiceCreate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, BILLING_INVOICES)
     oid = _require_hospital_id(payload.hospitalId)
     doc = {
@@ -68,8 +68,8 @@ async def finance_create_invoice(payload: BillingInvoiceCreate,
         "paidAt": payload.paidAt,
         "paidAmount": 0.0,
         "refundAmount": 0.0,
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
     created = await repo.insert_one(doc)
     return created
@@ -79,7 +79,7 @@ async def finance_create_invoice(payload: BillingInvoiceCreate,
 async def finance_update_invoice(invoice_id: str, payload: BillingInvoiceUpdate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, BILLING_INVOICES)
     oid = _as_object_id(invoice_id)
     update_data = _build_update(payload, ["status", "paidAmount", "refundAmount", "paidAt"])
@@ -99,7 +99,7 @@ async def finance_claims(
     sort_dir: str | None = Query(None),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     await _ensure_seeded(db, hospitalId)
     repo = MongoRepository(db, INSURANCE_CLAIMS)
     oid = _require_hospital_id(hospitalId)
@@ -120,7 +120,7 @@ async def finance_claims(
 async def finance_create_claim(payload: InsuranceClaimCreate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, INSURANCE_CLAIMS)
     oid = _require_hospital_id(payload.hospitalId)
     doc = {
@@ -130,10 +130,10 @@ async def finance_create_claim(payload: InsuranceClaimCreate,
         "amount": payload.amount,
         "status": payload.status or "Submitted",
         "approvedAmount": 0.0,
-        "submittedAt": payload.submittedAt or datetime.utcnow().isoformat(),
+        "submittedAt": payload.submittedAt or datetime.now(timezone.utc).isoformat(),
         "paidAt": payload.paidAt,
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
     created = await repo.insert_one(doc)
     return created
@@ -143,7 +143,7 @@ async def finance_create_claim(payload: InsuranceClaimCreate,
 async def finance_update_claim(claim_id: str, payload: InsuranceClaimUpdate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, INSURANCE_CLAIMS)
     oid = _as_object_id(claim_id)
     update_data = _build_update(payload, ["status", "approvedAmount", "notes", "paidAt"])
@@ -157,7 +157,7 @@ async def finance_update_claim(claim_id: str, payload: InsuranceClaimUpdate,
 async def finance_create_expense(payload: FinanceExpenseCreate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, FINANCE_EXPENSES)
     oid = _require_hospital_id(payload.hospitalId)
     doc = {
@@ -167,8 +167,8 @@ async def finance_create_expense(payload: FinanceExpenseCreate,
         "notes": payload.notes,
         "vendor": payload.vendor,
         "contractRef": payload.contractRef,
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
     created = await repo.insert_one(doc)
     return created
@@ -178,7 +178,7 @@ async def finance_create_expense(payload: FinanceExpenseCreate,
 async def finance_revenue(hospitalId: str = Query(...),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     await _ensure_seeded(db, hospitalId)
     oid = _require_hospital_id(hospitalId)
     invoice_repo = MongoRepository(db, BILLING_INVOICES)
@@ -191,7 +191,7 @@ async def finance_revenue(hospitalId: str = Query(...),
 async def finance_payer_delays(hospitalId: str = Query(...),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     await _ensure_seeded(db, hospitalId)
     oid = _require_hospital_id(hospitalId)
     claim_repo = MongoRepository(db, INSURANCE_CLAIMS)
@@ -272,7 +272,7 @@ async def _compute_finance_summary(invoice_repo, expense_repo, claim_repo, hospi
 
     daily_series = []
     for day_offset in range(6, -1, -1):
-        day = datetime.utcnow() - timedelta(days=day_offset)
+        day = datetime.now(timezone.utc) - timedelta(days=day_offset)
         day_key = day.date().isoformat()
         total = 0.0
         for inv in invoices:
@@ -288,7 +288,7 @@ async def _compute_finance_summary(invoice_repo, expense_repo, claim_repo, hospi
 
     monthly_series = []
     for month_offset in range(5, -1, -1):
-        target = datetime.utcnow().replace(day=1)
+        target = datetime.now(timezone.utc).replace(day=1)
         month = (target.month - month_offset - 1) % 12 + 1
         year = target.year + ((target.month - month_offset - 1) // 12)
         total = 0.0
@@ -325,7 +325,7 @@ async def _compute_finance_summary(invoice_repo, expense_repo, claim_repo, hospi
 
 
 async def _build_report_content(db, report_key: str, hospital_oid: ObjectId, hospital_id: str) -> dict[str, Any]:
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if report_key == "weekly-ops":
         patient_repo = MongoRepository(db, PATIENTS)
         staff_repo = MongoRepository(db, HOSPITAL_STAFF)

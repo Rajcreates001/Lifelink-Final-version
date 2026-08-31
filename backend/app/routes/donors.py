@@ -1,10 +1,10 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.core.auth import get_current_user, AuthContext
 from app.services.collections import RESOURCE_REQUESTS, USERS
 from app.services.repository import MongoRepository
@@ -50,7 +50,7 @@ def _as_object_id(value: str) -> ObjectId:
 
 @router.get("/donors")
 async def get_donors(ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    db = require_db()
     user_repo = MongoRepository(db, USERS)
 
     donors = await user_repo.find_many(
@@ -82,13 +82,16 @@ async def get_donors(ctx: AuthContext = Depends(get_current_user)):
 
 @router.patch("/donors/availability")
 async def update_availability(payload: DonorAvailabilityUpdate, ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    # IDOR guard: users can only update their own availability
+    if payload.userId != ctx.user_id:
+        raise HTTPException(status_code=403, detail="Cannot update another user's availability")
+    db = require_db()
     user_repo = MongoRepository(db, USERS)
     oid = _as_object_id(payload.userId)
 
     update_data = {
         "publicProfile.donorProfile.availability": payload.availability,
-        "publicProfile.donorProfile.updatedAt": datetime.utcnow().isoformat(),
+        "publicProfile.donorProfile.updatedAt": datetime.now(timezone.utc).isoformat(),
     }
     if payload.organTypes is not None:
         update_data["publicProfile.donorProfile.organTypes"] = payload.organTypes
@@ -103,7 +106,7 @@ async def update_availability(payload: DonorAvailabilityUpdate, ctx: AuthContext
 
 @router.get("/donors/forecast")
 async def donor_forecast(blood_group: str | None = None, ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    db = require_db()
     user_repo = MongoRepository(db, USERS)
     request_repo = MongoRepository(db, RESOURCE_REQUESTS)
 

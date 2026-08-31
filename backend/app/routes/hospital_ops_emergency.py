@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Body, HTTPException, Query, Depends
 from app.core.auth import get_current_user, AuthContext
 
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.services.repository import MongoRepository
 from app.services.collections import (
     AMBULANCE_ASSIGNMENTS,
@@ -30,7 +30,7 @@ async def emergency_feed(
     sort_dir: str | None = Query(None),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     await _ensure_seeded(db, hospitalId)
     repo = MongoRepository(db, EMERGENCY_EVENTS)
     oid = _require_hospital_id(hospitalId)
@@ -55,7 +55,7 @@ async def emergency_feed(
 async def create_emergency_event(payload: EmergencyEventCreate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, EMERGENCY_EVENTS)
     oid = _require_hospital_id(payload.hospitalId)
     severity = _severity_from_text(payload.symptoms)
@@ -70,8 +70,8 @@ async def create_emergency_event(payload: EmergencyEventCreate,
         "priority": priority,
         "status": "Unassigned",
         "imagingMeta": payload.imagingMeta,
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
     created = await repo.insert_one(doc)
     return created
@@ -81,7 +81,7 @@ async def create_emergency_event(payload: EmergencyEventCreate,
 async def update_emergency_event(event_id: str, payload: EmergencyEventUpdate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, EMERGENCY_EVENTS)
     oid = _as_object_id(event_id)
     update_data = _build_update(payload, ["status", "assignedDepartment", "assignedUnit", "notes", "imagingMeta"])
@@ -95,7 +95,7 @@ async def update_emergency_event(event_id: str, payload: EmergencyEventUpdate,
 async def emergency_ambulances(hospitalId: str = Query(...),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     ambulance_repo = MongoRepository(db, AMBULANCES)
     assignment_repo = MongoRepository(db, AMBULANCE_ASSIGNMENTS)
     assignments = await assignment_repo.find_many({"hospital": _require_hospital_id(hospitalId)}, limit=200)
@@ -111,7 +111,7 @@ async def emergency_ambulances(hospitalId: str = Query(...),
 async def emergency_dispatch(payload: dict = Body(default_factory=dict),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     assignment_repo = MongoRepository(db, AMBULANCE_ASSIGNMENTS)
 
     event_id = payload.get("eventId")
@@ -136,8 +136,8 @@ async def emergency_dispatch(payload: dict = Body(default_factory=dict),
         "etaMinutes": eta_minutes,
         "pickup": payload.get("pickup"),
         "destination": payload.get("destination"),
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
     created = await assignment_repo.insert_one(doc)
     return created
@@ -154,7 +154,7 @@ async def emergency_intake(
     sort_dir: str | None = Query(None),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     patient_repo = MongoRepository(db, PATIENTS)
     oid = _require_hospital_id(hospitalId)
     query: dict[str, Any] = {"hospitalId": oid, "status": "Intake"}
@@ -182,7 +182,7 @@ async def emergency_intake(
 async def create_emergency_intake(payload: EmergencyIntakeCreate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     patient_repo = MongoRepository(db, PATIENTS)
     oid = _require_hospital_id(payload.hospitalId)
     severity = payload.severity or _severity_from_text(payload.symptoms)
@@ -202,8 +202,8 @@ async def create_emergency_intake(payload: EmergencyIntakeCreate,
         "severity": severity,
         "status": "Intake",
         "contact": encrypted_contact,
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
     created = await patient_repo.insert_one(doc)
     return created
@@ -213,7 +213,7 @@ async def create_emergency_intake(payload: EmergencyIntakeCreate,
 async def update_emergency_intake(patient_id: str, payload: EmergencyIntakeUpdate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     patient_repo = MongoRepository(db, PATIENTS)
     oid = _as_object_id(patient_id)
     update_data: dict[str, Any] = {}
@@ -227,7 +227,7 @@ async def update_emergency_intake(patient_id: str, payload: EmergencyIntakeUpdat
         update_data["notes"] = payload.notes
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields provided for update")
-    update_data["updatedAt"] = datetime.utcnow()
+    update_data["updatedAt"] = datetime.now(timezone.utc)
     updated = await patient_repo.update_one({"_id": oid}, {"$set": update_data}, return_new=True)
     if not updated:
         raise HTTPException(status_code=404, detail="Patient intake not found")

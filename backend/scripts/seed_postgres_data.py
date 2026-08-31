@@ -5,7 +5,7 @@ from datetime import datetime
 import bcrypt
 from faker import Faker
 
-from app.db.mongo import close_mongo_connection, connect_to_mongo, get_db
+from app.db.database import close_mongo_connection, connect_to_mongo, get_db
 from app.services.collections import AMBULANCES, FAMILY_MEMBERS, HOSPITALS, USERS
 from app.services.repository import MongoRepository
 

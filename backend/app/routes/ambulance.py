@@ -8,7 +8,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException
 from app.core.auth import get_current_user, AuthContext
 from app.core.dependencies import get_realtime_service, get_routing_service
 from app.services.rate_limiter import rate_limit_ambulance_write
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.services.collections import ALERTS, AMBULANCE_ASSIGNMENTS, AMBULANCES, NOTIFICATIONS, USERS
 from app.services.repository import MongoRepository
 from app.services.routing_service import RoutingService
@@ -38,7 +38,7 @@ def _calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> f
 
 def _generate_route_path(lat1: float, lon1: float, lat2: float, lon2: float, points: int = 10) -> list[dict]:
     path = []
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     for i in range(points + 1):
         path.append(
             {
@@ -54,7 +54,7 @@ def _geometry_to_route_path(geometry: dict | None) -> list[dict]:
     if not geometry or geometry.get("type") != "LineString":
         return []
     coords = geometry.get("coordinates") or []
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     step_seconds = max(3, int(60 / max(1, len(coords))))
     return [
         {
@@ -82,7 +82,7 @@ def _calculate_on_time_rate(history: list[dict]) -> int:
 
 @router.get("/assignments")
 async def list_assignments(ambulance_id: str | None = None, ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, AMBULANCE_ASSIGNMENTS)
     query = {}
     if ambulance_id:
@@ -93,7 +93,7 @@ async def list_assignments(ambulance_id: str | None = None, ctx: AuthContext = D
 
 @router.post("/assignments", status_code=201)
 async def create_assignment(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(get_current_user), _: None = Depends(rate_limit_ambulance_write.dependency())):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, AMBULANCE_ASSIGNMENTS)
 
     ambulance_id = payload.get("ambulanceId") or payload.get("ambulanceUserId")
@@ -112,8 +112,8 @@ async def create_assignment(payload: dict = Body(default_factory=dict), ctx: Aut
         "pickupLocation": payload.get("pickupLocation"),
         "destinationLocation": payload.get("destinationLocation"),
         "patientVitals": payload.get("patientVitals") or {},
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
 
     created = await repo.insert_one(doc)
@@ -122,13 +122,13 @@ async def create_assignment(payload: dict = Body(default_factory=dict), ctx: Aut
 
 @router.patch("/assignments/{assignment_id}")
 async def update_assignment(assignment_id: str, payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(get_current_user), _: None = Depends(rate_limit_ambulance_write.dependency())):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, AMBULANCE_ASSIGNMENTS)
 
     update_data = {k: v for k, v in payload.items() if v is not None}
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields provided for update")
-    update_data["updatedAt"] = datetime.utcnow()
+    update_data["updatedAt"] = datetime.now(timezone.utc)
 
     updated = await repo.update_one({"_id": _as_object_id(assignment_id)}, {"$set": update_data}, return_new=True)
     if not updated:
@@ -138,7 +138,7 @@ async def update_assignment(assignment_id: str, payload: dict = Body(default_fac
 
 @router.get("/patient-info")
 async def patient_info(ambulance_id: str | None = None, ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, AMBULANCE_ASSIGNMENTS)
     query = {"status": {"$in": ["Active", "En Route", "At Location"]}}
     if ambulance_id:
@@ -160,7 +160,7 @@ async def patient_info(ambulance_id: str | None = None, ctx: AuthContext = Depen
 
 @router.get("/emergency-status")
 async def emergency_status(ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, ALERTS)
     alerts = await repo.find_many({"status": {"$ne": "Resolved"}}, sort=[("createdAt", -1)], limit=200)
 
@@ -180,7 +180,7 @@ async def emergency_status(ctx: AuthContext = Depends(get_current_user)):
 
 @router.get("/history")
 async def history(ambulance_id: str | None = None, ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, AMBULANCE_ASSIGNMENTS)
     query = {"status": {"$in": ["Completed", "Resolved", "Closed"]}}
     if ambulance_id:
@@ -191,7 +191,7 @@ async def history(ambulance_id: str | None = None, ctx: AuthContext = Depends(ge
 
 @router.get("/")
 async def get_all_ambulances(ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, AMBULANCES)
 
     docs = await repo.find_many(
@@ -212,7 +212,7 @@ async def get_all_ambulances(ctx: AuthContext = Depends(get_current_user)):
 
 @router.get("/hospital/{hospital_id}")
 async def get_ambulances_by_hospital(hospital_id: str, ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, AMBULANCES)
 
     docs = await repo.find_many(
@@ -232,7 +232,7 @@ async def get_ambulances_by_hospital(hospital_id: str, ctx: AuthContext = Depend
 
 @router.get("/{ambulance_id}")
 async def get_ambulance_details(ambulance_id: str, ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, AMBULANCES)
 
     doc = await repo.find_one({"_id": _as_object_id(ambulance_id)})
@@ -244,7 +244,7 @@ async def get_ambulance_details(ambulance_id: str, ctx: AuthContext = Depends(ge
 
 @router.post("/create", status_code=201)
 async def create_ambulance(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(get_current_user), _: None = Depends(rate_limit_ambulance_write.dependency())):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, AMBULANCES)
 
     ambulance_id = payload.get("ambulanceId")
@@ -276,8 +276,8 @@ async def create_ambulance(payload: dict = Body(default_factory=dict), ctx: Auth
             "totalDistanceTodayKm": 0,
         },
         "travelHistory": [],
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
 
     created = await repo.insert_one(doc)
@@ -286,7 +286,7 @@ async def create_ambulance(payload: dict = Body(default_factory=dict), ctx: Auth
 
 @router.post("/{ambulance_id}/update-location")
 async def update_ambulance_location(ambulance_id: str, payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(get_current_user), _: None = Depends(rate_limit_ambulance_write.dependency())):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, AMBULANCES)
 
     latitude = payload.get("latitude")
@@ -298,7 +298,7 @@ async def update_ambulance_location(ambulance_id: str, payload: dict = Body(defa
         "latitude": latitude,
         "longitude": longitude,
         "address": payload.get("address") or "Location Updated",
-        "timestamp": datetime.utcnow(),
+        "timestamp": datetime.now(timezone.utc),
     }
 
     updated = await repo.update_one(
@@ -306,8 +306,8 @@ async def update_ambulance_location(ambulance_id: str, payload: dict = Body(defa
         {
             "$set": {
                 "currentLocation": current_location,
-                "lastLocationUpdate": datetime.utcnow(),
-                "updatedAt": datetime.utcnow(),
+                "lastLocationUpdate": datetime.now(timezone.utc),
+                "updatedAt": datetime.now(timezone.utc),
             }
         },
         return_new=True
@@ -335,7 +335,7 @@ async def start_route(
     ctx: AuthContext = Depends(get_current_user),
     _: None = Depends(rate_limit_ambulance_write.dependency()),
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, AMBULANCES)
 
     ambulance = await repo.find_one({"_id": _as_object_id(ambulance_id)})
@@ -349,7 +349,7 @@ async def start_route(
 
     distance_km = _calculate_distance(start_lat, start_lon, dest_lat, dest_lon)
     estimated_minutes = max(1, round(distance_km / 1.5))
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     route_path = [{"latitude": start_lat, "longitude": start_lon, "timestamp": now}]
 
     try:
@@ -406,7 +406,7 @@ async def start_route(
             "payload": (updated or {}).get("activeRoute") or active_route,
         }
     )
-    db = get_db()
+    db = require_db()
     notification_repo = MongoRepository(db, NOTIFICATIONS)
     user_repo = MongoRepository(db, USERS)
     hospital_name = payload.get("destinationAddress") or (updated or {}).get("activeRoute", active_route).get("destinationLocation", {}).get("address") or "Hospital"
@@ -422,7 +422,7 @@ async def start_route(
                 "type": "ambulance_route",
                 "title": "Ambulance En Route",
                 "message": f"{ambulance_code} is en route to {hospital_name}. Open live tracking to monitor the route.",
-                "createdAt": datetime.utcnow(),
+                "createdAt": datetime.now(timezone.utc),
                 "read": False,
                 "metadata": {
                     "ambulance_id": (updated or {}).get("_id") or ambulance.get("_id"),
@@ -468,7 +468,7 @@ async def predict_eta(ambulance_id: str, payload: dict = Body(default_factory=di
         "confidenceLevel": "Medium",
         "trafficFactor": traffic_factor,
         "weatherCondition": payload.get("weather") or "clear",
-        "lastUpdated": datetime.utcnow(),
+        "lastUpdated": datetime.now(timezone.utc),
     }
 
     return {
@@ -540,7 +540,7 @@ async def get_route(
 
 @router.post("/{ambulance_id}/complete-route")
 async def complete_route(ambulance_id: str, ctx: AuthContext = Depends(get_current_user), _: None = Depends(rate_limit_ambulance_write.dependency())):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, AMBULANCES)
 
     ambulance = await repo.find_one({"_id": _as_object_id(ambulance_id)})
@@ -552,16 +552,16 @@ async def complete_route(ambulance_id: str, ctx: AuthContext = Depends(get_curre
         return {"success": False, "error": "No active route"}
 
     start_time_raw = active_route.get("startTime")
-    start_time = datetime.fromisoformat(start_time_raw) if isinstance(start_time_raw, str) else (start_time_raw or datetime.utcnow())
+    start_time = datetime.fromisoformat(start_time_raw) if isinstance(start_time_raw, str) else (start_time_raw or datetime.now(timezone.utc))
 
-    actual_time_minutes = max(1, round((datetime.utcnow() - start_time).total_seconds() / 60))
+    actual_time_minutes = max(1, round((datetime.now(timezone.utc) - start_time).total_seconds() / 60))
     estimated_time_minutes = int(active_route.get("estimatedTimeMinutes") or 1)
     prediction_accuracy = round((estimated_time_minutes / actual_time_minutes) * 100)
 
     history = ambulance.get("travelHistory") or []
     history.append(
         {
-            "date": datetime.utcnow(),
+            "date": datetime.now(timezone.utc),
             "startLocation": active_route.get("startLocation"),
             "endLocation": active_route.get("destinationLocation"),
             "distanceKm": active_route.get("distanceKm") or 0,
@@ -581,11 +581,11 @@ async def complete_route(ambulance_id: str, ctx: AuthContext = Depends(get_curre
         {
             "$set": {
                 "status": "at_location",
-                "activeRoute.actualArrivalTime": datetime.utcnow(),
+                "activeRoute.actualArrivalTime": datetime.now(timezone.utc),
                 "travelHistory": history,
                 "metrics.averageResponseTime": avg_response,
                 "metrics.onTimeDeliveryRate": on_time_rate,
-                "updatedAt": datetime.utcnow(),
+                "updatedAt": datetime.now(timezone.utc),
             }
         },
         return_new=False
@@ -606,7 +606,7 @@ async def complete_route(ambulance_id: str, ctx: AuthContext = Depends(get_curre
 
 @router.put("/{ambulance_id}/status")
 async def update_status(ambulance_id: str, payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, AMBULANCES)
 
     status = payload.get("status")
@@ -615,7 +615,7 @@ async def update_status(ambulance_id: str, payload: dict = Body(default_factory=
 
     updated = await repo.update_one(
         {"_id": _as_object_id(ambulance_id)},
-        {"$set": {"status": status, "updatedAt": datetime.utcnow()}},
+        {"$set": {"status": status, "updatedAt": datetime.now(timezone.utc)}},
         return_new=True
     )
     if not updated:
@@ -626,7 +626,7 @@ async def update_status(ambulance_id: str, payload: dict = Body(default_factory=
 
 @router.get("/{ambulance_id}/metrics")
 async def get_metrics(ambulance_id: str, ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, AMBULANCES)
 
     ambulance = await repo.find_one({"_id": _as_object_id(ambulance_id)})

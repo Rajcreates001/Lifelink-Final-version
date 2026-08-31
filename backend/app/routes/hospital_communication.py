@@ -1,11 +1,11 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from bson import ObjectId
 from fastapi import APIRouter, HTTPException, Depends
 from app.core.auth import get_current_user, AuthContext
 from pydantic import BaseModel
 
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.services.collections import HOSPITAL_MESSAGES, HOSPITAL_NETWORK_AGREEMENTS, HOSPITALS, USERS
 from app.services.repository import MongoRepository
 
@@ -91,8 +91,8 @@ async def _resolve_hospital_doc(db, value: str, auto_create: bool = True) -> dic
     created = await hospital_repo.insert_one(
         {
             "user": oid if oid is not None else value,
-            "createdAt": datetime.utcnow(),
-            "updatedAt": datetime.utcnow(),
+            "createdAt": datetime.now(timezone.utc),
+            "updatedAt": datetime.now(timezone.utc),
         }
     )
     return created
@@ -124,14 +124,14 @@ def _get_user_display(user_doc: dict | None, hospital_doc: dict | None) -> dict:
 async def health(
     ctx: AuthContext = Depends(get_current_user)
 ):
-    return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
+    return {"status": "ok", "timestamp": datetime.now(timezone.utc).isoformat()}
 
 
 @router.get("/debug/status")
 async def debug_status(
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     hospital_repo = MongoRepository(db, HOSPITALS)
     message_repo = MongoRepository(db, HOSPITAL_MESSAGES)
 
@@ -150,7 +150,7 @@ async def debug_status(
 async def list_hospitals(current_hospital_id: str,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     hospital_repo = MongoRepository(db, HOSPITALS)
     user_repo = MongoRepository(db, USERS)
 
@@ -198,7 +198,7 @@ async def list_hospitals(current_hospital_id: str,
 async def hospital_details(hospital_id: str,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     user_repo = MongoRepository(db, USERS)
 
     hospital = await _resolve_hospital_doc(db, hospital_id, auto_create=False)
@@ -229,7 +229,7 @@ async def hospital_details(hospital_id: str,
 async def send_message(payload: SendMessageRequest,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     message_repo = MongoRepository(db, HOSPITAL_MESSAGES)
 
     from_h = await _resolve_hospital_doc(db, payload.fromHospitalId, auto_create=True)
@@ -248,8 +248,8 @@ async def send_message(payload: SendMessageRequest,
             "urgencyLevel": payload.urgencyLevel or "medium",
         },
         "status": "pending",
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
 
     created = await message_repo.insert_one(doc)
@@ -260,7 +260,7 @@ async def send_message(payload: SendMessageRequest,
 async def messages_received(hospital_id: str,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     message_repo = MongoRepository(db, HOSPITAL_MESSAGES)
     hospital_repo = MongoRepository(db, HOSPITALS)
     user_repo = MongoRepository(db, USERS)
@@ -320,7 +320,7 @@ async def messages_received(hospital_id: str,
 async def messages_sent(hospital_id: str,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     message_repo = MongoRepository(db, HOSPITAL_MESSAGES)
     hospital_repo = MongoRepository(db, HOSPITALS)
     user_repo = MongoRepository(db, USERS)
@@ -380,19 +380,19 @@ async def messages_sent(hospital_id: str,
 async def update_message(message_id: str, payload: UpdateMessageRequest,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     message_repo = MongoRepository(db, HOSPITAL_MESSAGES)
 
     oid = _normalize_id(message_id)
 
     update_data = {
         "status": payload.status,
-        "updatedAt": datetime.utcnow(),
+        "updatedAt": datetime.now(timezone.utc),
     }
     if payload.response is not None:
         update_data["response"] = {
             "message": payload.responseMessage or "",
-            "responseDate": datetime.utcnow(),
+            "responseDate": datetime.now(timezone.utc),
             "respondedBy": payload.response.get("respondedBy") if isinstance(payload.response, dict) else None,
         }
 
@@ -407,7 +407,7 @@ async def update_message(message_id: str, payload: UpdateMessageRequest,
 async def reply_message(message_id: str, payload: ReplyMessageRequest,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     message_repo = MongoRepository(db, HOSPITAL_MESSAGES)
 
     if not payload.responseMessage:
@@ -418,9 +418,9 @@ async def reply_message(message_id: str, payload: ReplyMessageRequest,
         "status": payload.status or "approved",
         "response": {
             "message": payload.responseMessage,
-            "responseDate": datetime.utcnow(),
+            "responseDate": datetime.now(timezone.utc),
         },
-        "updatedAt": datetime.utcnow(),
+        "updatedAt": datetime.now(timezone.utc),
     }
 
     updated = await message_repo.update_one({"_id": oid}, {"$set": update_data}, return_new=True)
@@ -434,7 +434,7 @@ async def reply_message(message_id: str, payload: ReplyMessageRequest,
 async def delete_message(message_id: str,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     message_repo = MongoRepository(db, HOSPITAL_MESSAGES)
 
     deleted = await message_repo.delete_by_id(message_id)
@@ -448,7 +448,7 @@ async def delete_message(message_id: str,
 async def my_hospital(user_id: str,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     user_repo = MongoRepository(db, USERS)
 
     user = await user_repo.find_one({"_id": _normalize_id(user_id)})
@@ -466,7 +466,7 @@ async def my_hospital(user_id: str,
 async def update_my_hospital(user_id: str, payload: dict,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     user_repo = MongoRepository(db, USERS)
     hospital_repo = MongoRepository(db, HOSPITALS)
 
@@ -478,7 +478,7 @@ async def update_my_hospital(user_id: str, payload: dict,
     if not hospital:
         raise HTTPException(status_code=500, detail="Failed to resolve hospital")
 
-    updates = {"updatedAt": datetime.utcnow()}
+    updates = {"updatedAt": datetime.now(timezone.utc)}
     if "beds" in payload:
         updates["beds"] = payload.get("beds")
     if "doctors" in payload:
@@ -501,7 +501,7 @@ async def update_my_hospital(user_id: str, payload: dict,
 async def create_agreement(payload: AgreementCreate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, HOSPITAL_NETWORK_AGREEMENTS)
 
     hospital = await _resolve_hospital_doc(db, payload.hospitalId, auto_create=False)
@@ -514,8 +514,8 @@ async def create_agreement(payload: AgreementCreate,
         "partner": _normalize_id(partner.get("_id")),
         "dataTypes": payload.dataTypes or ["beds", "resources", "staff"],
         "status": payload.status or "active",
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
     created = await repo.insert_one(doc)
     return created
@@ -525,7 +525,7 @@ async def create_agreement(payload: AgreementCreate,
 async def list_agreements(hospital_id: str,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, HOSPITAL_NETWORK_AGREEMENTS)
 
     hospital = await _resolve_hospital_doc(db, hospital_id, auto_create=False)
@@ -541,7 +541,7 @@ async def list_agreements(hospital_id: str,
 async def mutual_aid_recommendations(payload: MutualAidRequest,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     hospital_repo = MongoRepository(db, HOSPITALS)
     agreement_repo = MongoRepository(db, HOSPITAL_NETWORK_AGREEMENTS)
 
@@ -572,7 +572,7 @@ async def mutual_aid_recommendations(payload: MutualAidRequest,
 async def transfer_request(payload: MutualAidRequest,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     message_repo = MongoRepository(db, HOSPITAL_MESSAGES)
     hospital_repo = MongoRepository(db, HOSPITALS)
 
@@ -608,8 +608,8 @@ async def transfer_request(payload: MutualAidRequest,
             "urgencyLevel": payload.urgency or "medium",
         },
         "status": "pending",
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
 
     created = await message_repo.insert_one(doc)

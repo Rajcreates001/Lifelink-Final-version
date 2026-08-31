@@ -71,7 +71,7 @@ const ReportDownloadButton = ({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${sessionStorage.getItem('lifelink_token') || localStorage.getItem('lifelink_token')}`,
+          'Authorization': `Bearer ${sessionStorage.getItem('lifelink_token')}`,
         },
         body: JSON.stringify(data),
       });

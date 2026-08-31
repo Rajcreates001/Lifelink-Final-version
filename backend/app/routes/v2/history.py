@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from bson import ObjectId
@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.auth import require_roles
 from app.core.rbac import AuthContext
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.services.collections import ANALYTICS_EVENTS, USERS
 from app.services.repository import MongoRepository
 
@@ -41,7 +41,7 @@ def _format_event(raw: dict[str, Any]) -> dict[str, Any]:
         "module": raw.get("module", "general"),
         "action": raw.get("action", "unknown"),
         "category": _categorize_action(raw.get("module", ""), raw.get("action", "")),
-        "timestamp": raw.get("createdAt", raw.get("timestamp", datetime.utcnow())),
+        "timestamp": raw.get("createdAt", raw.get("timestamp", datetime.now(timezone.utc))),
         "metadata": raw.get("metadata") or {},
         "ai_confidence": raw.get("metadata", {}).get("confidence") or raw.get("ai_confidence"),
         "severity": raw.get("metadata", {}).get("severity") or raw.get("severity"),
@@ -176,7 +176,7 @@ async def list_activity_history(
     if str(ctx.user_id) != str(user_id):
         raise HTTPException(status_code=403, detail="Access denied")
 
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, ANALYTICS_EVENTS)
 
     # Build query filter
@@ -280,7 +280,7 @@ async def get_activity_detail(
     if str(ctx.user_id) != str(user_id):
         raise HTTPException(status_code=403, detail="Access denied")
 
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, ANALYTICS_EVENTS)
 
     oid = _as_object_id(activity_id)
@@ -345,7 +345,7 @@ async def log_activity(
     Log a new activity event. Accepts the same format as the internal _log_activity helper.
     This allows front-end modules to log their own activities directly.
     """
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, ANALYTICS_EVENTS)
 
     module = payload.get("module", "general")
@@ -357,7 +357,7 @@ async def log_activity(
         "module": module,
         "action": action,
         "metadata": metadata,
-        "createdAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
         "source": "frontend",
     }
 

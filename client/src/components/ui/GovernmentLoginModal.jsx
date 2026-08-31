@@ -93,9 +93,8 @@ const GovernmentLoginModal = ({ org, onClose, onSuccess }) => {
           organization: org.title,
           department: org.desc,
         };
-        // Store service token in localStorage for workspace flow
+        // Store service token in sessionStorage only (not localStorage for security)
         const serviceToken = 'demo-' + Date.now();
-        localStorage.setItem('lifelink_token', serviceToken);
         sessionStorage.setItem('lifelink_token', serviceToken);
         login(userData, serviceToken);
         onSuccess(userData, serviceToken);
@@ -123,7 +122,6 @@ const GovernmentLoginModal = ({ org, onClose, onSuccess }) => {
         department: org.desc,
       };
       const serviceToken = 'demo-' + Date.now();
-      localStorage.setItem('lifelink_token', serviceToken);
       sessionStorage.setItem('lifelink_token', serviceToken);
       login(userData, serviceToken);
       onSuccess(userData, serviceToken);

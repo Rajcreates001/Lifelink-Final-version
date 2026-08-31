@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
-from app.db.mongo import get_db
+from app.db.database import get_db
 from app.services.collections import FEATURE_STORE
 from app.services.repository import MongoRepository
 
@@ -18,7 +18,7 @@ class FeatureStore:
             "entity_type": entity_type,
             "entity_id": entity_id,
             "features": features,
-            "updated_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
         }
         existing = await self._repo.find_one({"entity_type": entity_type, "entity_id": entity_id})
         if existing:

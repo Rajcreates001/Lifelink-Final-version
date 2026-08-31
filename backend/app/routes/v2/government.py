@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.core.auth import require_roles, require_scopes
 from app.core.dependencies import get_government_service
 from app.core.rbac import AuthContext
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.services.government_service import GovernmentService
 from app.services.collections import USERS
 from app.services.repository import MongoRepository
@@ -32,14 +32,14 @@ async def policy_simulation(payload: dict, ctx: AuthContext = Depends(require_sc
 
 @router.get("/ambulance/pending")
 async def pending_ambulances(ctx: AuthContext = Depends(require_roles("government"))) -> list[dict]:
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, USERS)
     return await repo.find_many({"role": "ambulance", "isVerified": False})
 
 
 @router.put("/ambulance/verify/{user_id}")
 async def verify_ambulance(user_id: str, ctx: AuthContext = Depends(require_roles("government"))) -> dict:
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, USERS)
     try:
         oid = ObjectId(user_id)

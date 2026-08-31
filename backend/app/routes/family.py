@@ -1,10 +1,10 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.core.auth import get_current_user, AuthContext
 from app.services.collections import ALERTS, FAMILY_MEMBERS, NOTIFICATIONS
 from app.services.repository import MongoRepository
@@ -51,7 +51,10 @@ def _as_object_id(value: str) -> ObjectId:
 
 @router.get("/members/{user_id}")
 async def list_members(user_id: str, ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    # IDOR guard: users can only list their own family members
+    if user_id != ctx.user_id:
+        raise HTTPException(status_code=403, detail="Cannot access another user's family members")
+    db = require_db()
     repo = MongoRepository(db, FAMILY_MEMBERS)
     members = await repo.find_many({"user": _as_object_id(user_id)}, sort=[("createdAt", -1)])
     return {"count": len(members), "data": members}
@@ -59,7 +62,10 @@ async def list_members(user_id: str, ctx: AuthContext = Depends(get_current_user
 
 @router.post("/members", status_code=201)
 async def create_member(payload: FamilyMemberCreate, ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    # IDOR guard: users can only create family members for themselves
+    if payload.userId != ctx.user_id:
+        raise HTTPException(status_code=403, detail="Cannot create family members for another user")
+    db = require_db()
     repo = MongoRepository(db, FAMILY_MEMBERS)
 
     doc = {
@@ -69,9 +75,9 @@ async def create_member(payload: FamilyMemberCreate, ctx: AuthContext = Depends(
         "phone": payload.phone,
         "location": payload.location,
         "status": "Safe",
-        "lastCheckIn": datetime.utcnow().isoformat(),
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "lastCheckIn": datetime.now(timezone.utc).isoformat(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
 
     created = await repo.insert_one(doc)
@@ -80,7 +86,7 @@ async def create_member(payload: FamilyMemberCreate, ctx: AuthContext = Depends(
 
 @router.patch("/members/{member_id}")
 async def update_member(member_id: str, payload: FamilyMemberUpdate, ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, FAMILY_MEMBERS)
     alert_repo = MongoRepository(db, ALERTS)
     notification_repo = MongoRepository(db, NOTIFICATIONS)
@@ -93,7 +99,7 @@ async def update_member(member_id: str, payload: FamilyMemberUpdate, ctx: AuthCo
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields provided for update")
 
-    update_data["updatedAt"] = datetime.utcnow()
+    update_data["updatedAt"] = datetime.now(timezone.utc)
     updated = await repo.update_one({"_id": _as_object_id(member_id)}, {"$set": update_data}, return_new=True)
     if not updated:
         raise HTTPException(status_code=404, detail="Family member not found")
@@ -108,8 +114,8 @@ async def update_member(member_id: str, payload: FamilyMemberUpdate, ctx: AuthCo
                 "emergencyType": "High",
                 "priority": "High",
                 "status": "pending",
-                "createdAt": datetime.utcnow(),
-                "updatedAt": datetime.utcnow(),
+                "createdAt": datetime.now(timezone.utc),
+                "updatedAt": datetime.now(timezone.utc),
             }
         )
         await notification_repo.insert_one(
@@ -119,7 +125,7 @@ async def update_member(member_id: str, payload: FamilyMemberUpdate, ctx: AuthCo
                 "title": "Family Alert",
                 "message": message,
                 "severity": "High",
-                "createdAt": datetime.utcnow(),
+                "createdAt": datetime.now(timezone.utc),
                 "read": False,
                 "metadata": {"member_id": member_id, "alert_id": created_alert.get("_id")},
             }
@@ -130,7 +136,7 @@ async def update_member(member_id: str, payload: FamilyMemberUpdate, ctx: AuthCo
 
 @router.patch("/members/{member_id}/location")
 async def update_member_location(member_id: str, payload: FamilyLocationUpdate, ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, FAMILY_MEMBERS)
 
     update_data = {
@@ -138,9 +144,9 @@ async def update_member_location(member_id: str, payload: FamilyLocationUpdate, 
             "lat": payload.latitude,
             "lng": payload.longitude,
             "label": payload.label or "Live location",
-            "updatedAt": datetime.utcnow().isoformat(),
+            "updatedAt": datetime.now(timezone.utc).isoformat(),
         },
-        "updatedAt": datetime.utcnow(),
+        "updatedAt": datetime.now(timezone.utc),
     }
 
     updated = await repo.update_one({"_id": _as_object_id(member_id)}, {"$set": update_data}, return_new=True)
@@ -151,7 +157,7 @@ async def update_member_location(member_id: str, payload: FamilyLocationUpdate, 
 
 @router.post("/members/{member_id}/vitals")
 async def update_member_vitals(member_id: str, payload: FamilyVitalsUpdate, ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, FAMILY_MEMBERS)
 
     update_data = {
@@ -160,10 +166,10 @@ async def update_member_vitals(member_id: str, payload: FamilyVitalsUpdate, ctx:
             "oxygen": payload.oxygen,
             "blood_pressure": payload.blood_pressure,
             "temperature": payload.temperature,
-            "updatedAt": datetime.utcnow().isoformat(),
+            "updatedAt": datetime.now(timezone.utc).isoformat(),
         },
-        "lastCheckIn": datetime.utcnow().isoformat(),
-        "updatedAt": datetime.utcnow(),
+        "lastCheckIn": datetime.now(timezone.utc).isoformat(),
+        "updatedAt": datetime.now(timezone.utc),
     }
 
     updated = await repo.update_one({"_id": _as_object_id(member_id)}, {"$set": update_data}, return_new=True)
@@ -174,7 +180,10 @@ async def update_member_vitals(member_id: str, payload: FamilyVitalsUpdate, ctx:
 
 @router.get("/insights/{user_id}")
 async def family_insights(user_id: str, ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    # IDOR guard: users can only view their own family insights
+    if user_id != ctx.user_id:
+        raise HTTPException(status_code=403, detail="Cannot access another user's family insights")
+    db = require_db()
     repo = MongoRepository(db, FAMILY_MEMBERS)
     members = await repo.find_many({"user": _as_object_id(user_id)})
 

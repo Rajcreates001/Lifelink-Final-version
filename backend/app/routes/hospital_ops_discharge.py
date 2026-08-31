@@ -7,14 +7,14 @@ discharge summary generation, medication handoff, and follow-up scheduling.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from app.core.auth import require_scopes
 from app.core.rbac import AuthContext
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.services.collections import PATIENTS
 from app.services.repository import MongoRepository
 
@@ -56,7 +56,7 @@ async def check_discharge_readiness(
     ctx: AuthContext = Depends(require_scopes("patients:read")),
 ) -> dict:
     """Assess whether a patient is ready for discharge."""
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, PATIENTS)
 
     patient = await repo.find_one({"_id": payload.patient_id})
@@ -110,7 +110,7 @@ async def check_discharge_readiness(
                 admitted = datetime.fromisoformat(admit_date.replace("Z", "+00:00"))
             else:
                 admitted = admit_date
-            days_admitted = (datetime.utcnow() - admitted.replace(tzinfo=None)).days
+            days_admitted = (datetime.now(timezone.utc) - admitted.replace(tzinfo=None)).days
             if days_admitted < 1:
                 readiness_score -= 5
                 readiness_factors.append(f"Recently admitted ({days_admitted} days)")
@@ -141,7 +141,7 @@ async def check_discharge_readiness(
             "Patient is ready for discharge" if is_ready
             else "Patient requires additional monitoring before discharge"
         ),
-        "assessed_at": datetime.utcnow().isoformat(),
+        "assessed_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -153,7 +153,7 @@ async def process_discharge(
     ctx: AuthContext = Depends(require_scopes("patients:write")),
 ) -> dict:
     """Process a patient discharge with full summary."""
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, PATIENTS)
 
     patient = await repo.find_one({"_id": payload.patient_id})
@@ -173,7 +173,7 @@ async def process_discharge(
         "transport_arranged": payload.transport_arranged,
         "notes": payload.notes,
         "discharged_by": ctx.user_id,
-        "discharged_at": datetime.utcnow().isoformat(),
+        "discharged_at": datetime.now(timezone.utc).isoformat(),
         "status": "discharged",
     }
 
@@ -182,7 +182,7 @@ async def process_discharge(
         {"_id": payload.patient_id},
         {"$set": {
             "status": "discharged",
-            "dischargeDate": datetime.utcnow(),
+            "dischargeDate": datetime.now(timezone.utc),
             "dischargeRecord": discharge_record,
         }}
     )
@@ -213,7 +213,7 @@ async def generate_discharge_summary(
     if not patient_id:
         raise HTTPException(status_code=400, detail="patient_id is required")
 
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, PATIENTS)
     patient = await repo.find_one({"_id": patient_id})
     if not patient:
@@ -229,7 +229,7 @@ async def generate_discharge_summary(
         "patient_name": name,
         "patient_age": age,
         "admission_date": str(admit_date),
-        "discharge_date": datetime.utcnow().strftime("%Y-%m-%d"),
+        "discharge_date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         "diagnosis": diagnosis,
         "severity_at_admission": severity,
         "treatment_summary": patient.get("treatment") or "Treatment completed as per protocol",
@@ -243,7 +243,7 @@ async def generate_discharge_summary(
             "Follow up with specialist if symptoms persist",
             "Emergency: Call hospital if condition worsens",
         ],
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
     return summary
@@ -272,7 +272,7 @@ async def schedule_follow_up(
             "time": appt.get("time", ""),
             "reason": appt.get("reason", "Post-discharge follow-up"),
             "status": "scheduled",
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
         })
 
     return {
@@ -292,7 +292,7 @@ async def discharge_statistics(
     ctx: AuthContext = Depends(require_scopes("dashboard:read")),
 ) -> dict:
     """Get discharge statistics for a hospital."""
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, PATIENTS)
 
     # Count total and discharged patients
@@ -311,7 +311,7 @@ async def discharge_statistics(
         "active_patients": total - discharged,
         "discharge_rate_percent": discharge_rate,
         "average_length_of_stay_days": round(days / max(discharged, 1), 1),
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -346,6 +346,6 @@ def _generate_discharge_summary(patient: dict, payload: DischargeRequest) -> str
         lines.append("")
         lines.append(f"FOLLOW-UP: {payload.follow_up_instructions}")
 
-    lines.append(f"\nDischarged on: {datetime.utcnow().strftime('%Y-%m-%d %H:%M')}")
+    lines.append(f"\nDischarged on: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}")
 
     return "\n".join(lines)

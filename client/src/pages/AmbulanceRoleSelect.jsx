@@ -44,7 +44,7 @@ const AmbulanceRoleSelect = () => {
                 return;
             }
             const nextUser = { ...data.user, role: 'ambulance', subRole: data.user?.subRole || subRole };
-            const token = data.token || sessionStorage.getItem('lifelink_token') || localStorage.getItem('lifelink_token') || '';
+            const token = data.token || sessionStorage.getItem('lifelink_token') || '';
             login(nextUser, token);
             navigate('/dashboard/ambulance');
         } finally {

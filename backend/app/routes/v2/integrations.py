@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from app.core.auth import require_scopes
 from app.core.dependencies import get_data_integration_service
 from app.core.rbac import AuthContext
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.services.collections import EMERGENCY_EVENTS, HEALTH_RECORDS, HOSPITALS
 from app.services.data_integration_service import DataIntegrationService
 from app.services.repository import MongoRepository
@@ -64,7 +64,7 @@ async def weather(
 async def health_summary(
     ctx: AuthContext = Depends(require_scopes("analytics:read"))
 ) -> dict:
-    db = get_db()
+    db = require_db()
     health_repo = MongoRepository(db, HEALTH_RECORDS)
     emergency_repo = MongoRepository(db, EMERGENCY_EVENTS)
     health_count = await health_repo.collection.count_documents({})
@@ -80,7 +80,7 @@ async def health_summary(
 async def hospital_summary(
     ctx: AuthContext = Depends(require_scopes("analytics:read"))
 ) -> dict:
-    db = get_db()
+    db = require_db()
     hospital_repo = MongoRepository(db, HOSPITALS)
     total = await hospital_repo.collection.count_documents({})
     sample = await hospital_repo.find_many({}, limit=5)

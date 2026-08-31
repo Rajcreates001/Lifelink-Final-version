@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Body, HTTPException, Query, Depends
 from app.core.auth import get_current_user, AuthContext
 
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.services.repository import MongoRepository
 from app.services.collections import (
     ICU_ALERTS,
@@ -25,7 +25,7 @@ async def list_icu_patients(
     sort_dir: str | None = Query(None),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     await _ensure_seeded(db, hospitalId)
     repo = MongoRepository(db, ICU_PATIENTS)
     oid = _require_hospital_id(hospitalId)
@@ -49,7 +49,7 @@ async def list_icu_patients(
 async def create_icu_patient(payload: IcuPatientCreate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, ICU_PATIENTS)
     oid = _require_hospital_id(payload.hospitalId)
     doc = {
@@ -59,8 +59,8 @@ async def create_icu_patient(payload: IcuPatientCreate,
         "heartRate": payload.heartRate,
         "bp": payload.bp,
         "status": payload.status or "Stable",
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
     created = await repo.insert_one(doc)
     return created
@@ -70,7 +70,7 @@ async def create_icu_patient(payload: IcuPatientCreate,
 async def update_icu_patient(patient_id: str, payload: IcuPatientUpdate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, ICU_PATIENTS)
     oid = _as_object_id(patient_id)
     update_data = _build_update(payload, ["name", "oxygen", "heartRate", "bp", "status"])
@@ -90,7 +90,7 @@ async def list_icu_alerts(
     sort_dir: str | None = Query(None),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     await _ensure_seeded(db, hospitalId)
     repo = MongoRepository(db, ICU_ALERTS)
     oid = _require_hospital_id(hospitalId)
@@ -111,7 +111,7 @@ async def list_icu_alerts(
 async def create_icu_alert(payload: IcuAlertCreate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, ICU_ALERTS)
     oid = _require_hospital_id(payload.hospitalId)
     doc = {
@@ -119,8 +119,8 @@ async def create_icu_alert(payload: IcuAlertCreate,
         "message": payload.message,
         "severity": payload.severity,
         "status": payload.status or "Active",
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
     created = await repo.insert_one(doc)
     return created
@@ -130,7 +130,7 @@ async def create_icu_alert(payload: IcuAlertCreate,
 async def update_icu_alert(alert_id: str, payload: IcuAlertUpdate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, ICU_ALERTS)
     oid = _as_object_id(alert_id)
     update_data = _build_update(payload, ["message", "severity", "status"])
@@ -144,7 +144,7 @@ async def update_icu_alert(alert_id: str, payload: IcuAlertUpdate,
 async def icu_vitals(hospitalId: str = Query(...),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     await _ensure_seeded(db, hospitalId)
     repo = MongoRepository(db, ICU_PATIENTS)
     oid = _require_hospital_id(hospitalId)

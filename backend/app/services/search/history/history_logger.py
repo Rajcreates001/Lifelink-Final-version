@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 logger = logging.getLogger("lifelink.search.history")
 
@@ -26,7 +26,7 @@ class HistoryLogger:
         if not user_id:
             return
         try:
-            from app.db.mongo import get_db
+            from app.db.database import get_db
             db = get_db()
             if db is None:
                 return
@@ -39,7 +39,7 @@ class HistoryLogger:
                 "confidence": confidence,
                 "sources_count": sources_count,
                 "execution_ms": execution_ms,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "bookmarked": False,
             })
         except Exception as e:

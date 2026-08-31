@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Query, Depends
 from app.core.auth import get_current_user, AuthContext
 
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.services.repository import MongoRepository
 from app.services.collections import (
     HOSPITAL_STAFF,
@@ -28,7 +28,7 @@ async def list_staff(
     sort_dir: str | None = Query(None),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     await _ensure_seeded(db, hospitalId)
     repo = MongoRepository(db, HOSPITAL_STAFF)
     oid = _require_hospital_id(hospitalId)
@@ -53,7 +53,7 @@ async def list_staff(
 async def staff_skill_summary(hospitalId: str = Query(...),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     await _ensure_seeded(db, hospitalId)
     repo = MongoRepository(db, HOSPITAL_STAFF)
     oid = _require_hospital_id(hospitalId)
@@ -81,7 +81,7 @@ async def staff_skill_summary(hospitalId: str = Query(...),
 async def staff_optimizer(hospitalId: str = Query(...),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     await _ensure_seeded(db, hospitalId)
     staff_repo = MongoRepository(db, HOSPITAL_STAFF)
     patient_repo = MongoRepository(db, PATIENTS)
@@ -109,7 +109,7 @@ async def staff_optimizer(hospitalId: str = Query(...),
 async def create_staff(payload: StaffMemberCreate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, HOSPITAL_STAFF)
     oid = _require_hospital_id(payload.hospitalId)
     doc = {
@@ -122,8 +122,8 @@ async def create_staff(payload: StaffMemberCreate,
         "skillTags": payload.skillTags or [],
         "certifications": payload.certifications or [],
         "maxPatients": payload.maxPatients,
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
     created = await repo.insert_one(doc)
     return created
@@ -133,7 +133,7 @@ async def create_staff(payload: StaffMemberCreate,
 async def update_staff(staff_id: str, payload: StaffMemberUpdate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, HOSPITAL_STAFF)
     oid = _as_object_id(staff_id)
     update_data = _build_update(payload, ["name", "role", "department", "shift", "availability", "skillTags", "certifications", "maxPatients"])
@@ -147,7 +147,7 @@ async def update_staff(staff_id: str, payload: StaffMemberUpdate,
 async def delete_staff(staff_id: str,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, HOSPITAL_STAFF)
     deleted = await repo.delete_by_id(staff_id)
     if not deleted:

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Any
 
-from app.db.mongo import get_db
+from app.db.database import get_db
 from app.services.collections import INFERENCE_LOGS
 from app.services.repository import MongoRepository
 
@@ -41,12 +41,12 @@ class ObservabilityService:
             "drift_score": drift_score,
             "data_freshness_hours": data_freshness_hours,
             "explanation_quality": explanation_quality,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
         }
         return await self._repo.insert_one(record)
 
     async def summary(self, hours: int = 24) -> dict[str, Any]:
-        since = datetime.utcnow() - timedelta(hours=hours)
+        since = datetime.now(timezone.utc) - timedelta(hours=hours)
         records = await self._repo.find_many(
             {"created_at": {"$gte": since.isoformat()}},
             limit=500,

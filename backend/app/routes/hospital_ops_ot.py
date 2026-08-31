@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Query, Depends
 from app.core.auth import get_current_user, AuthContext
 
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.services.repository import MongoRepository
 from app.services.collections import (
     OT_ALLOCATIONS,
@@ -27,7 +27,7 @@ async def list_ot_surgeries(
     sort_dir: str | None = Query(None),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     await _ensure_seeded(db, hospitalId)
     repo = MongoRepository(db, OT_SURGERIES)
     oid = _require_hospital_id(hospitalId)
@@ -46,7 +46,7 @@ async def list_ot_surgeries(
 async def create_ot_surgery(payload: OTSurgeryCreate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, OT_SURGERIES)
     oid = _require_hospital_id(payload.hospitalId)
     doc = {
@@ -55,8 +55,8 @@ async def create_ot_surgery(payload: OTSurgeryCreate,
         "procedure": payload.procedure,
         "time": payload.time,
         "status": payload.status or "Scheduled",
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
     created = await repo.insert_one(doc)
     return created
@@ -66,7 +66,7 @@ async def create_ot_surgery(payload: OTSurgeryCreate,
 async def update_ot_surgery(surgery_id: str, payload: OTSurgeryUpdate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, OT_SURGERIES)
     oid = _as_object_id(surgery_id)
     update_data = _build_update(payload, ["patient", "procedure", "time", "status"])
@@ -87,7 +87,7 @@ async def list_ot_allocations(
     sort_dir: str | None = Query(None),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     await _ensure_seeded(db, hospitalId)
     repo = MongoRepository(db, OT_ALLOCATIONS)
     oid = _require_hospital_id(hospitalId)
@@ -110,7 +110,7 @@ async def list_ot_allocations(
 async def create_ot_allocation(payload: OTAllocationCreate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, OT_ALLOCATIONS)
     oid = _require_hospital_id(payload.hospitalId)
 
@@ -142,8 +142,8 @@ async def create_ot_allocation(payload: OTAllocationCreate,
         "patient_load": payload.patient_load,
         "shift": payload.shift,
         "allocation_decision": allocation_decision,
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
 
     created = await repo.insert_one(doc)
