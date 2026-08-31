@@ -7,7 +7,6 @@ import json
 import logging
 import urllib.parse
 import urllib.request
-from typing import Any
 
 from app.services.search.schemas import SearchResultItem
 
@@ -42,7 +41,7 @@ class ClinicalTrialsConnector:
                 protocol = study.get("protocolSection", {})
                 id_module = protocol.get("identificationModule", {})
                 status_module = protocol.get("statusModule", {})
-                design_module = protocol.get("designModule", {})
+                protocol.get("designModule", {})
                 desc_module = protocol.get("descriptionModule", {})
                 results.append(SearchResultItem(
                     id=f"clinicaltrials:{id_module.get('nctId', '')}",

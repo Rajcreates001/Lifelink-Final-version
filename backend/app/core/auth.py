@@ -27,7 +27,7 @@ async def get_optional_user(authorization: str | None = Header(default=None)) ->
 
     try:
         payload = decode_access_token(token)
-    except Exception as exc:
+    except Exception:
         return None
 
     user_id = payload.get("id") or payload.get("sub")

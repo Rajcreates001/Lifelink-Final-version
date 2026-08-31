@@ -26,7 +26,7 @@ class TestJWTSecurity:
         from app.core.security import create_access_token
         token = create_access_token(
             {"id": "user-123", "role": "public"},
-            expires_delta=timedelta(hours=1)
+            expires_minutes=60
         )
         assert isinstance(token, str)
 
@@ -137,8 +137,14 @@ class TestMLModels:
 
     def test_model_configs_exist(self):
         from app.services.medical_knowledge import ConfidenceResult
-        result = ConfidenceResult(overall=0.85, data_completeness=0.9,
-                                   missing_critical_inputs=[], warnings=[])
+        result = ConfidenceResult(
+            overall=0.85,
+            data_completeness=0.9,
+            data_quality=0.95,
+            model_confidence=0.88,
+            missing_critical_inputs=[],
+            warnings=[],
+        )
         assert result.overall == 0.85
         assert result.data_completeness == 0.9
 

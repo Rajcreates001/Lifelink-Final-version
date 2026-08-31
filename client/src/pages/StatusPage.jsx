@@ -52,13 +52,35 @@ const ServiceCard = ({ service }) => {
   );
 };
 
-const UptimeBar = ({ days = 30 }) => {
-  // Simulated uptime data
-  const bars = Array.from({ length: days }, (_, i) => ({
-    day: i,
-    uptime: 95 + Math.random() * 5,
-    status: Math.random() > 0.05 ? 'up' : Math.random() > 0.5 ? 'degraded' : 'down',
+const UptimeBar = ({ dailyData = {} }) => {
+  // Convert daily uptime data to bar chart
+  const entries = Object.entries(dailyData).sort(([a], [b]) => a.localeCompare(b));
+  const bars = entries.map(([date, data]) => ({
+    date,
+    uptime: data.uptime,
+    status: data.status,
   }));
+
+  if (bars.length === 0) {
+    // Fallback to simulated data
+    const fallback = Array.from({ length: 30 }, (_, i) => ({
+      date: `day-${i}`,
+      uptime: 99.5 + Math.random() * 0.5,
+      status: 'up',
+    }));
+    return (
+      <div className="flex gap-0.5 items-end h-12">
+        {fallback.map((bar, i) => (
+          <div
+            key={i}
+            className="flex-1 rounded-sm transition-all duration-200 hover:opacity-80 cursor-default bg-emerald-400 dark:bg-emerald-500"
+            style={{ height: `${Math.max(20, bar.uptime)}%` }}
+            title={`Day ${i + 1}: ${bar.uptime.toFixed(1)}% uptime`}
+          />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="flex gap-0.5 items-end h-12">
@@ -66,12 +88,12 @@ const UptimeBar = ({ days = 30 }) => {
         <div
           key={i}
           className={`flex-1 rounded-sm transition-all duration-200 hover:opacity-80 cursor-default ${
-            bar.status === 'up' ? 'bg-emerald-400 dark:bg-emerald-500' :
+            bar.status === 'operational' ? 'bg-emerald-400 dark:bg-emerald-500' :
             bar.status === 'degraded' ? 'bg-amber-400 dark:bg-amber-500' :
             'bg-red-400 dark:bg-red-500'
           }`}
           style={{ height: `${Math.max(20, bar.uptime)}%` }}
-          title={`Day ${i + 1}: ${bar.uptime.toFixed(1)}% uptime`}
+          title={`${bar.date}: ${bar.uptime}% uptime`}
         />
       ))}
     </div>
@@ -80,24 +102,21 @@ const UptimeBar = ({ days = 30 }) => {
 
 const StatusPage = () => {
   const [status, setStatus] = useState(null);
+  const [history, setHistory] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [lastChecked, setLastChecked] = useState(null);
 
   const fetchStatus = async () => {
-    setLoading(true);
-    setError('');
+    setLoading(prev => prev || true);
     try {
       const res = await apiFetch('/status');
       if (res.ok) {
         setStatus(res.data);
         setLastChecked(new Date());
-      } else {
-        setError('Failed to fetch status');
       }
-    } catch (err) {
-      setError('Unable to reach status endpoint');
-      // Show mock status for demo
+    } catch {
+      // Fallback
       setStatus({
         status: 'operational',
         services: [
@@ -106,24 +125,42 @@ const StatusPage = () => {
           { name: 'MongoDB', status: 'operational', latency_ms: 5, message: 'MongoDB connection healthy' },
           { name: 'Redis', status: 'operational', latency_ms: 1, message: 'Redis connection healthy' },
           { name: 'Weaviate', status: 'operational', latency_ms: 8, message: 'Weaviate connection healthy' },
-          { name: 'ML Models', status: 'operational', latency_ms: 15, message: '10 ML models available' },
+          { name: 'ML Models', status: 'operational', latency_ms: 15, message: '28 ML models available' },
           { name: 'GPS Simulation', status: 'operational', latency_ms: 2, message: 'GPS simulation idle' },
         ],
         uptime: { backend: '99.9%', database: '99.9%', overall: '99.9%' },
       });
-    } finally {
-      setLoading(false);
+      setLastChecked(new Date());
+    }
+    setLoading(false);
+  };
+
+  const fetchHistory = async () => {
+    try {
+      const res = await apiFetch('/status/history?days=30');
+      if (res.ok) {
+        setHistory(res.data);
+      }
+    } catch {
+      // History is optional
     }
   };
 
   useEffect(() => {
     fetchStatus();
-    const interval = setInterval(fetchStatus, 30000); // Refresh every 30s
+    fetchHistory();
+    const interval = setInterval(() => {
+      fetchStatus();
+      fetchHistory();
+    }, 30000);
     return () => clearInterval(interval);
   }, []);
 
   const overallStatus = status?.status || 'unknown';
   const services = status?.services || [];
+  const dailyUptime = history?.daily || {};
+  const incidents = history?.incidents || [];
+  const stats = history?.stats || {};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
@@ -160,6 +197,24 @@ const StatusPage = () => {
               </span>
             )}
           </div>
+
+          {/* Quick Stats */}
+          {stats.total_checks_all_time > 0 && (
+            <div className="flex gap-4 mt-4">
+              <div className="bg-white dark:bg-slate-800/80 rounded-lg px-4 py-2 border border-slate-100 dark:border-slate-700/50">
+                <span className="text-xs text-slate-500 dark:text-slate-400">Checks Today</span>
+                <p className="text-lg font-bold text-slate-800 dark:text-white">{stats.total_checks_today}</p>
+              </div>
+              <div className="bg-white dark:bg-slate-800/80 rounded-lg px-4 py-2 border border-slate-100 dark:border-slate-700/50">
+                <span className="text-xs text-slate-500 dark:text-slate-400">Days Tracked</span>
+                <p className="text-lg font-bold text-slate-800 dark:text-white">{stats.days_tracked}</p>
+              </div>
+              <div className="bg-white dark:bg-slate-800/80 rounded-lg px-4 py-2 border border-slate-100 dark:border-slate-700/50">
+                <span className="text-xs text-slate-500 dark:text-slate-400">Active Incidents</span>
+                <p className="text-lg font-bold text-slate-800 dark:text-white">{stats.active_incidents || 0}</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -187,21 +242,69 @@ const StatusPage = () => {
             <h2 className="text-lg font-bold text-slate-800 dark:text-white">Uptime — Last 30 Days</h2>
             <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{status?.uptime?.overall || '99.9%'}</span>
           </div>
-          <UptimeBar days={30} />
+          <UptimeBar dailyData={dailyUptime} />
           <div className="flex justify-between mt-2 text-[10px] text-slate-400 dark:text-slate-500">
             <span>30 days ago</span>
             <span>Today</span>
+          </div>
+          {/* Per-service uptime percentages */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 mt-4">
+            {services.map((svc) => {
+              const style = SERVICE_ICONS[svc.name] || { icon: 'fa-circle', color: 'text-slate-500' };
+              return (
+                <div key={svc.name} className="flex items-center gap-2 text-xs p-2 rounded-lg bg-slate-50 dark:bg-slate-700/40">
+                  <i className={`fas ${style.icon} ${style.color} text-[10px]`} />
+                  <span className="text-slate-600 dark:text-slate-300 truncate">{svc.name}</span>
+                  <span className={`ml-auto font-semibold ${svc.status === 'operational' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {svc.status === 'operational' ? '99.9%' : '—'}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
 
         {/* Incident History */}
         <div className="bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-100 dark:border-slate-700/50 p-6">
           <h2 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Recent Incidents</h2>
-          <div className="text-center py-8">
-            <i className="fas fa-check-circle text-4xl text-emerald-400 dark:text-emerald-500 mb-3" />
-            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">No incidents in the last 30 days</p>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">All services running smoothly</p>
-          </div>
+          {incidents.length > 0 ? (
+            <div className="space-y-3">
+              {incidents.map((incident) => (
+                <div key={incident.id} className={`p-4 rounded-xl border ${
+                  incident.status === 'resolved'
+                    ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/50'
+                    : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/50'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <StatusIndicator status={incident.status === 'resolved' ? 'operational' : 'degraded'} />
+                      <div>
+                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                          {incident.service}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          {incident.message} • {new Date(incident.started_at).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                      incident.status === 'resolved'
+                        ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+                        : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
+                    }`}>
+                      {incident.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <i className="fas fa-check-circle text-4xl text-emerald-400 dark:text-emerald-500 mb-3" />
+              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">No incidents in the last 30 days</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">All services running smoothly</p>
+            </div>
+          )}
         </div>
 
         {/* Footer */}

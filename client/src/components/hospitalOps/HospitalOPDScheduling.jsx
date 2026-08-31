@@ -1,5 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { buildQuery } from './helpers';
+import { useAuth } from '../../context/AuthContext';
+import { apiFetch } from '../../config/api';
+import { DashboardCard, LoadingSpinner, StatusPill, ProgressBar } from '../Common';
+import { ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip } from 'recharts';
 
 export const HospitalOPDScheduling = () => {
     const { user } = useAuth();

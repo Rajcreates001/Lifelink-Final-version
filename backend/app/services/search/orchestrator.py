@@ -24,7 +24,6 @@ import time
 from typing import Any
 
 from app.services.search.schemas import (
-    Citation,
     HybridSearchRequest,
     HybridSearchResponse,
     SearchIntent,
@@ -34,7 +33,7 @@ from app.services.search.schemas import (
     SearchSummary,
     SourceInfo,
 )
-from app.services.search.intent_parser import parse_intent, needs_clarification
+from app.services.search.intent_parser import parse_intent
 from app.services.search.mode_policies import get_mode_policy, is_async_mode, get_insufficiency_threshold
 from app.services.search.source_registry import get_source_config
 

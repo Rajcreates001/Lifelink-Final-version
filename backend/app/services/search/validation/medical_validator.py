@@ -6,8 +6,6 @@ import logging
 from typing import Any
 
 from app.services.medical_knowledge import (
-    assess_vitals,
-    compute_risk_score,
     validate_blood_group,
 )
 from app.services.search.schemas import SearchIntent, SearchResultItem

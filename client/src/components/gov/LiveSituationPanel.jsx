@@ -14,7 +14,8 @@ const INCIDENT_TYPES = {
 };
 
 // ─── Sample incidents for demo ─────────────────────────────
-const DEMO_INCIDENTS = [
+// Seed data shown only when API returns empty — replaced with real data on mount
+const SEED_INCIDENTS = [
   { id: 1, type: 'fire', title: 'Building Fire — Balmatta', location: 'Mangaluru, DK', severity: 'Critical', units: 4, time: '2m ago' },
   { id: 2, type: 'flood', title: 'Flooding — Netravati Banks', location: 'Bantwal, DK', severity: 'Severe', units: 8, time: '5m ago' },
   { id: 3, type: 'medical', title: 'Mass Casualty — NH-66', location: 'Surathkal, Mangaluru', severity: 'Critical', units: 6, time: '7m ago' },
@@ -62,10 +63,10 @@ const LiveSituationPanel = ({ compact = false, maxItems = 5 }) => {
           }));
           setIncidents(mapped);
         } else {
-          setIncidents(DEMO_INCIDENTS); // Fallback to demo if no data
+          setIncidents(SEED_INCIDENTS); // Seed data when API returns empty
         }
       } catch {
-        setIncidents(DEMO_INCIDENTS);
+        setIncidents(SEED_INCIDENTS);
       }
     };
     fetchIncidents();

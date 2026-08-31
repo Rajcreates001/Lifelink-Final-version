@@ -43,7 +43,7 @@ jobs:
       - name: Backend lint
         run: |
           pip install flake8
-          flake8 backend/app/ --max-line-length=120 --count --statistics || true
+          flake8 backend/app/ --count --statistics
 
   # ─── Security Scan ──────────────────────────────────────────
   security:

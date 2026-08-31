@@ -1,0 +1,239 @@
+{
+  "models": {
+    "emergency_classifier": {
+      "name": "emergency_classifier",
+      "display_name": "Emergency Triage Classifier",
+      "description": "Classifies emergency cases by severity level",
+      "current_version": 1,
+      "versions": [
+        {
+          "version": 1,
+          "model_path": "/app/ml/emergency_classifier.joblib",
+          "created_at": "2026-08-24T07:54:11.863857+00:00",
+          "metrics": {},
+          "training_samples": 0,
+          "training_duration_seconds": 0.0,
+          "notes": "Initial version",
+          "status": "active"
+        }
+      ],
+      "retrain_interval_hours": 24,
+      "last_retrained": "2026-08-24T07:54:11.860461+00:00",
+      "auto_retrain": true,
+      "min_accuracy": 0.75,
+      "category": "emergency"
+    },
+    "emergency_hotspot_model": {
+      "name": "emergency_hotspot_model",
+      "display_name": "Emergency Hotspot Predictor",
+      "description": "Predicts geographic emergency hotspots",
+      "current_version": 1,
+      "versions": [
+        {
+          "version": 1,
+          "model_path": "/app/ml/emergency_hotspot_model.joblib",
+          "created_at": "2026-08-24T07:54:11.874079+00:00",
+          "metrics": {},
+          "training_samples": 0,
+          "training_duration_seconds": 0.0,
+          "notes": "Initial version",
+          "status": "active"
+        }
+      ],
+      "retrain_interval_hours": 24,
+      "last_retrained": "2026-08-24T07:54:11.870677+00:00",
+      "auto_retrain": true,
+      "min_accuracy": 0.7,
+      "category": "emergency"
+    },
+    "hospital_performance_model": {
+      "name": "hospital_performance_model",
+      "display_name": "Hospital Performance Scorer",
+      "description": "Scores hospital quality and efficiency",
+      "current_version": 1,
+      "versions": [
+        {
+          "version": 1,
+          "model_path": "/app/ml/hospital_performance_model.joblib",
+          "created_at": "2026-08-24T07:54:11.882840+00:00",
+          "metrics": {},
+          "training_samples": 0,
+          "training_duration_seconds": 0.0,
+          "notes": "Initial version",
+          "status": "active"
+        }
+      ],
+      "retrain_interval_hours": 24,
+      "last_retrained": "2026-08-24T07:54:11.880012+00:00",
+      "auto_retrain": true,
+      "min_accuracy": 0.72,
+      "category": "hospital"
+    },
+    "healthcare_performance_model": {
+      "name": "healthcare_performance_model",
+      "display_name": "Healthcare System Performance",
+      "description": "System-wide healthcare performance metrics",
+      "current_version": 1,
+      "versions": [
+        {
+          "version": 1,
+          "model_path": "/app/ml/healthcare_performance_model.joblib",
+          "created_at": "2026-08-24T07:54:11.891799+00:00",
+          "metrics": {},
+          "training_samples": 0,
+          "training_duration_seconds": 0.0,
+          "notes": "Initial version",
+          "status": "active"
+        }
+      ],
+      "retrain_interval_hours": 24,
+      "last_retrained": "2026-08-24T07:54:11.888743+00:00",
+      "auto_retrain": true,
+      "min_accuracy": 0.7,
+      "category": "hospital"
+    },
+    "staff_allocation_model": {
+      "name": "staff_allocation_model",
+      "display_name": "Staff Allocation Optimizer",
+      "description": "Optimizes staff scheduling and allocation",
+      "current_version": 1,
+      "versions": [
+        {
+          "version": 1,
+          "model_path": "/app/ml/staff_allocation_model.joblib",
+          "created_at": "2026-08-24T07:54:11.900532+00:00",
+          "metrics": {},
+          "training_samples": 0,
+          "training_duration_seconds": 0.0,
+          "notes": "Initial version",
+          "status": "active"
+        }
+      ],
+      "retrain_interval_hours": 24,
+      "last_retrained": "2026-08-24T07:54:11.897459+00:00",
+      "auto_retrain": true,
+      "min_accuracy": 0.68,
+      "category": "hospital"
+    },
+    "recovery_model": {
+      "name": "recovery_model",
+      "display_name": "Patient Recovery Predictor",
+      "description": "Predicts patient recovery timelines",
+      "current_version": 1,
+      "versions": [
+        {
+          "version": 1,
+          "model_path": "/app/ml/recovery_model.joblib",
+          "created_at": "2026-08-24T07:54:11.908470+00:00",
+          "metrics": {},
+          "training_samples": 0,
+          "training_duration_seconds": 0.0,
+          "notes": "Initial version",
+          "status": "active"
+        }
+      ],
+      "retrain_interval_hours": 24,
+      "last_retrained": "2026-08-24T07:54:11.906041+00:00",
+      "auto_retrain": true,
+      "min_accuracy": 0.65,
+      "category": "hospital"
+    },
+    "compatibility_model": {
+      "name": "compatibility_model",
+      "display_name": "Donor Compatibility Matcher",
+      "description": "Matches donors with recipients",
+      "current_version": 1,
+      "versions": [
+        {
+          "version": 1,
+          "model_path": "/app/ml/compatibility_model.joblib",
+          "created_at": "2026-08-24T07:54:11.916080+00:00",
+          "metrics": {},
+          "training_samples": 0,
+          "training_duration_seconds": 0.0,
+          "notes": "Initial version",
+          "status": "active"
+        }
+      ],
+      "retrain_interval_hours": 24,
+      "last_retrained": "2026-08-24T07:54:11.913360+00:00",
+      "auto_retrain": true,
+      "min_accuracy": 0.75,
+      "category": "hospital"
+    },
+    "behavior_forecast_model": {
+      "name": "behavior_forecast_model",
+      "display_name": "Patient Behavior Forecaster",
+      "description": "Forecasts patient behavior patterns",
+      "current_version": 1,
+      "versions": [
+        {
+          "version": 1,
+          "model_path": "/app/ml/behavior_forecast_model.joblib",
+          "created_at": "2026-08-24T07:54:11.923903+00:00",
+          "metrics": {},
+          "training_samples": 0,
+          "training_duration_seconds": 0.0,
+          "notes": "Initial version",
+          "status": "active"
+        }
+      ],
+      "retrain_interval_hours": 24,
+      "last_retrained": "2026-08-24T07:54:11.921241+00:00",
+      "auto_retrain": true,
+      "min_accuracy": 0.68,
+      "category": "hospital"
+    },
+    "activity_cluster_model": {
+      "name": "activity_cluster_model",
+      "display_name": "Activity Cluster Analyzer",
+      "description": "Clusters patient activity patterns",
+      "current_version": 1,
+      "versions": [
+        {
+          "version": 1,
+          "model_path": "/app/ml/activity_cluster_model.joblib",
+          "created_at": "2026-08-24T07:54:11.931423+00:00",
+          "metrics": {},
+          "training_samples": 0,
+          "training_duration_seconds": 0.0,
+          "notes": "Initial version",
+          "status": "active"
+        }
+      ],
+      "retrain_interval_hours": 24,
+      "last_retrained": "2026-08-24T07:54:11.929239+00:00",
+      "auto_retrain": true,
+      "min_accuracy": 0.7,
+      "category": "hospital"
+    },
+    "policy_segmentation_model": {
+      "name": "policy_segmentation_model",
+      "display_name": "Policy Segmentation Model",
+      "description": "Segments insurance policyholders",
+      "current_version": 1,
+      "versions": [
+        {
+          "version": 1,
+          "model_path": "/app/ml/policy_segmentation_model.joblib",
+          "created_at": "2026-08-24T07:54:11.939506+00:00",
+          "metrics": {},
+          "training_samples": 0,
+          "training_duration_seconds": 0.0,
+          "notes": "Initial version",
+          "status": "active"
+        }
+      ],
+      "retrain_interval_hours": 24,
+      "last_retrained": "2026-08-24T07:54:11.936441+00:00",
+      "auto_retrain": true,
+      "min_accuracy": 0.72,
+      "category": "government"
+    }
+  },
+  "metadata": {
+    "created_at": "2026-08-24T07:54:11.852906+00:00",
+    "version": "1.0",
+    "updated_at": "2026-08-24T07:54:11.939689+00:00"
+  }
+}

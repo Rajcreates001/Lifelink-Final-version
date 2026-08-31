@@ -219,10 +219,10 @@ class Ambulance(Agent):
         nearest_hosp = min(hospitals, key=lambda h: haversine_km(
             self.lat, self.lng, h.lat, h.lng))
         dist = haversine_km(self.lat, self.lng, nearest_hosp.lat, nearest_hosp.lng)
-        transport_time = (dist / self.speed_kph) * 60
+        (dist / self.speed_kph) * 60
 
         # Admit patient
-        severity_bonus = {"critical": 0, "high": 1, "moderate": 2, "low": 3}
+        _severity_bonus = {"critical": 0, "high": 1, "moderate": 2, "low": 3}
         nearest_hosp.admit_patient(self.current_incident.severity)
         self.current_incident.hospital_id = nearest_hosp.unique_id
         self.total_distance_km += dist
@@ -333,7 +333,7 @@ class EmergencySimulationModel(Model):
             self.agents.add(amb)
 
         # Create incidents
-        inc_offset = amb_offset + self.config.num_ambulances
+        amb_offset + self.config.num_ambulances
         severity_choices = list(self.config.severity_distribution.keys())
         severity_weights = list(self.config.severity_distribution.values())
         incident_types = ["cardiac", "trauma", "respiratory", "accident", "burn", "stroke"]

@@ -1,47 +1,14 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Body, HTTPException, Query, Depends
+from fastapi import APIRouter, HTTPException, Query, Depends
 from app.core.auth import get_current_user, AuthContext
 from fastapi.responses import PlainTextResponse
 
 from app.db.mongo import get_db
 from app.services.repository import MongoRepository
 from app.services.collections import (
-    ALERTS,
-    AMBULANCE_ASSIGNMENTS,
-    AMBULANCES,
-    ANALYTICS_EVENTS,
-    BED_ALLOCATIONS,
-    BILLING_INVOICES,
-    DEPARTMENT_LOGS,
-    EMERGENCY_EVENTS,
-    EQUIPMENT_INVENTORY,
-    FINANCE_EXPENSES,
-    HOSPITAL_BENCHMARKS,
-    HOSPITAL_DEPARTMENTS,
-    HOSPITAL_MESSAGES,
-    HOSPITAL_NETWORK_AGREEMENTS,
-    HOSPITALS,
-    HOSPITAL_REPORTS,
-    HOSPITAL_STAFF,
-    ICU_ALERTS,
-    ICU_PATIENTS,
-    INSURANCE_CLAIMS,
-    OPD_QUEUE,
-    OPD_APPOINTMENTS,
-    OPD_CONSULTATIONS,
-    OPD_DOCTORS,
-    OT_ALLOCATIONS,
-    OT_SURGERIES,
-    PATIENTS,
-    PREDICTIONS,
-    RADIOLOGY_REPORTS,
-    RADIOLOGY_REQUESTS,
-    RESOURCES,
-    VENDOR_LEAD_TIMES
+    HOSPITAL_REPORTS
 )
-from app.core.celery_app import celery_app
-from app.services.prediction_store import get_latest_prediction
 
 from .hospital_ops_shared import *
 

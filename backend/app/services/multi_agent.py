@@ -49,6 +49,8 @@ from __future__ import annotations
 import logging
 
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 from typing import Any
 
 from app.services.medical_knowledge import (

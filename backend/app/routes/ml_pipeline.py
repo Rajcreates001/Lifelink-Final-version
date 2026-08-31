@@ -8,7 +8,7 @@ import time
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Body, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 
 from app.services.ml_pipeline import get_registry
 
@@ -120,7 +120,6 @@ _retrain_status = {"running": False, "current_model": "", "progress": 0, "last_r
 
 def _run_retrain(model_name: str):
     """Background task to retrain a model."""
-    global _retrain_status
     _retrain_status["running"] = True
     _retrain_status["current_model"] = model_name
     _retrain_status["progress"] = 0

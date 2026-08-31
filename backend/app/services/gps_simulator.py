@@ -11,12 +11,11 @@ without requiring physical GPS hardware. Simulates:
 """
 
 import asyncio
-import json
 import logging
 import math
 import random
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional
 
 logger = logging.getLogger("lifelink.gps_simulator")

@@ -1,4 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { apiFetch } from '../../config/api';
+import { DashboardCard, LoadingSpinner } from '../Common';
+import { ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip } from 'recharts';
 
 export const HospitalFinanceOverview = () => {
     const { user } = useAuth();

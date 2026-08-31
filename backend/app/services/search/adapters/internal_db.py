@@ -8,8 +8,6 @@ search strategies. Uses regex, text indexes, and domain heuristics.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
-from typing import Any
 
 from app.db.mongo import get_db
 from app.services.collections import (
@@ -93,7 +91,7 @@ class InternalDbAdapter:
     ) -> list[SearchResultItem]:
         try:
             repo = MongoRepository(db, mongo_name)
-            lowered = query.lower()
+            query.lower()
             regex = {"$regex": query, "$options": "i"}
 
             items: list[SearchResultItem] = []

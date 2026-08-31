@@ -7,7 +7,6 @@ import json
 import logging
 import urllib.parse
 import urllib.request
-from typing import Any
 
 from app.services.search.schemas import SearchResultItem
 
@@ -81,7 +80,7 @@ class PubMedConnector:
             title_match = re.search(r"<ArticleTitle[^>]*>(.*?)</ArticleTitle>", article, re.DOTALL)
             abstract_match = re.search(r"<AbstractText[^>]*>(.*?)</AbstractText>", article, re.DOTALL)
             pmid_match = re.search(r"<PMID[^>]*>(.*?)</PMID>", article)
-            journal_match = re.search(r"<Journal>(.*?)</Journal>", article, re.DOTALL)
+            re.search(r"<Journal>(.*?)</Journal>", article, re.DOTALL)
             year_match = re.search(r"<PubDate[^>]*>(.*?)</PubDate>", article, re.DOTALL)
 
             if not title_match:

@@ -2,6 +2,8 @@ import logging
 from datetime import datetime
 
 from bson import ObjectId
+
+logger = logging.getLogger(__name__)
 from celery.result import AsyncResult
 from fastapi import APIRouter, Body, Depends, HTTPException
 

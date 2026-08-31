@@ -8,12 +8,11 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from app.core.auth import require_roles, require_scopes
+from app.core.auth import require_scopes
 from app.core.rbac import AuthContext
 from app.db.mongo import get_db
 from app.services.collections import PATIENTS

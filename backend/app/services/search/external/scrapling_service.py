@@ -14,7 +14,7 @@ from typing import Any
 
 from app.services.search.citations.trust_registry import get_trust_info
 from app.services.search.schemas import SearchResultItem
-from app.services.search.source_registry import SOURCE_REGISTRY, get_source_config
+from app.services.search.source_registry import get_source_config
 
 logger = logging.getLogger("lifelink.search.scrapling")
 
@@ -118,7 +118,6 @@ class ScraplingService:
         results: list[SearchResultItem] = []
 
         try:
-            import scrapling
             from scrapling import Fetcher
 
             fetcher = Fetcher(

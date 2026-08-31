@@ -6,8 +6,6 @@ Scores results by semantic and lexical relevance to the query.
 
 from __future__ import annotations
 
-import re
-from typing import Any
 
 from app.services.search.schemas import SearchIntent, SearchResultItem
 

@@ -14,13 +14,12 @@ Usage:
 """
 from __future__ import annotations
 
-import json
 import logging
 import time
 from dataclasses import dataclass
 from typing import Any
 
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import HTTPException, Request, status
 
 from app.core.config import get_settings
 from app.services.cache_store import CacheStore

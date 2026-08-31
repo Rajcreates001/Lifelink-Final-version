@@ -6,10 +6,9 @@ Provides backup/restore operations, scheduling, and history tracking.
 """
 
 import json
-import os
 import subprocess
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 

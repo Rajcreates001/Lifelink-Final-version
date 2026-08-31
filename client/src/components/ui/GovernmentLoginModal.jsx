@@ -3,7 +3,8 @@ import { useAuth } from '../../context/AuthContext';
 import { apiFetch } from '../../config/api';
 
 // ─── Demo Users per Organization ──────────────────────────────
-const DEMO_USERS = {
+// Pre-configured test accounts for government portal (seeded in database)
+const SEED_USERS = {
   ndma: [
     { name: 'Rajesh Kumar', email: 'ndma.director@lifelink.demo', password: 'LifeLink@123', role: 'Director' },
     { name: 'Priya Sharma', email: 'ndma.ops@lifelink.demo', password: 'LifeLink@123', role: 'Operations Officer' },
@@ -39,7 +40,7 @@ const DEMO_USERS = {
   ],
 };
 
-const DEMO_FALLBACK = [
+const SEED_FALLBACK = [
   { name: 'Administrator', email: 'admin@lifelink.demo', password: 'LifeLink@123', role: 'Administrator' },
   { name: 'Operations Staff', email: 'ops@lifelink.demo', password: 'LifeLink@123', role: 'Operations' },
 ];
@@ -58,7 +59,7 @@ const GovernmentLoginModal = ({ org, onClose, onSuccess }) => {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [rememberDevice, setRememberDevice] = useState(false);
 
-  const users = useMemo(() => DEMO_USERS[org.key] || DEMO_FALLBACK, [org.key]);
+  const users = useMemo(() => SEED_USERS[org.key] || SEED_FALLBACK, [org.key]);
   const selectedUser = users[selectedUserIndex] || users[0];
   const tier = tierConfig[org.level];
 

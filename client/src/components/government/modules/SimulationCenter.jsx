@@ -180,6 +180,7 @@ const SimulationCenter = () => {
   const [showConfirm, setShowConfirm] = useState(null);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
   const [selectedScenario, setSelectedScenario] = useState(null);
+  const [scenarioFilter, setScenarioFilter] = useState('All');
   const timerRef = useRef(null);
 
   const showToast = useCallback((message, type = 'success') => {
@@ -318,7 +319,7 @@ const SimulationCenter = () => {
                 className="flex-1 px-4 py-2 text-xs font-bold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-1.5">
                 <i className="fas fa-play" /> Run Simulation
               </button>
-              <button onClick={() => showToast('Scenario saved as draft', 'success')}
+              <button onClick={() =>    showToast(`Scenario saved as ${config.type} draft`, 'success')}
                 className="px-4 py-2 text-xs font-bold bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors">Save</button>
               {activeSim && (
                 <button onClick={resetSimulation}
@@ -432,12 +433,12 @@ const SimulationCenter = () => {
           <GovSectionHeader icon="fa-book" label="AI Scenario Library" action={{ label: 'View All', onClick: () => showToast('Loading all scenarios...', 'info') }} />
           <div className="flex gap-1">
             {['All', 'Ready', 'Draft'].map((f) => (
-              <button key={f} className={`text-[9px] font-semibold px-2 py-1 rounded ${f === 'All' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'}`}>{f}</button>
+              <button key={f} onClick={() => setScenarioFilter(f)} className={`text-[9px] font-semibold px-2 py-1 rounded transition-all ${f === scenarioFilter ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>{f}</button>
             ))}
           </div>
         </div>
         <div className="divide-y divide-slate-50">
-          {scenarios.map((s, i) => (
+          {scenarios.filter(s => scenarioFilter === 'All' || s.status === scenarioFilter).map((s, i) => (
             <div key={i} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
               <div className="flex items-center gap-3 min-w-0 flex-1">
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${s.status === 'Ready' ? 'bg-emerald-100' : 'bg-amber-100'}`}>

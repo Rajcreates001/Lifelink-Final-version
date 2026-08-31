@@ -79,7 +79,6 @@ async def health_ready() -> dict:
     Each dependency is checked individually; one failure doesn't cascade.
     Returns 503 if critical dependencies are down.
     """
-    import asyncio
     from app.core.config import get_settings
 
     settings = get_settings()
@@ -100,7 +99,6 @@ async def health_ready() -> dict:
 
     # 2. ML Model check (try loading a basic prediction)
     try:
-        import joblib
         import os
         model_path = os.path.join(os.path.dirname(__file__), "..", "ml", "health_risk_model.joblib")
         if os.path.exists(model_path):

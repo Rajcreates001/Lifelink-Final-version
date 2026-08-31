@@ -110,7 +110,7 @@ jobs:
       - name: Run linting
         run: |
           pip install flake8
-          flake8 app/ --max-line-length=120 --count --statistics || true
+          flake8 app/ --count --statistics
 
       - name: Run type checks
         run: |
@@ -125,7 +125,7 @@ jobs:
           MONGODB_URI: mongodb://localhost:27017/lifelink_test
           ENCRYPTION_KEY: test-encryption-key-for-ci-only
         run: |
-          pytest tests/ -v --tb=short -x || true
+          pytest tests/ -v --tb=short -x
           python -c "from app.main import app; print('Backend imports OK')"
 
   # ─── Job 3: E2E API Tests ─────────────────────────────────

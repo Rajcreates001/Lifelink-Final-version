@@ -98,7 +98,7 @@ async def enterprise_login(
         return result
     except PermissionError as e:
         raise HTTPException(status_code=401, detail=str(e))
-    except Exception as e:
+    except Exception:
         logger.exception("Enterprise login error")
         raise HTTPException(status_code=500, detail="Authentication service unavailable")
 

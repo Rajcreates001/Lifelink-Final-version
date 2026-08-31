@@ -5,10 +5,14 @@ import jwt
 from app.core.config import get_settings
 
 
-def create_access_token(subject: str, expires_minutes: int = 60, claims: dict | None = None) -> str:
+def create_access_token(subject, expires_minutes: int = 60, claims: dict | None = None) -> str:
     settings = get_settings()
     expire = datetime.now(timezone.utc) + timedelta(minutes=expires_minutes)
-    payload = {"sub": subject, "exp": expire}
+    payload = {"exp": expire}
+    if isinstance(subject, dict):
+        payload.update(subject)
+    else:
+        payload["sub"] = subject
     if claims:
         payload.update(claims)
     return jwt.encode(payload, settings.jwt_secret, algorithm="HS256")

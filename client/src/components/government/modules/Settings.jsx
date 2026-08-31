@@ -116,7 +116,7 @@ const Settings = () => {
                 <i className="fas fa-check-circle" /> Two-factor enabled
               </p>
             </div>
-            <button className="w-full px-3 py-1.5 text-[10px] font-bold bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors">
+            <button onClick={() => window.open('/api/v2/system/audit-logs', '_blank')} className="w-full px-3 py-1.5 text-[10px] font-bold bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors">
               <i className="fas fa-history mr-1" /> View Audit Logs
             </button>
           </div>

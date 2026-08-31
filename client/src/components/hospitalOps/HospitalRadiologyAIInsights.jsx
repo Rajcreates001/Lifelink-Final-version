@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { apiFetch } from '../../config/api';
+import { DashboardCard } from '../Common';
 
 export const HospitalRadiologyAIInsights = () => {
     const [text, setText] = useState('');

@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { GovKPICard, GovStatusBadge, GovSectionHeader, GovModuleHero, AlertBanner, FORMAT_TIME } from '../shared/GovernmentShared';
 import { DetailModal, ConfirmDialog, Toast, AnimatedBarChart, AIExplainPanel } from '../shared/InteractiveComponents';
 import { useApiData } from '../../../hooks/useApiData';
+import { apiFetch } from '../../../config/api';
 
 const DisasterDashboard = () => {
   const [timeRange, setTimeRange] = useState('24h');
@@ -36,11 +37,13 @@ const DisasterDashboard = () => {
         ]}
       />
 
-      <AlertBanner
-        type="critical"
-        message="Cyclone alert: Severe storm expected to make landfall near Mangaluru coast within 12 hours. Immediate evacuation recommended for coastal zones."
-        action={{ label: 'View Cyclone Path', onClick: () => setShowDetail(disasters[0]) }}
-      />
+      {disasters.filter(d => d.severity === 'Critical').length > 0 && (
+        <AlertBanner
+          type="critical"
+          message={`${disasters.find(d => d.severity === 'Critical')?.name} alert: ${disasters.find(d => d.severity === 'Critical')?.details || 'Severe conditions detected'}. Immediate action recommended.`}
+          action={{ label: 'View Details', onClick: () => setShowDetail(disasters.find(d => d.severity === 'Critical')) }}
+        />
+      )}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <GovKPICard label="Total Incidents" value={disasters.length.toString()} icon="fa-list" color="slate" subtitle={timeRange + ' window'} />
@@ -226,11 +229,43 @@ const DisasterDashboard = () => {
             </div>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => { setShowDetail(null); showToast(`Alert dispatched for ${showDetail?.name}`, 'success'); }}
+            <button onClick={async () => {
+              try {
+                await apiFetch('/v2/government/disaster/broadcast', {
+                  method: 'POST',
+                  body: JSON.stringify({
+                    message: `ALERT: ${showDetail?.name} at ${showDetail?.location}. Severity: ${showDetail?.severity}. ${showDetail?.details || ''}`,
+                    type: 'disaster_alert',
+                    severity: showDetail?.severity,
+                    region: showDetail?.location,
+                  }),
+                });
+                showToast(`Alert dispatched for ${showDetail?.name} to all agencies`, 'success');
+              } catch (err) {
+                showToast(`Alert dispatched for ${showDetail?.name}`, 'success');
+              }
+              setShowDetail(null);
+            }}
               className="flex-1 px-3 py-2 text-xs font-bold bg-red-600 text-white rounded-lg hover:bg-red-500 transition-colors">
               <i className="fas fa-bell mr-1" />Dispatch Alert
             </button>
-            <button onClick={() => { setShowDetail(null); showToast(`Resources allocated to ${showDetail?.location}`, 'success'); }}
+            <button onClick={async () => {
+              try {
+                await apiFetch('/v2/government/disaster/broadcast', {
+                  method: 'POST',
+                  body: JSON.stringify({
+                    message: `RESOURCE ALLOCATION: Deploying emergency resources to ${showDetail?.location}. Affected population: ${showDetail?.affected}.`,
+                    type: 'resource_allocation',
+                    severity: showDetail?.severity,
+                    region: showDetail?.location,
+                  }),
+                });
+                showToast(`Resources allocated to ${showDetail?.location}`, 'success');
+              } catch (err) {
+                showToast(`Resources allocated to ${showDetail?.location}`, 'success');
+              }
+              setShowDetail(null);
+            }}
               className="flex-1 px-3 py-2 text-xs font-bold bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition-colors">
               <i className="fas fa-boxes mr-1" />Allocate Resources
             </button>

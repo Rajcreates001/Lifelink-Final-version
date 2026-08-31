@@ -15,13 +15,12 @@ import hashlib
 import json
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any
 from uuid import uuid4
 
 import bcrypt
 
 from app.core.config import get_settings
-from app.core.security import create_access_token, decode_access_token
+from app.core.security import create_access_token
 from app.services.rate_limiter import RateLimiter
 
 logger = logging.getLogger(__name__)

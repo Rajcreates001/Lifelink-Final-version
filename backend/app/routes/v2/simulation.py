@@ -11,7 +11,6 @@ Endpoints:
 
 import json
 import logging
-import re
 import uuid
 from datetime import datetime
 

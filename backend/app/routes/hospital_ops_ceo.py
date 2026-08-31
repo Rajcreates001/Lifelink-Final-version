@@ -2,15 +2,12 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Body, HTTPException, Query, Depends
 from app.core.auth import get_current_user, AuthContext
-from fastapi.responses import PlainTextResponse
 
 from app.db.mongo import get_db
 from app.services.repository import MongoRepository
 from app.services.collections import (
-    ALERTS,
     AMBULANCE_ASSIGNMENTS,
     AMBULANCES,
-    ANALYTICS_EVENTS,
     BED_ALLOCATIONS,
     BILLING_INVOICES,
     DEPARTMENT_LOGS,
@@ -18,30 +15,12 @@ from app.services.collections import (
     EQUIPMENT_INVENTORY,
     FINANCE_EXPENSES,
     HOSPITAL_BENCHMARKS,
-    HOSPITAL_DEPARTMENTS,
-    HOSPITAL_MESSAGES,
-    HOSPITAL_NETWORK_AGREEMENTS,
     HOSPITALS,
-    HOSPITAL_REPORTS,
     HOSPITAL_STAFF,
-    ICU_ALERTS,
-    ICU_PATIENTS,
-    INSURANCE_CLAIMS,
-    OPD_QUEUE,
-    OPD_APPOINTMENTS,
-    OPD_CONSULTATIONS,
-    OPD_DOCTORS,
-    OT_ALLOCATIONS,
-    OT_SURGERIES,
     PATIENTS,
-    PREDICTIONS,
-    RADIOLOGY_REPORTS,
-    RADIOLOGY_REQUESTS,
     RESOURCES,
     VENDOR_LEAD_TIMES
 )
-from app.core.celery_app import celery_app
-from app.services.prediction_store import get_latest_prediction
 
 from .hospital_ops_shared import *
 
@@ -286,7 +265,7 @@ async def ceo_ai_insights(hospitalId: str = Query(...),
 
     revenue_total = sum(float(inv.get("amount") or 0) for inv in invoices)
     expense_total = sum(float(exp.get("amount") or 0) for exp in expenses)
-    margin = revenue_total - expense_total
+    revenue_total - expense_total
     cost_pressure = round((expense_total / max(1, revenue_total)) * 100, 1) if revenue_total else 0.0
     expense_by_category: dict[str, float] = {}
     for exp in expenses:

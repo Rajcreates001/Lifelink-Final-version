@@ -30,7 +30,7 @@ class UserHistoryAdapter:
             if collection is None:
                 return []
 
-            lowered = query.lower()
+            query.lower()
             regex = {"$regex": query, "$options": "i"}
             docs = await collection.find(
                 {"user_id": user_id, "$or": [{"query": regex}, {"result_summary": regex}]}
