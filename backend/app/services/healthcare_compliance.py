@@ -16,7 +16,6 @@ import hashlib
 import logging
 from datetime import datetime
 from enum import Enum
-from typing import Any
 
 logger = logging.getLogger("lifelink.compliance")
 
@@ -377,9 +376,7 @@ class DataPrivacyService:
 
 def get_compliance_router():
     """Get the compliance API router."""
-    from fastapi import APIRouter, Depends
-    from app.core.auth import require_roles, require_scopes
-    from app.core.rbac import AuthContext
+    from fastapi import APIRouter
 
     router = APIRouter(tags=["compliance"])
 

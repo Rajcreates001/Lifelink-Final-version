@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Body, HTTPException, Depends
+from fastapi import APIRouter, Body, Depends
 from app.core.auth import get_current_user, AuthContext
 
 from app.core.celery_app import celery_app

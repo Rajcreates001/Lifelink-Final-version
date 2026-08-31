@@ -13,7 +13,7 @@ from app.services.healthcare_compliance import (
     DataPrivacyService,
     ConsentType,
 )
-from app.services.encryption import encrypt_field, decrypt_field, encrypt_patient_data, decrypt_patient_data, is_encryption_enabled
+from app.services.encryption import encrypt_patient_data, decrypt_patient_data, is_encryption_enabled
 from app.services.data_masking import mask_dict, mask_list, sanitize_for_log
 
 router = APIRouter(tags=["compliance"])

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import logging
 
-from app.services.agents.memory_store import get_session
 from app.services.search.schemas import SearchResultItem
 
 logger = logging.getLogger("lifelink.search.ai_memory")

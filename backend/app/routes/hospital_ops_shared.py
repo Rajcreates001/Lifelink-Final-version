@@ -8,12 +8,9 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from bson import ObjectId
-from fastapi import APIRouter, Body, HTTPException, Query, Depends
-from app.core.auth import get_current_user, AuthContext
-from fastapi.responses import PlainTextResponse
+from fastapi import Body, HTTPException
 from pydantic import BaseModel
 
-from app.db.mongo import get_db
 from app.services.collections import (
     ALERTS,
     AMBULANCE_ASSIGNMENTS,
@@ -1614,4 +1611,4 @@ async def preload_hospital_ops(payload: dict = Body(default_factory=dict)):
     hospital_id = payload.get("hospitalId")
     if not hospital_id:
         raise HTTPException(status_code=400, detail="hospitalId is required")
-    force = bool(payload.get("force"))
+    bool(payload.get("force"))

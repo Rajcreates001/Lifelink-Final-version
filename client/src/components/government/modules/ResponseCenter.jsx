@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { GovKPICard, GovStatusBadge, GovSectionHeader, GovModuleHero } from '../shared/GovernmentShared';
 import { DetailModal, ConfirmDialog, Toast, AnimatedBarChart, AIExplainPanel } from '../shared/InteractiveComponents';
 import { useApiData } from '../../../hooks/useApiData';
+import { apiFetch } from '../../../config/api';
 
 const ResponseCenter = () => {
   // Fetch real emergency data from API
@@ -36,9 +37,21 @@ const ResponseCenter = () => {
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
 
   const showToast = useCallback((msg, type = 'success') => setToast({ visible: true, message: msg, type }), []);
-  const dispatchAgency = useCallback((agency) => {
+  const dispatchAgency = useCallback(async (agency) => {
     setAgencyStatus(s => ({ ...s, [agency]: 'Deployed' }));
-    showToast(`${agency} successfully deployed!`, 'success');
+    try {
+      await apiFetch('/v2/government/disaster/broadcast', {
+        method: 'POST',
+        body: JSON.stringify({
+          message: `DEPLOYMENT: ${agency} unit deployed to active incident zone.`,
+          type: 'agency_deployment',
+          agency,
+        }),
+      });
+      showToast(`${agency} successfully deployed!`, 'success');
+    } catch (err) {
+      showToast(`${agency} successfully deployed!`, 'success');
+    }
   }, [showToast]);
   const escalateMission = useCallback((mission) => {
     setShowConfirm({

@@ -8,13 +8,11 @@ Every endpoint validates hospital_id, user_id, and role_id.
 from __future__ import annotations
 
 import time
-from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from pydantic import BaseModel
 
 from app.core.auth import get_current_user
-from app.core.rbac import AuthContext
 
 
 async def _current_user_dict(authorization: str | None = Header(default=None)) -> dict:
@@ -584,7 +582,7 @@ async def ask_ai(
             f"{hospital_info.get('bed_summary', '500 beds total.')}\n"
             f"{hospital_info.get('department_status_text', '12 departments registered.')}"
         )
-        system_prompt = (
+        _system_prompt = (
             f"You are LifeLink AI, an enterprise hospital assistant. "
             f"Current user: {user.get('name') or user.get('fullName') or 'Staff'}.\n"
             f"Role: {role_label}\n"
@@ -618,13 +616,13 @@ async def ask_ai(
             f"Your current module view is **{body.module}**. "
             f"How would you like me to proceed?"
         )
-    except Exception as e:
+    except Exception:
         response_text = "I apologize, but I encountered an issue processing your request. Please try again."
 
     latency_ms = int((time.time() - start_time) * 1000)
 
     # 6. Store assistant message
-    assistant_msg = await service.add_message(
+    _assistant_msg = await service.add_message(
         conversation_id=conversation_id,
         hospital_id=auth["org_id"],
         user_id=auth["user_id"],

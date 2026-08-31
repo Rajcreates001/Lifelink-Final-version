@@ -4,7 +4,6 @@ import random
 from datetime import datetime
 from typing import Any
 
-from faker import Faker
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
@@ -14,7 +13,7 @@ from app.core.rbac import AuthContext
 from app.db.mongo import get_db
 from app.services.collections import ANALYTICS_EVENTS, HOSPITALS, HOSPITAL_WAIT_TIMES, RESOURCES
 from app.services.hospital_service import HospitalService
-from app.services.indian_locale import INDIAN_HOSPITALS, SECONDARY_CITIES, PRIMARY_CITY
+from app.services.indian_locale import SECONDARY_CITIES, PRIMARY_CITY
 from app.services.repository import MongoRepository
 from app.services.routing_service import RoutingService
 

@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Text, DateTime, Boolean, Float, ForeignKey, Integer, JSON, Index
+from sqlalchemy import String, Text, DateTime, Boolean, Float, ForeignKey, Integer, JSON, Index
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from typing import Any, Optional
+from typing import Optional
 
 
 def _utcnow() -> datetime:

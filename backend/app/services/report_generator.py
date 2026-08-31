@@ -14,10 +14,8 @@ Usage:
     pdf_bytes = report.generate_hospital_daily_ops(hospital_data)
 """
 
-import io
 import logging
 from datetime import datetime
-from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger("lifelink.reports")

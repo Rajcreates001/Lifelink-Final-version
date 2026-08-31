@@ -14,6 +14,8 @@ from __future__ import annotations
 import logging
 
 import re
+
+logger = logging.getLogger(__name__)
 from typing import Any
 
 from app.services.search.mode_policies import get_mode_policy
@@ -317,7 +319,7 @@ def parse_intent(
     # Determine mode-specific flags
     requires_medical_validation = policy.get("requires_medical_validation", True)
     requires_comparison = policy.get("requires_comparison", False)
-    insufficiency_threshold = policy.get("insufficiency_threshold", 0.30)
+    policy.get("insufficiency_threshold", 0.30)
 
     # Compute confidence based on entity extraction quality
     entity_count = len(entities)

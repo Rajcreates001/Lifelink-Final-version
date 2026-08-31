@@ -9,10 +9,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any
 
 from app.services.llm_service import generate_response
-from app.services.search.schemas import SearchIntent, SearchResultItem, SearchSummary, SourceInfo
+from app.services.search.schemas import SearchIntent, SearchResultItem, SearchSummary
 
 logger = logging.getLogger("lifelink.search.summary")
 

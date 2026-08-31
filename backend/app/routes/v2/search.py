@@ -9,10 +9,10 @@ and external trusted medical sources — never returning empty results.
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
-from app.core.auth import get_optional_user, require_scopes
+from app.core.auth import get_optional_user
 from app.core.rbac import AuthContext
 from app.services.search.orchestrator import HybridSearchOrchestrator
-from app.services.search.schemas import HybridSearchRequest, HybridSearchResponse
+from app.services.search.schemas import HybridSearchRequest
 
 router = APIRouter(tags=["search"])
 

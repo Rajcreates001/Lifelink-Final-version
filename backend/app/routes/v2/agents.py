@@ -17,7 +17,6 @@ from app.services.agents.memory_store import append_log, create_session, ensure_
 from app.services.ai_chat_service import AiChatService
 from app.services.collections import ALERTS, DONATIONS, HOSPITALS, RESOURCE_REQUESTS, USERS
 from app.services.rag.vector_store import search
-from app.services.agents.llm_client import generate_text
 from app.services.llm_service import generate_response_async
 from app.core.celery_app import celery_app
 from app.services.repository import MongoRepository
@@ -498,7 +497,7 @@ async def ask(
         history_context = "\n".join(recent_turns) if recent_turns else "No prior context."
 
     regen_count = len([entry for entry in (session.get("log") or []) if entry.get("type") == "regenerate"])
-    learning_note = f"Regenerated {regen_count} time(s) based on user feedback." if regen_count else "No recent corrections."
+    f"Regenerated {regen_count} time(s) based on user feedback." if regen_count else "No recent corrections."
     if regenerate:
         append_log(session["id"], {"type": "regenerate", "by": requester_id, "query": question})
 

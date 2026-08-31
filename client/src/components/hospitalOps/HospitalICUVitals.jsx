@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { _nowLabel } from './helpers';
+import { useAuth } from '../../context/AuthContext';
+import { apiFetch } from '../../config/api';
+import { DashboardCard, LoadingSpinner } from '../Common';
 
 export const HospitalICUVitals = () => {
     const { user } = useAuth();

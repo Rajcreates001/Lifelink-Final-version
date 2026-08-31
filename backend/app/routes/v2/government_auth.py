@@ -95,7 +95,7 @@ async def government_login(
     # In production the bootstrap is a no-op since tables already exist.
     try:
         await service.bootstrap()
-    except Exception as e:
+    except Exception:
         logger.exception("Government auth bootstrap failed during login — tables may not exist yet. Subsequent login may fail if tables are missing.")
 
     try:
@@ -104,7 +104,7 @@ async def government_login(
         return result
     except PermissionError as e:
         raise HTTPException(status_code=401, detail=str(e))
-    except Exception as e:
+    except Exception:
         logger.exception("Government login error")
         raise HTTPException(status_code=500, detail="Authentication service unavailable")
 

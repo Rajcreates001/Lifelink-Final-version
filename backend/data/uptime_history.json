@@ -1,0 +1,151 @@
+{
+  "checks": [
+    {
+      "timestamp": "2026-08-24T08:35:53.067437+00:00",
+      "overall": "degraded",
+      "services": {
+        "Backend API": {
+          "status": "operational",
+          "latency_ms": 0
+        },
+        "PostgreSQL": {
+          "status": "operational",
+          "latency_ms": 56
+        },
+        "MongoDB": {
+          "status": "down",
+          "latency_ms": 6
+        },
+        "Redis": {
+          "status": "operational",
+          "latency_ms": 4
+        },
+        "Weaviate": {
+          "status": "operational",
+          "latency_ms": 9
+        },
+        "ML Models": {
+          "status": "operational",
+          "latency_ms": 17
+        },
+        "GPS Simulation": {
+          "status": "operational",
+          "latency_ms": 0
+        }
+      }
+    },
+    {
+      "timestamp": "2026-08-24T08:35:59.940046+00:00",
+      "overall": "degraded",
+      "services": {
+        "Backend API": {
+          "status": "operational",
+          "latency_ms": 0
+        },
+        "PostgreSQL": {
+          "status": "operational",
+          "latency_ms": 42
+        },
+        "MongoDB": {
+          "status": "down",
+          "latency_ms": 1
+        },
+        "Redis": {
+          "status": "operational",
+          "latency_ms": 4
+        },
+        "Weaviate": {
+          "status": "operational",
+          "latency_ms": 9
+        },
+        "ML Models": {
+          "status": "operational",
+          "latency_ms": 17
+        },
+        "GPS Simulation": {
+          "status": "operational",
+          "latency_ms": 0
+        }
+      }
+    },
+    {
+      "timestamp": "2026-08-24T08:37:52.203666+00:00",
+      "overall": "degraded",
+      "services": {
+        "Backend API": {
+          "status": "operational",
+          "latency_ms": 0
+        },
+        "PostgreSQL": {
+          "status": "operational",
+          "latency_ms": 52
+        },
+        "MongoDB": {
+          "status": "down",
+          "latency_ms": 2
+        },
+        "Redis": {
+          "status": "operational",
+          "latency_ms": 4
+        },
+        "Weaviate": {
+          "status": "operational",
+          "latency_ms": 11
+        },
+        "ML Models": {
+          "status": "operational",
+          "latency_ms": 21
+        },
+        "GPS Simulation": {
+          "status": "operational",
+          "latency_ms": 0
+        }
+      }
+    }
+  ],
+  "daily": {
+    "2026-08-24": {
+      "checks": 3,
+      "operational": 0,
+      "degraded": 3,
+      "down": 0,
+      "services": {
+        "Backend API": {
+          "checks": 3,
+          "operational": 3,
+          "down": 0
+        },
+        "PostgreSQL": {
+          "checks": 3,
+          "operational": 3,
+          "down": 0
+        },
+        "MongoDB": {
+          "checks": 3,
+          "operational": 0,
+          "down": 3
+        },
+        "Redis": {
+          "checks": 3,
+          "operational": 3,
+          "down": 0
+        },
+        "Weaviate": {
+          "checks": 3,
+          "operational": 3,
+          "down": 0
+        },
+        "ML Models": {
+          "checks": 3,
+          "operational": 3,
+          "down": 0
+        },
+        "GPS Simulation": {
+          "checks": 3,
+          "operational": 3,
+          "down": 0
+        }
+      }
+    }
+  }
+}

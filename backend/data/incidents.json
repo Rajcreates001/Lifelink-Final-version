@@ -1,0 +1,12 @@
+{
+  "incidents": [
+    {
+      "id": "inc_1787560553",
+      "service": "MongoDB",
+      "status": "investigating",
+      "started_at": "2026-08-24T08:35:53.067437+00:00",
+      "resolved_at": null,
+      "message": " Investigating MongoDB outage"
+    }
+  ]
+}

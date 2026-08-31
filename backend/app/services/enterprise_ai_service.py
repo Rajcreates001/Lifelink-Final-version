@@ -7,14 +7,13 @@ Every operation validates hospital_id, user_id, and role_id.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import time
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
-from sqlalchemy import func, select, delete as sa_delete, update as sa_update
+from sqlalchemy import select, delete as sa_delete, update as sa_update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 logger = logging.getLogger(__name__)
@@ -22,7 +21,6 @@ logger = logging.getLogger(__name__)
 from app.services.lifelink_ai_models import (
     LifeLinkAIConversation,
     LifeLinkAIMessage,
-    LifeLinkAIContext,
     LifeLinkAIMemory,
     LifeLinkAISession,
     LifeLinkAIFeedback,

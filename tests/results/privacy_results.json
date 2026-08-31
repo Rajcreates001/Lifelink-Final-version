@@ -950,5 +950,26 @@
         "created_at": "2026-08-22T16:41:11.047099"
       }
     }
+  },
+  {
+    "timestamp": "2026-08-31T07:38:55.170505",
+    "test": "federated_privacy",
+    "status": "FAIL",
+    "details": "HTTPConnectionPool(host='127.0.0.1', port=3001): Max retries exceeded with url: /v2/system/federated/train (Caused by NewConnectionError(\"HTTPConnection(host='127.0.0.1', port=3001): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it\"))",
+    "input": {
+      "hospital_id": "demo-hospital",
+      "metrics": {
+        "samples": 120
+      },
+      "weights": [
+        0.1,
+        0.2,
+        0.3
+      ],
+      "name": "Jane Doe",
+      "phone": "+100000000",
+      "patient_id": "p-123"
+    },
+    "output": {}
   }
 ]

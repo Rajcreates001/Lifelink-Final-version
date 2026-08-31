@@ -592,7 +592,7 @@ async def check_profile_cluster(payload: ProfileClusterRequest, ctx: AuthContext
     avg_response_time = max(5, 25 - donation_count * 2)
     hospital_bed_occupancy = min(100, max(20, 50 + sos_count * 5))
 
-    cluster_data = {
+    _cluster_data = {
         "emergency_rate": emergency_rate,
         "avg_response_time": avg_response_time,
         "hospital_bed_occupancy": hospital_bed_occupancy,
@@ -1027,7 +1027,7 @@ async def _build_report_analysis(report_text: str, user_id: str | None, source_m
     summary = result.get("summary") or "Automated summary generated from the submitted report."
 
     # ── Use medical_knowledge for evidence-based vital assessment and risk computation ──
-    vital_assessment = assess_vitals(
+    _vital_assessment = assess_vitals(
         heart_rate=metrics.get("heart_rate"),
         blood_pressure_sys=metrics.get("blood_pressure_systolic"),
         blood_pressure_dia=metrics.get("blood_pressure_diastolic"),

@@ -13,7 +13,6 @@ All callers use `run_ml_model(command, payload)` — same API as before.
 """
 
 import os
-import json
 from pathlib import Path
 from typing import Any
 

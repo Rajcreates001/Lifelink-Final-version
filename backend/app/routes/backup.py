@@ -4,7 +4,7 @@ LifeLink Backup — API Endpoints
 Endpoints for database backup, restore, and history.
 """
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks
 from app.services.backup_manager import get_backup_manager
 
 router = APIRouter(tags=["backup"])

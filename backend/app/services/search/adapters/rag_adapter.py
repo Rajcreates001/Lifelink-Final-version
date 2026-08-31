@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from app.services.rag.vector_store import search as vector_search, upsert_documents
+from app.services.rag.vector_store import search as vector_search
 from app.services.search.schemas import SearchResultItem
 
 logger = logging.getLogger("lifelink.search.rag_adapter")

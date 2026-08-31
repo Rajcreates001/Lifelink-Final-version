@@ -16,7 +16,6 @@ from prometheus_client import (
     Info,
     generate_latest,
     CONTENT_TYPE_LATEST,
-    CollectorRegistry,
     REGISTRY,
 )
 from fastapi import Request, Response
@@ -136,7 +135,7 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
 
             return response
 
-        except Exception as exc:
+        except Exception:
             duration = time.time() - start_time
             endpoint = self._normalize_path(path)
             http_request_errors_total.labels(

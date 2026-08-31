@@ -1,5 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { buildQuery } from './helpers';
+import { useAuth } from '../../context/AuthContext';
+import { apiFetch, getAuthToken, API_BASE_URL } from '../../config/api';
+import { DashboardCard, LoadingSpinner, StatusPill } from '../Common';
+import ReportDownloadButton from '../ReportDownloadButton';
 
 export const HospitalReports = () => {
     const { user } = useAuth();
