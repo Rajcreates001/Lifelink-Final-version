@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 
 import bcrypt
@@ -13,7 +13,7 @@ from app.schemas.portal_auth import PortalLoginRequest, PortalSignupRequest
 from app.services.collections import HOSPITALS, USERS
 from app.services.repository import MongoRepository
 from app.db.models import GovVerificationRequest
-from app.db.mongo import get_db
+from app.db.database import require_db
 
 
 class AuthService:
@@ -63,7 +63,7 @@ class AuthService:
             "location": payload.location,
             "phone": payload.phone,
             "isVerified": is_verified,
-            "createdAt": datetime.utcnow(),
+            "createdAt": datetime.now(timezone.utc),
         }
 
         if role == "hospital":
@@ -87,7 +87,7 @@ class AuthService:
         created = await self.user_repo.insert_one(user_doc)
 
         if role in ["hospital", "ambulance"]:
-            db = get_db()
+            db = require_db()
             async with db() as session:
                 session.add(
                     GovVerificationRequest(
@@ -99,8 +99,8 @@ class AuthService:
                         requested_by=str(created["_id"]),
                         reviewed_by=None,
                         reviewed_at=None,
-                        created_at=datetime.utcnow(),
-                        updated_at=datetime.utcnow(),
+                        created_at=datetime.now(timezone.utc),
+                        updated_at=datetime.now(timezone.utc),
                     )
                 )
                 await session.commit()
@@ -108,8 +108,8 @@ class AuthService:
         if role == "hospital":
             hospital_doc = {
                 "user": created["_id"],
-                "createdAt": datetime.utcnow(),
-                "updatedAt": datetime.utcnow(),
+                "createdAt": datetime.now(timezone.utc),
+                "updatedAt": datetime.now(timezone.utc),
             }
             await self.hospital_repo.insert_one(hospital_doc)
             return {"message": "Signup successful! Pending Government verification."}
@@ -140,10 +140,10 @@ class AuthService:
             user = None
 
         if not user:
-            raise HTTPException(status_code=400, detail="User not found")
+            raise HTTPException(status_code=401, detail="Invalid email or password")
 
         if not bcrypt.checkpw(payload.password.encode("utf-8"), user["password"].encode("utf-8")):
-            raise HTTPException(status_code=400, detail="Invalid credentials")
+            raise HTTPException(status_code=401, detail="Invalid email or password")
 
         if role != user.get("role"):
             raise HTTPException(status_code=400, detail="Role mismatch")

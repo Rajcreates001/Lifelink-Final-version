@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from faker import Faker
 
-from app.db.mongo import get_db
+from app.db.database import get_db
 from app.services.collections import SYNTHETIC_EVENTS
 from app.services.repository import MongoRepository
 
@@ -23,7 +23,7 @@ class SyntheticDataService:
             events.append({
                 "role": role,
                 "module_key": module_key,
-                "created_at": datetime.utcnow().isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
                 "summary": faker.sentence(nb_words=8),
                 "severity": faker.random_element(["Low", "Medium", "High", "Critical"]),
                 "location": faker.city(),

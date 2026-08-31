@@ -15,7 +15,7 @@ import logging
 import math
 import random
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 logger = logging.getLogger("lifelink.gps_simulator")
@@ -106,7 +106,7 @@ class SimulatedAmbulance:
         if self.status == "idle":
             return self._get_position_data()
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         hour = now.hour
 
         # Get traffic multiplier for current time
@@ -230,7 +230,7 @@ class SimulatedAmbulance:
             "trafficDelay": round(self.traffic_delay, 1),
             "totalDistanceKm": round(self.total_distance_km, 2),
             "tripCount": self.trip_count,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     def reset_route(self):

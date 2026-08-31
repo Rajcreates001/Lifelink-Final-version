@@ -39,6 +39,13 @@ def _get_fernet():
         except ImportError:
             pass
     if not key:
+        from app.core.config import get_settings
+        env = get_settings().app_env
+        if env == "production":
+            raise RuntimeError(
+                "ENCRYPTION_KEY must be set in production. "
+                "Patient data requires encryption at rest."
+            )
         logger.warning("ENCRYPTION_KEY not set — patient data will NOT be encrypted at rest")
         _enabled = False
         return None
@@ -186,5 +193,11 @@ def hash_for_search(value: str) -> str:
     Uses SHA-256 so the same value always produces the same hash,
     allowing exact-match searches without decrypting.
     """
-    salt = os.getenv("SEARCH_HASH_SALT", "lifelink-default-salt")
+    salt = os.getenv("SEARCH_HASH_SALT")
+    if not salt:
+        from app.core.config import get_settings
+        env = get_settings().app_env
+        if env == "production":
+            raise RuntimeError("SEARCH_HASH_SALT must be set in production")
+        salt = "lifelink-dev-salt-not-for-production"
     return hashlib.sha256(f"{salt}:{value}".encode()).hexdigest()

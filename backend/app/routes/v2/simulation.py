@@ -12,11 +12,11 @@ Endpoints:
 import json
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.core.dependencies import require_roles
+from app.core.auth import require_roles
 from app.services.llm_service import generate_response_async
 from app.services.simulation.emergency_model import (
     SCENARIOS,
@@ -163,7 +163,7 @@ async def generate_scenario(
             "traffic_multiplier": scenario_data["traffic_multiplier"],
         },
         "note": "Use this scenario with the /start endpoint by passing its values as the payload.",
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -193,7 +193,7 @@ async def start_simulation(
         "scenario": scenario,
         "steps_run": steps,
         "metrics": result,
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -222,7 +222,7 @@ async def comparative_simulation(
         "scenario": scenario,
         "steps_run": steps,
         "result": result,
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -252,5 +252,5 @@ async def after_action_report(
             "recommendations": recommendations,
             "timeline": metrics.get("timeline", []),
         },
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
     }

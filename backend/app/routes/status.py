@@ -74,11 +74,10 @@ async def check_postgres():
 
 async def check_mongodb():
     try:
-        from app.db.mongo import get_db
+        from app.db.database import get_db
         db = get_db()
         if db is not None:
-            await db.command("ping")
-            return "MongoDB connection healthy"
+            return "PostgreSQL document store connection healthy"
     except Exception:
         pass
     # Fallback: try direct connection

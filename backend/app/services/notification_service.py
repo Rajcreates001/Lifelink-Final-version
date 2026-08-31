@@ -8,7 +8,7 @@ across web, mobile, and SMS channels.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
@@ -109,7 +109,7 @@ class NotificationService:
         """
         await self.initialize()
 
-        notification_id = f"notif_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{hash(recipient) % 10000:04d}"
+        notification_id = f"notif_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_{hash(recipient) % 10000:04d}"
 
         result = {
             "notification_id": notification_id,
@@ -119,7 +119,7 @@ class NotificationService:
             "body": body,
             "priority": priority.value,
             "status": "queued",
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "hospital_id": hospital_id,
         }
 
@@ -134,7 +134,7 @@ class NotificationService:
                 result = await self._send_web(recipient, title, body, data, result)
             elif channel == NotificationChannel.IN_APP:
                 result["status"] = "delivered"
-                result["delivered_at"] = datetime.utcnow().isoformat()
+                result["delivered_at"] = datetime.now(timezone.utc).isoformat()
         except Exception as exc:
             logger.error("Notification delivery failed: %s", exc)
             result["status"] = "failed"
@@ -176,12 +176,12 @@ class NotificationService:
             # FCM integration point
             result["provider"] = "fcm"
             result["status"] = "sent"
-            result["sent_at"] = datetime.utcnow().isoformat()
+            result["sent_at"] = datetime.now(timezone.utc).isoformat()
             logger.info("FCM push notification sent to %s", device_token[:20])
         elif "onesignal" in self._providers:
             result["provider"] = "onesignal"
             result["status"] = "sent"
-            result["sent_at"] = datetime.utcnow().isoformat()
+            result["sent_at"] = datetime.now(timezone.utc).isoformat()
             logger.info("OneSignal push notification sent to %s", device_token[:20])
         else:
             result["status"] = "no_provider"
@@ -192,7 +192,7 @@ class NotificationService:
         """Send SMS via Twilio or local provider."""
         result["provider"] = "sms"
         result["status"] = "sent"
-        result["sent_at"] = datetime.utcnow().isoformat()
+        result["sent_at"] = datetime.now(timezone.utc).isoformat()
         logger.info("SMS notification sent to %s", phone[:10] + "***")
         return result
 
@@ -200,7 +200,7 @@ class NotificationService:
         """Send email via SendGrid."""
         result["provider"] = "email"
         result["status"] = "sent"
-        result["sent_at"] = datetime.utcnow().isoformat()
+        result["sent_at"] = datetime.now(timezone.utc).isoformat()
         logger.info("Email notification sent to %s", email[:10] + "***")
         return result
 
@@ -208,7 +208,7 @@ class NotificationService:
         """Send in-app web notification via WebSocket."""
         result["provider"] = "websocket"
         result["status"] = "delivered"
-        result["delivered_at"] = datetime.utcnow().isoformat()
+        result["delivered_at"] = datetime.now(timezone.utc).isoformat()
         return result
 
 

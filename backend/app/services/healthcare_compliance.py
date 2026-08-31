@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 logger = logging.getLogger("lifelink.compliance")
@@ -98,7 +98,7 @@ class ABDMService:
             "abha_number": abha_number,
             "status": "active",
             "mode": "sandbox" if self.sandbox_mode else "production",
-            "verified_at": datetime.utcnow().isoformat(),
+            "verified_at": datetime.now(timezone.utc).isoformat(),
             "note": "Sandbox verification — integrate with ABDM gateway for production",
         }
 
@@ -125,7 +125,7 @@ class ABDMService:
         """
         await self.initialize()
         consent_id = hashlib.sha256(
-            f"{patient_abha}:{purpose}:{datetime.utcnow().isoformat()}".encode()
+            f"{patient_abha}:{purpose}:{datetime.now(timezone.utc).isoformat()}".encode()
         ).hexdigest()[:16]
 
         return {
@@ -135,8 +135,8 @@ class ABDMService:
             "consent_type": consent_type.value,
             "providers": providers or [],
             "status": "pending",
-            "created_at": datetime.utcnow().isoformat(),
-            "expires_at": datetime.utcnow().isoformat(),  # Would be calculated
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "expires_at": datetime.now(timezone.utc).isoformat(),  # Would be calculated
             "mode": "sandbox" if self.sandbox_mode else "production",
         }
 
@@ -165,7 +165,7 @@ class ABDMService:
             "entry": [],
             "patient_abha": patient_abha,
             "consent_id": consent_id,
-            "fetched_at": datetime.utcnow().isoformat(),
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
             "mode": "sandbox" if self.sandbox_mode else "production",
             "note": "Sandbox mode — no real records returned. Integrate with ABDM HIE-CM for production.",
         }

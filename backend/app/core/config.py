@@ -16,8 +16,8 @@ class Settings(BaseSettings):
     port: int = 3001
 
     postgres_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/lifelink_db"
-    jwt_secret: str = "change_me"
-    privacy_salt: str = "change_me"
+    jwt_secret: str = ""
+    privacy_salt: str = ""
 
     frontend_url: str = "http://localhost:5000"
 
@@ -91,7 +91,16 @@ def get_settings() -> Settings:
 def validate_jwt_secret() -> None:
     """Call at startup to warn (dev) or fail hard (prod) if JWT secret is weak."""
     settings = get_settings()
-    if settings.jwt_secret in _WEAK_JWT_SECRETS:
+    if not settings.jwt_secret:
+        msg = (
+            "JWT_SECRET is not set. "
+            "Set JWT_SECRET to a cryptographically random string "
+            "(e.g. 64 hex chars from `openssl rand -hex 32`). "
+        )
+        if settings.app_env == "production":
+            raise RuntimeError(msg)
+        logger.warning(msg)
+    elif settings.jwt_secret in _WEAK_JWT_SECRETS:
         msg = (
             f"JWT_SECRET is set to a known weak value. "
             f"Set JWT_SECRET to a cryptographically random string "

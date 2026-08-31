@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import random
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from app.core.celery_app import celery_app
 from app.core.config import get_settings
-from app.db.mongo import get_db
+from app.db.database import get_db
 from app.db.models import GovEmergency
 from app.services.cache_store import CacheStore
 
@@ -32,8 +32,8 @@ async def _simulate_emergencies(count: int, center_lat: float, center_lng: float
                     status="active",
                     hospital_id=None,
                     ambulance_id=None,
-                    occurred_at=datetime.utcnow(),
-                    created_at=datetime.utcnow(),
+                    occurred_at=datetime.now(timezone.utc),
+                    created_at=datetime.now(timezone.utc),
                 )
             )
         await session.commit()
@@ -43,7 +43,7 @@ async def _simulate_emergencies(count: int, center_lat: float, center_lng: float
 async def _refresh_metrics() -> dict:
     settings = get_settings()
     cache = CacheStore(settings.redis_url, namespace="gov")
-    cache.set("last_refresh", {"value": datetime.utcnow().isoformat()}, ttl=300)
+    cache.set("last_refresh", {"value": datetime.now(timezone.utc).isoformat()}, ttl=300)
     return {"status": "ok"}
 
 

@@ -1,10 +1,10 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from bson import ObjectId
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.services.collections import HEALTH_RECORDS, PREDICTIONS
 from app.services.repository import MongoRepository
 
@@ -68,7 +68,7 @@ async def health() -> dict:
         "status": "ok",
         "service": "lifelink-fastapi",
         "version": "0.1.0",
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
     }
 
 
@@ -87,9 +87,9 @@ async def health_ready() -> dict:
 
     # 1. MongoDB / PostgreSQL check
     try:
-        from app.db.mongo import get_db
+        from app.db.database import get_db, require_db
         from sqlalchemy import text
-        db = get_db()
+        db = require_db()
         async with db() as session:
             await session.execute(text("SELECT 1"))
         checks["database"] = {"status": "healthy"}
@@ -130,14 +130,14 @@ async def health_ready() -> dict:
         "status": "ready" if all_healthy else "degraded",
         "service": "lifelink-fastapi",
         "version": "0.1.0",
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
         "checks": checks,
     })
 
 
 @router.post("/health/vitals", status_code=201)
 async def ingest_vitals(payload: VitalsIngestRequest):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, HEALTH_RECORDS)
 
     doc = {
@@ -155,8 +155,8 @@ async def ingest_vitals(payload: VitalsIngestRequest):
         "location": {"lat": payload.latitude, "lng": payload.longitude}
         if payload.latitude is not None and payload.longitude is not None
         else None,
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
 
     created = await repo.insert_one(doc)
@@ -165,7 +165,7 @@ async def ingest_vitals(payload: VitalsIngestRequest):
 
 @router.post("/health/wearables/ingest", status_code=201)
 async def ingest_wearables(payload: WearableIngestRequest):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, HEALTH_RECORDS)
 
     inserted = 0
@@ -185,8 +185,8 @@ async def ingest_wearables(payload: WearableIngestRequest):
             "location": {"lat": entry.latitude, "lng": entry.longitude}
             if entry.latitude is not None and entry.longitude is not None
             else None,
-            "createdAt": datetime.utcnow(),
-            "updatedAt": datetime.utcnow(),
+            "createdAt": datetime.now(timezone.utc),
+            "updatedAt": datetime.now(timezone.utc),
         }
         await repo.insert_one(doc)
         inserted += 1
@@ -196,7 +196,7 @@ async def ingest_wearables(payload: WearableIngestRequest):
 
 @router.get("/health/vitals/latest/{user_id}")
 async def latest_vitals(user_id: str):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, HEALTH_RECORDS)
     oid = _as_object_id(user_id)
     latest = await repo.find_many({"user": oid, "record_type": "vitals"}, sort=[("createdAt", -1)], limit=1)
@@ -205,7 +205,7 @@ async def latest_vitals(user_id: str):
 
 @router.get("/health/risk/history/{user_id}")
 async def risk_history(user_id: str):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, PREDICTIONS)
     oid = _as_object_id(user_id)
     records = await repo.find_many({"user": oid, "prediction_type": "health_risk"}, sort=[("createdAt", -1)], limit=12)
@@ -214,7 +214,7 @@ async def risk_history(user_id: str):
 
 @router.get("/health/records/{user_id}")
 async def health_records(user_id: str):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, HEALTH_RECORDS)
     oid = _as_object_id(user_id)
     records = await repo.find_many({"user": oid, "record_type": {"$in": ["medical_record", "report_analysis"]}}, sort=[("createdAt", -1)], limit=50)

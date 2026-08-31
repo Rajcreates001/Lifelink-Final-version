@@ -1,6 +1,6 @@
 import logging
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from html.parser import HTMLParser
 from urllib.parse import quote_plus
 from urllib.request import Request, urlopen
@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from app.core.auth import get_current_user, get_optional_user, require_scopes
 from app.core.rbac import AuthContext
 from app.core.dependencies import get_ai_chat_service, get_routing_service, get_weather_service
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.services.agents.orchestrator import run_decision_workflow
 from app.services.agents.memory_store import append_log, create_session, ensure_session, get_session, update_session
 from app.services.ai_chat_service import AiChatService
@@ -354,7 +354,7 @@ async def multi_agent_analyze(
     return {
         "requestedBy": ctx.user_id,
         "request_type": request_type,
-        "generatedAt": datetime.utcnow().isoformat(),
+        "generatedAt": datetime.now(timezone.utc).isoformat(),
         **result,
     }
 
@@ -539,7 +539,7 @@ async def ask(
             "clarifying_questions": clarifying,
             "actions": [],
             "metadata": {},
-            "generatedAt": datetime.utcnow().isoformat(),
+            "generatedAt": datetime.now(timezone.utc).isoformat(),
             "session": persisted_session,
         }
 
@@ -580,12 +580,12 @@ async def ask(
         # Gather data for agent types that need DB context
 
         if agent_type in ("hospital_search", "emergency") and payload.latitude is not None:
-            db = get_db()
+            db = require_db()
             repo = MongoRepository(db, HOSPITALS)
             hospitals_for_agents = await repo.find_many({}, limit=200)
 
         if agent_type in ("donor_match", "emergency") and payload.latitude is not None:
-            db = get_db()
+            db = require_db()
             user_repo = MongoRepository(db, USERS)
             donors_for_agents = await user_repo.find_many(
                 {"role": "public"},
@@ -639,7 +639,7 @@ async def ask(
         if hospitals_for_agents is not None:
             hospitals = hospitals_for_agents
         else:
-            db = get_db()
+            db = require_db()
             repo = MongoRepository(db, HOSPITALS)
             hospitals = await repo.find_many({}, limit=200)
         candidates = []
@@ -672,7 +672,7 @@ async def ask(
         if donors_for_agents is not None:
             donors = donors_for_agents
         else:
-            db = get_db()
+            db = require_db()
             user_repo = MongoRepository(db, USERS)
             donors = await user_repo.find_many(
                 {"role": "public"},
@@ -727,7 +727,7 @@ async def ask(
     if not web_context:
         web_context = "No web results." if web_search else "Web search disabled."
 
-    db = get_db()
+    db = require_db()
     user_repo = MongoRepository(db, USERS)
     hospital_repo = MongoRepository(db, HOSPITALS)
     alert_repo = MongoRepository(db, ALERTS)
@@ -914,6 +914,6 @@ async def ask(
         "confidence": confidence,
         "followUp": follow_up,
         "mode": mode,
-        "generatedAt": datetime.utcnow().isoformat(),
+        "generatedAt": datetime.now(timezone.utc).isoformat(),
         "session": persisted_session,
     }

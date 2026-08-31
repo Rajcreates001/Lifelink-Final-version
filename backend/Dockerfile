@@ -1,6 +1,6 @@
 # ============================================================
 # LifeLink Backend — Dockerfile
-# All stages share the same base image
+# Multi-purpose: API server, Celery worker, Celery beat
 # ============================================================
 
 FROM python:3.11-slim AS base
@@ -11,7 +11,9 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libglib2.0-0 \
+    libffi-dev \
     wget \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for layer caching
@@ -26,8 +28,10 @@ COPY backend/ml/ /app/ml/
 COPY scripts/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
+# Expose the API port
+EXPOSE 3001
+
 ENTRYPOINT ["docker-entrypoint.sh"]
 
-# Health check (shared by API container)
-HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
-    CMD python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:3001/health').status)" 2>/dev/null || exit 1
+# Default command is API server
+CMD ["api"]

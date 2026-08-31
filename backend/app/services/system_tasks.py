@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import random
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
@@ -79,7 +79,7 @@ async def _store_prediction(prediction_type: str, result: dict[str, Any], confid
             prediction_type,
             payload,
             confidence,
-            datetime.utcnow(),
+            datetime.now(timezone.utc),
         )
     finally:
         await conn.close()
@@ -216,7 +216,7 @@ def simulation_engine(payload: dict[str, Any] | None = None) -> dict:
                     random.randint(80, 240),
                     random.randint(10, 180),
                     random.choice([True, False]),
-                    datetime.utcnow(),
+                    datetime.now(timezone.utc),
                 )
             for _ in range(ambulances):
                 lat = center_lat + random.uniform(-0.6, 0.6)

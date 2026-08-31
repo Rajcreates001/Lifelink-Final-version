@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Query, Depends
 from app.core.auth import get_current_user, AuthContext
 from fastapi.responses import PlainTextResponse
 
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.services.repository import MongoRepository
 from app.services.collections import (
     HOSPITAL_REPORTS
@@ -20,7 +20,7 @@ router = APIRouter(tags=["hospital-ops"])
 async def list_reports(hospitalId: str = Query(...),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     await _ensure_seeded(db, hospitalId)
     hospital_oid = _require_hospital_id(hospitalId)
     repo = MongoRepository(db, HOSPITAL_REPORTS)
@@ -56,7 +56,7 @@ async def list_ingested_reports(
     sort_dir: str | None = Query(None),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     await _ensure_seeded(db, hospitalId)
     hospital_oid = _require_hospital_id(hospitalId)
     repo = MongoRepository(db, HOSPITAL_REPORTS)
@@ -77,12 +77,12 @@ async def list_ingested_reports(
 async def ingest_report(payload: ReportIngestCreate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     hospital_oid = _require_hospital_id(payload.hospitalId)
     repo = MongoRepository(db, HOSPITAL_REPORTS)
 
     summary = _summarize_report_text(payload.content)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     doc = {
         "hospital": hospital_oid,
         "reportKey": "ingested",
@@ -103,7 +103,7 @@ async def ingest_report(payload: ReportIngestCreate,
 async def generate_report(payload: HospitalReportGenerate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     hospital_oid = _require_hospital_id(payload.hospitalId)
     template = next((t for t in _report_templates() if t["key"] == payload.reportKey), None)
     if not template:
@@ -112,7 +112,7 @@ async def generate_report(payload: HospitalReportGenerate,
     repo = MongoRepository(db, HOSPITAL_REPORTS)
     report_data = await _build_report_content(db, payload.reportKey, hospital_oid, payload.hospitalId)
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     update_doc = {
         "hospital": hospital_oid,
         "reportKey": payload.reportKey,
@@ -137,7 +137,7 @@ async def generate_report(payload: HospitalReportGenerate,
 async def download_report(report_id: str,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, HOSPITAL_REPORTS)
     oid = _as_object_id(report_id)
     record = await repo.find_one({"_id": oid})
@@ -154,7 +154,7 @@ async def download_report(report_id: str,
 async def report_summary(report_id: str,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, HOSPITAL_REPORTS)
     oid = _as_object_id(report_id)
     record = await repo.find_one({"_id": oid})
@@ -164,7 +164,7 @@ async def report_summary(report_id: str,
     summary = record.get("summary")
     if not summary:
         summary = _summarize_report_text(record.get("content") or "")
-        await repo.update_one({"_id": oid}, {"$set": {"summary": summary, "updatedAt": datetime.utcnow()}})
+        await repo.update_one({"_id": oid}, {"$set": {"summary": summary, "updatedAt": datetime.now(timezone.utc)}})
 
     return {
         "id": record.get("_id"),

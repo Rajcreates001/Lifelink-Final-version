@@ -16,7 +16,7 @@ Endpoints:
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 
@@ -69,7 +69,7 @@ async def start_simulation(
         "status": "started",
         "ambulances": len(gps_simulator.ambulances),
         "message": f"GPS simulation started with {len(gps_simulator.ambulances)} ambulances",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -80,7 +80,7 @@ async def stop_simulation():
     return {
         "status": "stopped",
         "message": "GPS simulation stopped",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -91,7 +91,7 @@ async def get_all_ambulances():
     return {
         "count": len(positions),
         "ambulances": positions,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
 

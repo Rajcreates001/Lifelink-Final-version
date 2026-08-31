@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.auth import require_scopes
 from app.core.dependencies import get_realtime_service
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.services.collections import MODULE_ALERTS, MODULE_AUTOMATIONS, MODULE_ITEMS
 from app.services.realtime_service import RealtimeService
 from app.services.repository import MongoRepository
@@ -56,7 +56,7 @@ def _emit(realtime: RealtimeService, module_key: str, entity: str, action: str, 
         "entity": entity,
         "action": action,
         "record": record,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
     channel = _channel(module_key)
     # Fire-and-forget; no await in sync helper
@@ -74,7 +74,7 @@ async def list_items(
     sort_dir: str | None = Query(None),
     ctx=Depends(require_scopes("dashboard:read"))
 ) -> dict:
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, MODULE_ITEMS)
 
     query: dict[str, Any] = {"moduleKey": module_key}
@@ -103,7 +103,7 @@ async def create_item(
     if not title:
         raise HTTPException(status_code=400, detail="title is required")
 
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, MODULE_ITEMS)
 
     doc = {
@@ -116,8 +116,8 @@ async def create_item(
         "ownerId": payload.get("ownerId"),
         "tags": payload.get("tags") or [],
         "metrics": payload.get("metrics") or {},
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
 
     created = await repo.insert_one(doc)
@@ -128,7 +128,7 @@ async def create_item(
         "entity": "items",
         "action": "create",
         "record": created,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }})
     return created
 
@@ -140,13 +140,13 @@ async def update_item(
     payload: dict,
     ctx=Depends(require_scopes("dashboard:read"))
 ) -> dict:
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, MODULE_ITEMS)
 
     update_data = {k: v for k, v in payload.items() if v is not None}
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields provided for update")
-    update_data["updatedAt"] = datetime.utcnow()
+    update_data["updatedAt"] = datetime.now(timezone.utc)
 
     updated = await repo.update_one({"_id": _as_object_id(item_id), "moduleKey": module_key}, {"$set": update_data}, return_new=True)
     if not updated:
@@ -159,7 +159,7 @@ async def update_item(
         "entity": "items",
         "action": "update",
         "record": updated,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }})
     return updated
 
@@ -170,7 +170,7 @@ async def delete_item(
     item_id: str,
     ctx=Depends(require_scopes("dashboard:read"))
 ) -> dict:
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, MODULE_ITEMS)
 
     deleted = await repo.delete_by_id(item_id)
@@ -184,7 +184,7 @@ async def delete_item(
         "entity": "items",
         "action": "delete",
         "record": {"_id": item_id},
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }})
     return {"status": "deleted"}
 
@@ -199,7 +199,7 @@ async def list_alerts(
     sort_dir: str | None = Query(None),
     ctx=Depends(require_scopes("dashboard:read"))
 ) -> dict:
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, MODULE_ALERTS)
     query: dict[str, Any] = {"moduleKey": module_key}
     search_query = _build_search_fields(search, ["message"])
@@ -223,7 +223,7 @@ async def create_alert(
     if not payload.get("message"):
         raise HTTPException(status_code=400, detail="message is required")
 
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, MODULE_ALERTS)
 
     doc = {
@@ -231,8 +231,8 @@ async def create_alert(
         "message": payload.get("message"),
         "severity": payload.get("severity") or "Medium",
         "status": payload.get("status") or "Open",
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
 
     created = await repo.insert_one(doc)
@@ -243,7 +243,7 @@ async def create_alert(
         "entity": "alerts",
         "action": "create",
         "record": created,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }})
     return created
 
@@ -255,13 +255,13 @@ async def update_alert(
     payload: dict,
     ctx=Depends(require_scopes("dashboard:read"))
 ) -> dict:
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, MODULE_ALERTS)
 
     update_data = {k: v for k, v in payload.items() if v is not None}
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields provided for update")
-    update_data["updatedAt"] = datetime.utcnow()
+    update_data["updatedAt"] = datetime.now(timezone.utc)
 
     updated = await repo.update_one({"_id": _as_object_id(alert_id), "moduleKey": module_key}, {"$set": update_data}, return_new=True)
     if not updated:
@@ -274,7 +274,7 @@ async def update_alert(
         "entity": "alerts",
         "action": "update",
         "record": updated,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }})
     return updated
 
@@ -288,7 +288,7 @@ async def list_automations(
     sort_dir: str | None = Query(None),
     ctx=Depends(require_scopes("dashboard:read"))
 ) -> dict:
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, MODULE_AUTOMATIONS)
     query: dict[str, Any] = {"moduleKey": module_key}
     search_query = _build_search_fields(search, ["name", "trigger", "action"])
@@ -311,7 +311,7 @@ async def create_automation(
     if not name:
         raise HTTPException(status_code=400, detail="name is required")
 
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, MODULE_AUTOMATIONS)
 
     doc = {
@@ -321,8 +321,8 @@ async def create_automation(
         "action": payload.get("action") or "Notify Team",
         "enabled": payload.get("enabled", True),
         "lastRun": None,
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
 
     created = await repo.insert_one(doc)
@@ -333,7 +333,7 @@ async def create_automation(
         "entity": "automations",
         "action": "create",
         "record": created,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }})
     return created
 
@@ -345,13 +345,13 @@ async def update_automation(
     payload: dict,
     ctx=Depends(require_scopes("dashboard:read"))
 ) -> dict:
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, MODULE_AUTOMATIONS)
 
     update_data = {k: v for k, v in payload.items() if v is not None}
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields provided for update")
-    update_data["updatedAt"] = datetime.utcnow()
+    update_data["updatedAt"] = datetime.now(timezone.utc)
 
     updated = await repo.update_one({"_id": _as_object_id(automation_id), "moduleKey": module_key}, {"$set": update_data}, return_new=True)
     if not updated:
@@ -364,7 +364,7 @@ async def update_automation(
         "entity": "automations",
         "action": "update",
         "record": updated,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }})
     return updated
 
@@ -374,7 +374,7 @@ async def analytics(
     module_key: str,
     ctx=Depends(require_scopes("dashboard:read"))
 ) -> dict:
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, MODULE_ITEMS)
 
     items = await repo.find_many({"moduleKey": module_key}, limit=500)
@@ -387,7 +387,7 @@ async def analytics(
         by_status[status] = by_status.get(status, 0) + 1
         by_priority[priority] = by_priority.get(priority, 0) + 1
 
-    today = datetime.utcnow().date()
+    today = datetime.now(timezone.utc).date()
     timeline = []
     for offset in range(6, -1, -1):
         day = today - timedelta(days=offset)

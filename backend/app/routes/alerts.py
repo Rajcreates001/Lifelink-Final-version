@@ -6,7 +6,7 @@ from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.core.auth import get_current_user, AuthContext
 from app.services.collections import ALERTS, HEALTH_RECORDS, HOSPITALS, NOTIFICATIONS
 from app.services.rate_limiter import rate_limit_alerts
@@ -117,7 +117,7 @@ async def _nearest_hospital(db, lat: float, lng: float) -> dict | None:
 
 @router.post("/alerts", status_code=201)
 async def create_alert(payload: AlertCreateRequest, ctx: AuthContext = Depends(get_current_user), _: None = Depends(rate_limit_alerts.dependency())):
-    db = get_db()
+    db = require_db()
     alert_repo = MongoRepository(db, ALERTS)
     notification_repo = MongoRepository(db, NOTIFICATIONS)
     health_repo = MongoRepository(db, HEALTH_RECORDS)
@@ -182,8 +182,8 @@ async def create_alert(payload: AlertCreateRequest, ctx: AuthContext = Depends(g
         "recommended_hospital": severity_result.get("hospital_type", "Emergency Department"),
         "vitals": vitals,
         "status": "pending",
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
 
     created = await alert_repo.insert_one(new_doc)
@@ -212,7 +212,7 @@ async def create_alert(payload: AlertCreateRequest, ctx: AuthContext = Depends(g
             "title": "Emergency SOS Alert",
             "message": payload.message,
             "severity": ml_severity,
-            "createdAt": datetime.utcnow(),
+            "createdAt": datetime.now(timezone.utc),
             "read": False,
             "metadata": {
                 "alert_id": created.get("_id"),
@@ -241,7 +241,7 @@ async def create_alert(payload: AlertCreateRequest, ctx: AuthContext = Depends(g
 
 @router.get("/notifications/{user_id}")
 async def get_notifications(user_id: str, ctx: AuthContext = Depends(get_current_user)):
-    db = get_db()
+    db = require_db()
     alert_repo = MongoRepository(db, ALERTS)
     notification_repo = MongoRepository(db, NOTIFICATIONS)
 
@@ -250,7 +250,7 @@ async def get_notifications(user_id: str, ctx: AuthContext = Depends(get_current
     alerts = await alert_repo.find_many({"user": oid}, sort=[("createdAt", -1)], limit=20)
     notifications = await notification_repo.find_many({"user": oid}, sort=[("createdAt", -1)], limit=20)
 
-    one_day_ago = datetime.utcnow() - timedelta(hours=24)
+    one_day_ago = datetime.now(timezone.utc) - timedelta(hours=24)
     critical_recent = await alert_repo.find_many(
         {
             "user": oid,
@@ -298,8 +298,8 @@ async def get_notifications(user_id: str, ctx: AuthContext = Depends(get_current
             try:
                 return datetime.fromisoformat(ts)
             except ValueError:
-                return datetime.utcnow()
-        return datetime.utcnow()
+                return datetime.now(timezone.utc)
+        return datetime.now(timezone.utc)
 
     mapped.sort(key=_sort_key, reverse=True)
     mapped = mapped[:10]

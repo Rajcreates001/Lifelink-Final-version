@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 
-from app.db.mongo import get_db
+from app.db.database import get_db
 from app.services.collections import HEALTH_RECORDS
 from app.services.repository import MongoRepository
 from app.services.search.schemas import SearchResultItem

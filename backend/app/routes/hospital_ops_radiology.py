@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Query, Depends
 from app.core.auth import get_current_user, AuthContext
 
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.services.repository import MongoRepository
 from app.services.collections import (
     RADIOLOGY_REPORTS,
@@ -25,7 +25,7 @@ async def list_radiology_requests(
     sort_dir: str | None = Query(None),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     await _ensure_seeded(db, hospitalId)
     repo = MongoRepository(db, RADIOLOGY_REQUESTS)
     oid = _require_hospital_id(hospitalId)
@@ -44,7 +44,7 @@ async def list_radiology_requests(
 async def create_radiology_request(payload: RadiologyRequestCreate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, RADIOLOGY_REQUESTS)
     oid = _require_hospital_id(payload.hospitalId)
     doc = {
@@ -52,8 +52,8 @@ async def create_radiology_request(payload: RadiologyRequestCreate,
         "patient": payload.patient,
         "scan": payload.scan,
         "status": payload.status or "Queued",
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
     created = await repo.insert_one(doc)
     return created
@@ -63,7 +63,7 @@ async def create_radiology_request(payload: RadiologyRequestCreate,
 async def update_radiology_request(request_id: str, payload: RadiologyRequestUpdate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, RADIOLOGY_REQUESTS)
     oid = _as_object_id(request_id)
     update_data = _build_update(payload, ["status"])
@@ -82,7 +82,7 @@ async def list_radiology_reports(
     sort_dir: str | None = Query(None),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     await _ensure_seeded(db, hospitalId)
     repo = MongoRepository(db, RADIOLOGY_REPORTS)
     oid = _require_hospital_id(hospitalId)
@@ -101,7 +101,7 @@ async def list_radiology_reports(
 async def create_radiology_report(payload: RadiologyReportCreate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, RADIOLOGY_REPORTS)
     oid = _require_hospital_id(payload.hospitalId)
     doc = {
@@ -111,8 +111,8 @@ async def create_radiology_report(payload: RadiologyReportCreate,
         "fileName": payload.fileName,
         "notes": payload.notes,
         "status": payload.status or "Uploaded",
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
     created = await repo.insert_one(doc)
     return created

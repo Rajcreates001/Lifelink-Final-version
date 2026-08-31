@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Query, Depends
 from app.core.auth import get_current_user, AuthContext
 
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.services.repository import MongoRepository
 from app.services.collections import (
     BED_ALLOCATIONS
@@ -25,7 +25,7 @@ async def bed_allocation_list(
     sort_dir: str | None = Query(None),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     await _ensure_seeded(db, hospitalId)
     repo = MongoRepository(db, BED_ALLOCATIONS)
     oid = _require_hospital_id(hospitalId)
@@ -46,7 +46,7 @@ async def bed_allocation_list(
 async def bed_allocation_create(payload: BedAllocationCreate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, BED_ALLOCATIONS)
     hospital_oid = _require_hospital_id(payload.hospitalId)
     hospital_doc = await _resolve_hospital_doc(db, payload.hospitalId)
@@ -63,8 +63,8 @@ async def bed_allocation_create(payload: BedAllocationCreate,
         "bedType": payload.bedType,
         "status": "Assigned",
         "notes": payload.notes,
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
     created = await repo.insert_one(doc)
     return created
@@ -74,7 +74,7 @@ async def bed_allocation_create(payload: BedAllocationCreate,
 async def bed_allocation_update(allocation_id: str, payload: BedAllocationUpdate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, BED_ALLOCATIONS)
     oid = _as_object_id(allocation_id)
     update_data = _build_update(payload, ["bedType", "status", "notes"])

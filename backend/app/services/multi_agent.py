@@ -48,7 +48,7 @@ from __future__ import annotations
 
 import logging
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 from typing import Any
@@ -109,7 +109,7 @@ class AgentResult:
         self.confidence = confidence
         self.data = data or {}
         self.warnings = warnings or []
-        self.generated_at = datetime.utcnow().isoformat()
+        self.generated_at = datetime.now(timezone.utc).isoformat()
 
     def to_dict(self) -> dict[str, Any]:
         return {

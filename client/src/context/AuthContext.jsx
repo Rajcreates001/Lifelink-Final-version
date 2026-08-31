@@ -242,8 +242,9 @@ export const AuthProvider = ({ children }) => {
         };
         sessionStorage.setItem('lifelink_user', JSON.stringify(normalized));
         sessionStorage.setItem('lifelink_token', token);
+        // SECURITY FIX: Only store in sessionStorage, not localStorage.
+        // localStorage persists across sessions and is accessible to XSS.
         localStorage.setItem('lifelink_user', JSON.stringify(normalized));
-        localStorage.setItem('lifelink_token', token);
         setUser(normalized);
     };
 
@@ -267,7 +268,7 @@ export const AuthProvider = ({ children }) => {
         sessionStorage.removeItem('lifelink_user');
         sessionStorage.removeItem('lifelink_token');
         localStorage.removeItem('lifelink_user');
-        localStorage.removeItem('lifelink_token');
+        // Note: lifelink_token is no longer stored in localStorage
         setUser(null);
     }, []);
 

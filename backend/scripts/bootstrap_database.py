@@ -13,7 +13,7 @@ ROOT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT_DIR.parent))
 
 from app.core.config import get_settings
-from app.db.mongo import connect_to_mongo, close_mongo_connection
+from app.db.database import connect_to_mongo, close_mongo_connection
 from scripts.seed_mass_demo_data import seed
 
 SCHEMA_FILE = ROOT_DIR / "schema.sql"

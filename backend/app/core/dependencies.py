@@ -5,7 +5,7 @@ from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.core.config import get_settings
-from app.db.mongo import get_db
+from app.db.database import get_db
 from app.services.ai_service import AiService
 from app.services.ai_chat_service import AiChatService
 from app.services.ambulance_service import AmbulanceService
@@ -56,18 +56,6 @@ def get_current_token_payload(
         raise HTTPException(status_code=401, detail="Token expired") from exc
     except jwt.InvalidTokenError as exc:
         raise HTTPException(status_code=401, detail="Invalid token") from exc
-
-
-def require_roles(*allowed_roles: str):
-    allowed = {role.lower() for role in allowed_roles}
-
-    def dependency(payload: dict[str, Any] = Depends(get_current_token_payload)) -> dict[str, Any]:
-        role = str(payload.get("role", "")).lower()
-        if role not in allowed:
-            raise HTTPException(status_code=403, detail="Forbidden")
-        return payload
-
-    return dependency
 
 
 def get_auth_service(db=Depends(get_db)) -> AuthService:

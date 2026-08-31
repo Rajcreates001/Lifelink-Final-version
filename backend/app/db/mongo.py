@@ -1,47 +1,23 @@
-from __future__ import annotations
-import logging
+"""
+Backward-compatible shim — all exports have moved to app.db.database.
 
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
+This module re-exports everything from database.py so existing imports
+continue to work. All new code should import from app.db.database directly.
+"""
+from app.db.database import (  # noqa: F401
+    connect_database,
+    connect_to_mongo,
+    close_database,
+    close_mongo_connection,
+    get_db,
+    require_db,
+)
 
-from app.core.config import get_settings
-from app.db.models import Base
-
-
-class DbState:
-    engine: AsyncEngine | None = None
-    session_factory: async_sessionmaker[AsyncSession] | None = None
-
-
-db_state = DbState()
-
-
-async def connect_to_mongo() -> None:
-    settings = get_settings()
-    db_state.engine = create_async_engine(settings.postgres_url, pool_pre_ping=True)
-    db_state.session_factory = async_sessionmaker(db_state.engine, expire_on_commit=False)
-
-    async with db_state.engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-
-async def close_mongo_connection() -> None:
-    if db_state.engine is not None:
-        await db_state.engine.dispose()
-        db_state.engine = None
-        db_state.session_factory = None
-
-
-# Module-level logger for graceful degradation messages
-_logger = logging.getLogger("lifelink.database")
-
-
-def get_db() -> async_sessionmaker[AsyncSession] | None:
-    """
-    Get database session factory with graceful degradation.
-    Returns the session factory if available, or None — never raises.
-    Reconnection is handled asynchronously at the lifespan level.
-    """
-    if db_state.session_factory is None:
-        _logger.warning("Database not initialized — will reconnect on next lifespan cycle")
-        return None
-    return db_state.session_factory
+__all__ = [
+    "connect_database",
+    "connect_to_mongo",
+    "close_database",
+    "close_mongo_connection",
+    "get_db",
+    "require_db",
+]

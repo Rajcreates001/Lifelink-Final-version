@@ -18,7 +18,7 @@ from app.core.auth import require_scopes
 from app.core.config import get_settings
 from app.core.dependencies import get_realtime_service
 from app.core.rbac import AuthContext
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.db.models import (
     GovAmbulance,
     GovAuditLog,
@@ -73,7 +73,7 @@ async def _log_audit(session: AsyncSession, action: str, actor_id: str, entity_t
             entity_type=entity_type,
             entity_id=entity_id,
             details=details,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
     )
 
@@ -86,7 +86,7 @@ async def _mark_entity_verified(session: AsyncSession, entity_type: str, entity_
     }
     model = model_map.get(entity_type)
     if entity_type in {"hospital", "ambulance"}:
-        db = get_db()
+        db = require_db()
         repo = MongoRepository(db, USERS)
         await repo.update_one({"_id": entity_id}, {"$set": {"isVerified": True}}, return_new=False)
 
@@ -98,7 +98,7 @@ async def _mark_entity_verified(session: AsyncSession, entity_type: str, entity_
     if hasattr(entity, "verified"):
         entity.verified = True
     if hasattr(entity, "updated_at"):
-        entity.updated_at = datetime.utcnow()
+        entity.updated_at = datetime.now(timezone.utc)
     return True
 
 
@@ -129,8 +129,8 @@ async def _seed_core_data(session: AsyncSession, center_lat: float, center_lng: 
                     beds_available=beds_available,
                     load_score=round(1 - (beds_available / max(1, beds_total)), 2),
                     rating=round(random.uniform(3.6, 4.9), 1),
-                    created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow()
+                    created_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(timezone.utc)
                 )
             )
             created["hospitals"] += 1
@@ -148,8 +148,8 @@ async def _seed_core_data(session: AsyncSession, center_lat: float, center_lng: 
                     longitude=lng,
                     status=random.choice(["available", "assigned", "offline"]),
                     verified=random.choice([True, False]),
-                    created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow()
+                    created_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(timezone.utc)
                 )
             )
             created["ambulances"] += 1
@@ -165,7 +165,7 @@ async def _seed_core_data(session: AsyncSession, center_lat: float, center_lng: 
                     sub_role=None,
                     latitude=lat,
                     longitude=lng,
-                    created_at=datetime.utcnow()
+                    created_at=datetime.now(timezone.utc)
                 )
             )
             created["users"] += 1
@@ -197,8 +197,8 @@ async def _generate_emergencies(session: AsyncSession, count: int, center_lat: f
                 status="active",
                 hospital_id=None,
                 ambulance_id=None,
-                occurred_at=datetime.utcnow(),
-                created_at=datetime.utcnow()
+                occurred_at=datetime.now(timezone.utc),
+                created_at=datetime.now(timezone.utc)
             )
         )
     session.add_all(emergencies)
@@ -250,7 +250,7 @@ def _after_action_recommendations(summary: dict[str, Any]) -> list[str]:
 
 
 async def _compute_decisions(session: AsyncSession) -> list[dict[str, Any]]:
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     window_start = now - timedelta(minutes=20)
     emergencies = (
         await session.scalars(
@@ -465,7 +465,7 @@ async def _search_entities(session: AsyncSession, query: str) -> dict[str, Any] 
 
 
 async def _detect_anomalies(session: AsyncSession) -> dict[str, Any] | None:
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     start = now - timedelta(hours=24)
     emergencies = (
         await session.scalars(
@@ -503,7 +503,7 @@ async def seed_command_center(
     payload: dict = Body(default_factory=dict),
     ctx: AuthContext = Depends(require_scopes("gov:admin"))
 ):
-    db = get_db()
+    db = require_db()
     center_lat = float(payload.get("lat", 12.9716))
     center_lng = float(payload.get("lng", 77.5946))
     async with db() as session:
@@ -514,7 +514,7 @@ async def seed_command_center(
 
 @router.get("/command/overview")
 async def command_overview(ctx: AuthContext = Depends(require_scopes("dashboard:read"))):
-    db = get_db()
+    db = require_db()
     async with db() as session:
         hospitals = await session.scalar(select(func.count()).select_from(GovHospital))
         ambulances = await session.scalar(select(func.count()).select_from(GovAmbulance))
@@ -534,7 +534,7 @@ async def decision_engine(ctx: AuthContext = Depends(require_scopes("dashboard:r
     if cached:
         return cached
 
-    db = get_db()
+    db = require_db()
     async with db() as session:
         decisions = await _compute_decisions(session)
         stored = []
@@ -548,7 +548,7 @@ async def decision_engine(ctx: AuthContext = Depends(require_scopes("dashboard:r
                 suggested_action=item["suggested_action"],
                 impact=item["impact"],
                 affected_entities={"items": item["affected_entities"]},
-                created_at=datetime.utcnow()
+                created_at=datetime.now(timezone.utc)
             )
             session.add(record)
             stored.append(record)
@@ -560,7 +560,7 @@ async def decision_engine(ctx: AuthContext = Depends(require_scopes("dashboard:r
 
 @router.post("/disaster/detect")
 async def detect_disaster(ctx: AuthContext = Depends(require_scopes("dashboard:read"))):
-    db = get_db()
+    db = require_db()
     async with db() as session:
         emergencies = (await session.scalars(select(GovEmergency).where(GovEmergency.status == "active"))).all()
         if len(emergencies) < 5:
@@ -580,12 +580,12 @@ async def detect_disaster(ctx: AuthContext = Depends(require_scopes("dashboard:r
             status="active",
             zone="Zone A",
             severity="Critical",
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(timezone.utc),
             peak_at=None,
             resolved_at=None,
             timeline={"events": ["cluster_detected"]},
             meta={"cluster_size": largest, "lat": float(centroid[0]), "lng": float(centroid[1])},
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         session.add(disaster)
         await session.commit()
@@ -594,7 +594,7 @@ async def detect_disaster(ctx: AuthContext = Depends(require_scopes("dashboard:r
 
 @router.post("/disaster/trigger")
 async def trigger_disaster(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(require_scopes("dashboard:read"))):
-    db = get_db()
+    db = require_db()
     lat = payload.get("lat")
     lng = payload.get("lng")
     disaster = GovDisasterEvent(
@@ -603,12 +603,12 @@ async def trigger_disaster(payload: dict = Body(default_factory=dict), ctx: Auth
         status="active",
         zone=payload.get("zone", "Zone A"),
         severity=payload.get("severity", "High"),
-        started_at=datetime.utcnow(),
+        started_at=datetime.now(timezone.utc),
         peak_at=None,
         resolved_at=None,
         timeline={"events": ["manual_trigger"]},
         meta={"reason": payload.get("reason", "manual"), "lat": lat, "lng": lng},
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
     async with db() as session:
         session.add(disaster)
@@ -625,7 +625,7 @@ async def broadcast_disaster(payload: dict = Body(default_factory=dict), ctx: Au
 
 @router.get("/disaster/recent")
 async def recent_disasters(ctx: AuthContext = Depends(require_scopes("dashboard:read"))):
-    db = get_db()
+    db = require_db()
     async with db() as session:
         items = (
             await session.scalars(
@@ -657,7 +657,7 @@ async def list_hospitals(
     limit: int | None = Query(None, ge=1),
     offset: int | None = Query(None, ge=0),
 ):
-    db = get_db()
+    db = require_db()
     async with db() as session:
         stmt = select(GovHospital)
         if offset:
@@ -691,7 +691,7 @@ async def list_ambulances(
     limit: int | None = Query(None, ge=1),
     offset: int | None = Query(None, ge=0),
 ):
-    db = get_db()
+    db = require_db()
     async with db() as session:
         stmt = select(GovAmbulance)
         if offset:
@@ -717,16 +717,16 @@ async def list_ambulances(
 
 @router.get("/monitoring/summary")
 async def monitoring_summary(ctx: AuthContext = Depends(require_scopes("dashboard:read"))):
-    db = get_db()
+    db = require_db()
     async with db() as session:
-        resolve_before = datetime.utcnow() - timedelta(minutes=LIVE_MONITOR_AUTO_RESOLVE_MINUTES)
+        resolve_before = datetime.now(timezone.utc) - timedelta(minutes=LIVE_MONITOR_AUTO_RESOLVE_MINUTES)
         await session.execute(
             update(GovEmergency)
             .where(GovEmergency.status == "active", GovEmergency.occurred_at < resolve_before)
             .values(status="resolved")
         )
         await session.commit()
-        window_start = datetime.utcnow() - timedelta(minutes=LIVE_MONITOR_WINDOW_MINUTES)
+        window_start = datetime.now(timezone.utc) - timedelta(minutes=LIVE_MONITOR_WINDOW_MINUTES)
         emergencies = await session.scalar(
             select(func.count()).select_from(GovEmergency).where(
                 GovEmergency.status == "active",
@@ -758,10 +758,10 @@ async def monitoring_feed(
 ):
     resolved_limit = min(limit or LIVE_MONITOR_DEFAULT_LIMIT, LIVE_MONITOR_MAX_LIMIT)
     resolved_window = min(window_minutes or LIVE_MONITOR_WINDOW_MINUTES, LIVE_MONITOR_MAX_WINDOW_MINUTES)
-    window_start = datetime.utcnow() - timedelta(minutes=resolved_window)
-    db = get_db()
+    window_start = datetime.now(timezone.utc) - timedelta(minutes=resolved_window)
+    db = require_db()
     async with db() as session:
-        resolve_before = datetime.utcnow() - timedelta(minutes=LIVE_MONITOR_AUTO_RESOLVE_MINUTES)
+        resolve_before = datetime.now(timezone.utc) - timedelta(minutes=LIVE_MONITOR_AUTO_RESOLVE_MINUTES)
         await session.execute(
             update(GovEmergency)
             .where(GovEmergency.status == "active", GovEmergency.occurred_at < resolve_before)
@@ -801,7 +801,7 @@ async def submit_verification(payload: dict = Body(default_factory=dict), ctx: A
     entity_id = payload.get("entity_id")
     if not entity_type or not entity_id:
         raise HTTPException(status_code=400, detail="entity_type and entity_id required")
-    db = get_db()
+    db = require_db()
     req = GovVerificationRequest(
         id=_uuid(),
         entity_type=entity_type,
@@ -811,8 +811,8 @@ async def submit_verification(payload: dict = Body(default_factory=dict), ctx: A
         requested_by=ctx.user_id,
         reviewed_by=None,
         reviewed_at=None,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc)
     )
     async with db() as session:
         session.add(req)
@@ -827,7 +827,7 @@ async def pending_verification(ctx: AuthContext = Depends(require_scopes("dashbo
     # the pending verification queue — district-only restriction was wrong.
     if (ctx.role or "").lower() != "government":
         raise HTTPException(status_code=403, detail="Government authority required")
-    db = get_db()
+    db = require_db()
     async with db() as session:
         requests = (await session.scalars(select(GovVerificationRequest).where(GovVerificationRequest.status == "pending"))).all()
     return {
@@ -848,15 +848,15 @@ async def pending_verification(ctx: AuthContext = Depends(require_scopes("dashbo
 @router.post("/verification/{request_id}/approve")
 async def approve_verification(request_id: str, ctx: AuthContext = Depends(require_scopes("dashboard:read"))):
     _require_district(ctx)
-    db = get_db()
+    db = require_db()
     async with db() as session:
         req = await session.get(GovVerificationRequest, request_id)
         if not req:
             raise HTTPException(status_code=404, detail="Request not found")
         req.status = "approved"
         req.reviewed_by = ctx.user_id
-        req.reviewed_at = datetime.utcnow()
-        req.updated_at = datetime.utcnow()
+        req.reviewed_at = datetime.now(timezone.utc)
+        req.updated_at = datetime.now(timezone.utc)
         await _mark_entity_verified(session, req.entity_type, req.entity_id)
         await _log_audit(session, "verification_approved", ctx.user_id, req.entity_type, req.entity_id, {})
         await session.commit()
@@ -866,7 +866,7 @@ async def approve_verification(request_id: str, ctx: AuthContext = Depends(requi
 @router.post("/verification/{request_id}/reject")
 async def reject_verification(request_id: str, payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(require_scopes("dashboard:read"))):
     _require_district(ctx)
-    db = get_db()
+    db = require_db()
     async with db() as session:
         req = await session.get(GovVerificationRequest, request_id)
         if not req:
@@ -874,8 +874,8 @@ async def reject_verification(request_id: str, payload: dict = Body(default_fact
         req.status = "rejected"
         req.notes = payload.get("notes")
         req.reviewed_by = ctx.user_id
-        req.reviewed_at = datetime.utcnow()
-        req.updated_at = datetime.utcnow()
+        req.reviewed_at = datetime.now(timezone.utc)
+        req.updated_at = datetime.now(timezone.utc)
         await _log_audit(session, "verification_rejected", ctx.user_id, req.entity_type, req.entity_id, {"notes": req.notes})
         await session.commit()
     return {"status": "rejected"}
@@ -883,12 +883,12 @@ async def reject_verification(request_id: str, payload: dict = Body(default_fact
 
 @router.post("/simulation/start")
 async def start_simulation(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(require_scopes("dashboard:read"))):
-    db = get_db()
+    db = require_db()
     session = GovSimulationSession(
         id=_uuid(),
         status="running",
         intensity=payload.get("intensity", "medium"),
-        started_at=datetime.utcnow(),
+        started_at=datetime.now(timezone.utc),
         ended_at=None,
         meta={"note": payload.get("note")}
     )
@@ -915,7 +915,7 @@ async def simulation_step(payload: dict = Body(default_factory=dict), ctx: AuthC
     count = int(payload.get("count", 25))
     center_lat = float(payload.get("lat", 12.9716))
     center_lng = float(payload.get("lng", 77.5946))
-    db = get_db()
+    db = require_db()
     async with db() as session:
         await _generate_emergencies(session, count=count, center_lat=center_lat, center_lng=center_lng)
     return {"status": "ok", "generated": count}
@@ -932,7 +932,7 @@ async def simulation_multi_phase(payload: dict = Body(default_factory=dict), ctx
     session_id = payload.get("session_id")
     auto_close = bool(payload.get("auto_close"))
 
-    db = get_db()
+    db = require_db()
     async with db() as session:
         sim = await session.get(GovSimulationSession, session_id) if session_id else None
         if not sim:
@@ -940,7 +940,7 @@ async def simulation_multi_phase(payload: dict = Body(default_factory=dict), ctx
                 id=_uuid(),
                 status="running",
                 intensity=payload.get("intensity", "medium"),
-                started_at=datetime.utcnow(),
+                started_at=datetime.now(timezone.utc),
                 ended_at=None,
                 meta={"note": payload.get("note"), "phases": []}
             )
@@ -974,7 +974,7 @@ async def simulation_multi_phase(payload: dict = Body(default_factory=dict), ctx
         sim.meta = meta
         if auto_close:
             sim.status = "completed"
-            sim.ended_at = datetime.utcnow()
+            sim.ended_at = datetime.now(timezone.utc)
         await session.commit()
 
     return {"status": "ok", "session_id": sim.id, "results": results}
@@ -982,26 +982,26 @@ async def simulation_multi_phase(payload: dict = Body(default_factory=dict), ctx
 
 @router.post("/simulation/stop/{session_id}")
 async def stop_simulation(session_id: str, ctx: AuthContext = Depends(require_scopes("dashboard:read"))):
-    db = get_db()
+    db = require_db()
     async with db() as session:
         sim = await session.get(GovSimulationSession, session_id)
         if not sim:
             raise HTTPException(status_code=404, detail="Simulation not found")
         sim.status = "stopped"
-        sim.ended_at = datetime.utcnow()
+        sim.ended_at = datetime.now(timezone.utc)
         await session.commit()
     return {"status": "stopped", "session_id": session_id}
 
 
 @router.post("/simulation/after-action/{session_id}")
 async def after_action_report(session_id: str, ctx: AuthContext = Depends(require_scopes("dashboard:read"))):
-    db = get_db()
+    db = require_db()
     async with db() as session:
         sim = await session.get(GovSimulationSession, session_id)
         if not sim:
             raise HTTPException(status_code=404, detail="Simulation not found")
 
-        end_time = sim.ended_at or datetime.utcnow()
+        end_time = sim.ended_at or datetime.now(timezone.utc)
         start_time = sim.started_at or (end_time - timedelta(hours=1))
         emergencies = (
             await session.scalars(
@@ -1039,7 +1039,7 @@ async def after_action_report(session_id: str, ctx: AuthContext = Depends(requir
 
         meta = dict(sim.meta or {})
         meta["after_action_report"] = report
-        meta["report_generated_at"] = datetime.utcnow().isoformat()
+        meta["report_generated_at"] = datetime.now(timezone.utc).isoformat()
         sim.meta = meta
         sim.status = "recovery"
         sim.ended_at = end_time
@@ -1052,7 +1052,7 @@ async def after_action_report(session_id: str, ctx: AuthContext = Depends(requir
 async def precompute_metrics(ctx: AuthContext = Depends(require_scopes("dashboard:read"))):
     settings = get_settings()
     cache = CacheStore(settings.redis_url, namespace="gov")
-    db = get_db()
+    db = require_db()
     async with db() as session:
         hospitals = (await session.scalars(select(GovHospital))).all()
         emergencies = (await session.scalars(select(GovEmergency))).all()
@@ -1069,7 +1069,7 @@ async def precompute_metrics(ctx: AuthContext = Depends(require_scopes("dashboar
 async def eva_assistant(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(require_scopes("dashboard:read"))):
     query = payload.get("query", "")
     execute = bool(payload.get("execute"))
-    db = get_db()
+    db = require_db()
     async with db() as session:
         search_results = await _search_entities(session, query)
         if search_results:
@@ -1096,7 +1096,7 @@ async def eva_assistant(payload: dict = Body(default_factory=dict), ctx: AuthCon
                     suggested_action=suggestion["suggested_action"],
                     impact=suggestion["impact"],
                     affected_entities={"items": suggestion["affected_entities"]},
-                    created_at=datetime.utcnow()
+                    created_at=datetime.now(timezone.utc)
                 )
             )
             await session.commit()
@@ -1111,7 +1111,7 @@ async def anomaly_prediction(ctx: AuthContext = Depends(require_scopes("dashboar
     if cached:
         return cached
 
-    db = get_db()
+    db = require_db()
     async with db() as session:
         result = await _detect_anomalies(session)
         if not result:
@@ -1123,7 +1123,7 @@ async def anomaly_prediction(ctx: AuthContext = Depends(require_scopes("dashboar
             prediction_type="emergency_anomaly",
             result=result,
             confidence=0.82,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         session.add(prediction)
         await session.commit()
@@ -1139,7 +1139,7 @@ async def list_policy_actions(
     offset: int | None = Query(None, ge=0),
     ctx: AuthContext = Depends(require_scopes("dashboard:read"))
 ):
-    db = get_db()
+    db = require_db()
     async with db() as session:
         actions = await _list_policy_actions(session, status=status)
         if offset:
@@ -1177,10 +1177,10 @@ async def create_policy_action(payload: dict = Body(default_factory=dict), ctx: 
         status=payload.get("status", "Draft"),
         impact=payload.get("impact"),
         decision_event_id=payload.get("decision_event_id"),
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc)
     )
-    db = get_db()
+    db = require_db()
     async with db() as session:
         session.add(record)
         await _log_audit(session, "policy_action_created", ctx.user_id, "policy_action", record.id, {"title": title})
@@ -1199,7 +1199,7 @@ async def create_policy_action(payload: dict = Body(default_factory=dict), ctx: 
 
 @router.patch("/policy/actions/{action_id}")
 async def update_policy_action(action_id: str, payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(require_scopes("policy:write"))):
-    db = get_db()
+    db = require_db()
     async with db() as session:
         record = await session.get(GovPolicyAction, action_id)
         if not record:
@@ -1212,7 +1212,7 @@ async def update_policy_action(action_id: str, payload: dict = Body(default_fact
             record.status = payload.get("status")
         if "impact" in payload:
             record.impact = payload.get("impact")
-        record.updated_at = datetime.utcnow()
+        record.updated_at = datetime.now(timezone.utc)
         await _log_audit(session, "policy_action_updated", ctx.user_id, "policy_action", record.id, payload)
         await session.commit()
     return {

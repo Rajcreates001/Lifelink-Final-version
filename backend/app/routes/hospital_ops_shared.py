@@ -502,7 +502,7 @@ def _build_update(payload: BaseModel, fields: list[str]) -> dict[str, Any]:
             data[field] = value
     if not data:
         raise HTTPException(status_code=400, detail="No fields provided for update")
-    data["updatedAt"] = datetime.utcnow()
+    data["updatedAt"] = datetime.now(timezone.utc)
     return data
 
 
@@ -768,7 +768,7 @@ async def _ensure_hospital_ops_seed(
     if not hospital_doc:
         hospital_doc = await hospital_repo.find_one({"user": hospital_oid})
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if not hospital_doc:
         hospital_doc = await hospital_repo.insert_one(
             {

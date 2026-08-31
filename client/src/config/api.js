@@ -1,7 +1,7 @@
 // Production: set VITE_API_URL in Vercel to your Render backend URL (e.g. https://your-app.onrender.com)
 // Development: falls back to localhost:3001 if not set
 const raw = import.meta.env.VITE_API_URL;
-const devFallback = 'http://localhost:4002';
+const devFallback = 'http://localhost:3001';
 export const API_BASE_URL =
   typeof raw === 'string' && raw.trim() !== ''
     ? raw.replace(/\/+$/, '') // strip trailing slashes
@@ -10,13 +10,14 @@ export const API_BASE_URL =
       : '';
 
 export const getAuthToken = () => (
-  sessionStorage.getItem('lifelink_token') || localStorage.getItem('lifelink_token')
+  sessionStorage.getItem('lifelink_token')
 );
 
 const responseCache = new Map();
 const inflightRequests = new Map();
 const DEFAULT_TTL_MS = 120000;
 const DEFAULT_TIMEOUT_MS = 8000;
+const MAX_CACHE_SIZE = 200;
 
 
 export const apiFetch = async (path, options = {}) => {
@@ -101,6 +102,11 @@ export const apiFetch = async (path, options = {}) => {
       const payload = { ok: true, status: res.status, data };
 
       if (useCache) {
+        // Evict oldest entries when cache exceeds size limit
+        if (responseCache.size >= MAX_CACHE_SIZE) {
+          const oldestKey = responseCache.keys().next().value;
+          responseCache.delete(oldestKey);
+        }
         responseCache.set(cacheKey, { timestamp: Date.now(), value: payload });
       }
       if (method !== 'GET') {

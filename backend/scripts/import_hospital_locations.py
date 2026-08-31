@@ -11,7 +11,7 @@ from typing import Any
 from dotenv import load_dotenv
 from faker import Faker
 
-from app.db.mongo import close_mongo_connection, connect_to_mongo, get_db
+from app.db.database import close_mongo_connection, connect_to_mongo, get_db
 from app.services.collections import HOSPITALS
 from app.services.repository import MongoRepository
 

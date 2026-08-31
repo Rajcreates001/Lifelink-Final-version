@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Body, HTTPException, Query, Depends
 from app.core.auth import get_current_user, AuthContext
 
-from app.db.mongo import get_db
+from app.db.database import get_db, require_db
 from app.services.repository import MongoRepository
 from app.services.collections import (
     AMBULANCE_ASSIGNMENTS,
@@ -32,7 +32,7 @@ router = APIRouter(tags=["hospital-ops"])
 async def ceo_global_metrics(hospitalId: str = Query(...),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     await _ensure_seeded(db, hospitalId)
     hospital_oid = _require_hospital_id(hospitalId)
     patient_repo = MongoRepository(db, PATIENTS)
@@ -56,7 +56,7 @@ async def ceo_global_metrics(hospitalId: str = Query(...),
 
     beds = _bed_breakdown(hospital_doc.get("beds") if hospital_doc else {})
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     day_cutoff = now - timedelta(days=1)
     week_cutoff = now - timedelta(days=7)
     month_cutoff = now - timedelta(days=30)
@@ -183,14 +183,14 @@ async def ceo_global_metrics(hospitalId: str = Query(...),
 async def create_benchmark(payload: BenchmarkCreate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, HOSPITAL_BENCHMARKS)
     doc = {
         "region": payload.region,
         "metric": payload.metric,
         "value": payload.value,
         "source": payload.source or "external_feed",
-        "createdAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
     }
     created = await repo.insert_one(doc)
     return created
@@ -204,7 +204,7 @@ async def list_benchmarks(
     sort_dir: str | None = Query(None),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, HOSPITAL_BENCHMARKS)
     query: dict[str, Any] = {"region": region}
     search_query = _build_search(search, ["metric", "source"])
@@ -219,7 +219,7 @@ async def list_benchmarks(
 async def ceo_ai_insights(hospitalId: str = Query(...),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     await _ensure_seeded(db, hospitalId)
     hospital_oid = _require_hospital_id(hospitalId)
     patient_repo = MongoRepository(db, PATIENTS)
@@ -319,7 +319,7 @@ async def ceo_ai_insights_simulate(payload: dict = Body(default_factory=dict),
     staff_delta = int(payload.get("staffDelta") or 0)
     discharge_delta = int(payload.get("plannedDischarges") or 0)
 
-    db = get_db()
+    db = require_db()
     hospital_oid = _require_hospital_id(hospital_id)
     patient_repo = MongoRepository(db, PATIENTS)
     staff_repo = MongoRepository(db, HOSPITAL_STAFF)
@@ -369,7 +369,7 @@ async def ceo_ai_insights_simulate(payload: dict = Body(default_factory=dict),
 async def ceo_department_performance(hospitalId: str = Query(...),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     await _ensure_seeded(db, hospitalId)
     hospital_oid = _require_hospital_id(hospitalId)
     patient_repo = MongoRepository(db, PATIENTS)
@@ -432,7 +432,7 @@ async def ceo_department_performance(hospitalId: str = Query(...),
 async def create_department_log(payload: DepartmentLogCreate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, DEPARTMENT_LOGS)
     hospital_oid = _require_hospital_id(payload.hospitalId)
 
@@ -445,8 +445,8 @@ async def create_department_log(payload: DepartmentLogCreate,
         "throughputPerHour": payload.throughputPerHour,
         "queueLength": payload.queueLength,
         "notes": payload.notes,
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
     created = await repo.insert_one(doc)
     return created
@@ -456,7 +456,7 @@ async def create_department_log(payload: DepartmentLogCreate,
 async def ceo_resource_overview(hospitalId: str = Query(...),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     await _ensure_seeded(db, hospitalId)
     hospital_oid = _require_hospital_id(hospitalId)
     hospital_doc = await _resolve_hospital_doc(db, hospitalId)
@@ -512,7 +512,7 @@ async def ceo_resource_overview(hospitalId: str = Query(...),
 async def create_vendor_lead_time(payload: VendorLeadTimeCreate,
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     repo = MongoRepository(db, VENDOR_LEAD_TIMES)
     hospital_oid = _require_hospital_id(payload.hospitalId)
     doc = {
@@ -521,8 +521,8 @@ async def create_vendor_lead_time(payload: VendorLeadTimeCreate,
         "category": payload.category,
         "vendorName": payload.vendorName,
         "leadTimeDays": payload.leadTimeDays,
-        "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow(),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     }
     created = await repo.insert_one(doc)
     return created
@@ -532,7 +532,7 @@ async def create_vendor_lead_time(payload: VendorLeadTimeCreate,
 async def ceo_bed_forecast(hospitalId: str = Query(...),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     await _ensure_seeded(db, hospitalId)
     hospital_oid = _require_hospital_id(hospitalId)
     patient_repo = MongoRepository(db, PATIENTS)
@@ -578,7 +578,7 @@ async def ceo_bed_forecast(hospitalId: str = Query(...),
 async def ceo_ambulance_coordination(hospitalId: str = Query(...),
     ctx: AuthContext = Depends(get_current_user)
 ):
-    db = get_db()
+    db = require_db()
     assignment_repo = MongoRepository(db, AMBULANCE_ASSIGNMENTS)
     ambulance_repo = MongoRepository(db, AMBULANCES)
     emergency_repo = MongoRepository(db, EMERGENCY_EVENTS)
