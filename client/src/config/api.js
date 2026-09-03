@@ -80,9 +80,18 @@ export const apiFetch = async (path, options = {}) => {
       }
     }
 
+    // Only pass valid RequestInit properties to fetch().
+    // Custom properties like cacheKey, ttlMs, staleWhileRevalidate, timeoutMs
+    // are apiFetch-specific and must NOT be spread into fetch().
+    const { cacheKey: _ck, ttlMs: _ttl, staleWhileRevalidate: _swr,
+            timeoutMs: _tm, cache: rawCache, ...fetchInit } = options;
+    // Map apiFetch `cache: false` to the valid 'no-store' enum value.
+    const fetchCache = rawCache === false ? 'no-store' : (rawCache || undefined);
+
     try {
       const res = await fetch(url, {
-        ...options,
+        ...fetchInit,
+        ...(fetchCache ? { cache: fetchCache } : {}),
         headers,
         signal: controller.signal,
       });
