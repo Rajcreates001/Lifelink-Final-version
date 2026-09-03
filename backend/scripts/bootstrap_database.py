@@ -54,7 +54,8 @@ async def _apply_schema(dsn: str) -> None:
     print(f"[bootstrap_database] Applying schema from {SCHEMA_FILE}")
     raw_sql = SCHEMA_FILE.read_text(encoding='utf-8')
     statements = [stmt.strip() for stmt in raw_sql.split(";") if stmt.strip()]
-    async with await asyncpg.connect(dsn=dsn) as conn:
+    conn = await asyncpg.connect(dsn=dsn)
+    try:
         for statement in statements:
             try:
                 await conn.execute(statement)
@@ -66,10 +67,13 @@ async def _apply_schema(dsn: str) -> None:
                 if "already exists" in text:
                     continue
                 raise
+    finally:
+        await conn.close()
 
 
 async def _needs_demo_seed(dsn: str) -> bool:
-    async with await asyncpg.connect(dsn=dsn) as conn:
+    conn = await asyncpg.connect(dsn=dsn)
+    try:
         exists = await conn.fetchval(
             "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = $1)",
             BOOTSTRAP_CHECK_TABLE,
@@ -78,6 +82,8 @@ async def _needs_demo_seed(dsn: str) -> bool:
             return True
         count = await conn.fetchval(f"SELECT COUNT(*) FROM {BOOTSTRAP_CHECK_TABLE}")
         return count == 0
+    finally:
+        await conn.close()
 
 
 def main() -> None:
