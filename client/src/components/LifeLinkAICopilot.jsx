@@ -827,7 +827,7 @@ const LifeLinkAICopilot = ({ variant = 'panel', onClose, location, moduleKey = '
       return (
         <div className="flex justify-end mb-3 animate-fade-in-up">
           <div className="max-w-[85%] rounded-2xl px-3.5 py-2.5 bg-gradient-to-br from-slate-700 to-slate-800 text-white shadow-md">
-            <p className="text-[12px] leading-5 whitespace-pre-wrap break-words">{message.content}</p>
+            <p className="text-[12px] leading-5 whitespace-pre-wrap break-words">{typeof message.content === 'string' ? message.content : typeof message.content === 'object' ? JSON.stringify(message.content, null, 2) : String(message.content ?? '')}</p>
             {message.attachments?.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1">
                 {message.attachments.map((att, i) => (
@@ -862,12 +862,12 @@ const LifeLinkAICopilot = ({ variant = 'panel', onClose, location, moduleKey = '
 
           {/* Content */}
           <div className="px-3.5 py-2.5">
-            <p className="text-[12px] text-slate-800 leading-5 whitespace-pre-wrap break-words">{message.content}</p>
+            <p className="text-[12px] text-slate-800 leading-5 whitespace-pre-wrap break-words">{typeof message.content === 'string' ? message.content : typeof message.content === 'object' ? JSON.stringify(message.content, null, 2) : String(message.content ?? '')}</p>
 
             {/* Follow-up */}
             {message.followUp && (
               <div className="mt-2.5 p-2.5 rounded-xl bg-indigo-50 border border-indigo-100">
-                <p className="text-[11px] text-indigo-700">{message.followUp}</p>
+                <p className="text-[11px] text-indigo-700">{typeof message.followUp === 'string' ? message.followUp : JSON.stringify(message.followUp)}</p>
               </div>
             )}
 

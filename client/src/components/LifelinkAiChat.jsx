@@ -777,11 +777,11 @@ const LifelinkAiChat = ({ variant = 'panel', onClose, location, moduleKey = 'gen
                 <div key={message.id} className="w-full flex justify-center mb-4">
                   <div className={`w-full max-w-2xl flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`rounded-2xl px-3 py-2 text-[13px] leading-5 shadow-sm break-words overflow-hidden ${message.role === 'user' ? 'bg-sky-600 text-white' : 'bg-white text-slate-800 border border-slate-200'}`}>
-                      <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                      <p className="whitespace-pre-wrap break-words">{typeof message.content === 'string' ? message.content : typeof message.content === 'object' ? JSON.stringify(message.content, null, 2) : String(message.content ?? '')}</p>
 
                       {message.followUp && (
                         <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
-                          {message.followUp}
+                          {typeof message.followUp === 'string' ? message.followUp : JSON.stringify(message.followUp)}
                         </div>
                       )}
 
