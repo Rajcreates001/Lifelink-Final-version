@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from math import atan2, cos, radians, sin, sqrt
 
 from bson import ObjectId
