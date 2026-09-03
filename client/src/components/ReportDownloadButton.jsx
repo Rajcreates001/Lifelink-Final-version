@@ -15,7 +15,7 @@
  */
 
 import React, { useState } from 'react';
-import { apiFetch } from '../config/api';
+import { API_BASE_URL } from '../config/api';
 
 const VARIANTS = {
   primary: 'bg-blue-600 hover:bg-blue-700 text-white shadow-md',
@@ -67,7 +67,7 @@ const ReportDownloadButton = ({
 
     try {
       // POST to backend API to generate report
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}${endpoint}`, {
+      const res = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
