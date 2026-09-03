@@ -205,136 +205,68 @@ LifeLink-MERN-v4/
 |-- .dockerignore               # Docker build ignore rules
 ```
 
-## Quick Start
+## Quick Start (Docker)
 
-### Prerequisites
-
-- Node.js 18+
-- Python 3.11 (use .venv)
-- PostgreSQL (local or cloud)
-- Redis (optional, for Celery)
-- Groq API key (required for backend AI)
-
-### Install
+**Requires:** Docker Desktop (includes Docker Compose)
 
 ```bash
-cd client
-npm install
-
-cd ../backend
-pip install -r requirements.txt
+git clone https://github.com/Rajcreates001/Lifelink-Final-version.git
+cd Lifelink-Final-version
+docker compose up -d --build postgres redis backend frontend
 ```
 
-### Run (Windows PowerShell)
+Open **http://localhost:5000** — everything works out of the box.
 
-Terminal 1 (Backend):
+**No manual database setup needed.** The backend auto-creates tables and seeds 370+ demo users on first start.
 
-```bash
-cd backend
-& "D:\Black folder\Projects\Major Project\LifeLink-MERN-v4\.venv\Scripts\python.exe" -m uvicorn app.main:app --reload --host 0.0.0.0 --port 3010
-```
-
-Terminal 2 (Frontend):
-
-```bash
-cd client
-npm run dev
-```
-
-Optional (Redis):
-
-```bash
-redis-server
-```
-
-Frontend: http://localhost:5000
-Backend: http://localhost:3010
-
-### Local backend startup
-
-Use the backend helper to bootstrap schema and seed data automatically before running the FastAPI server:
-
-```bash
-cd backend
-bash start.sh
-```
-
-### Run with Docker Compose
-
-```bash
-docker compose up --build
-```
-
-This starts the backend, frontend, PostgreSQL, and Redis services together.
+For the complete setup guide (ports, credentials, troubleshooting, data migration): **[SETUP.md](SETUP.md)**
 
 ## Environment Variables
 
-### backend/.env
+Docker handles all environment variables automatically via `docker-compose.yml`. No `.env` files needed for Docker.
 
-- POSTGRES_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/lifelink_db
-- JWT_SECRET=replace_with_secure_secret
-- FRONTEND_URL=http://localhost:5000
-- APP_ENV=development
-- REDIS_URL=redis://localhost:6379/0
-- CELERY_BROKER_URL=redis://localhost:6379/0
-- CELERY_RESULT_BACKEND=redis://localhost:6379/1
-- LLM_PROVIDER=groq
-- GROQ_API_KEY=replace_with_your_groq_api_key
-- GROQ_BASE_URL=https://api.groq.com
-- GROQ_MODEL=llama3-8b-8192
-- EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
-- RAG_TOP_K=5
-- PYTHON_PATH=optional absolute python path
+For local development without Docker, see [SETUP.md](SETUP.md#local-development-without-docker).
 
-### client/.env
-
-- VITE_API_URL=http://localhost:3010
+| Variable | Docker Default | Description |
+|----------|---------------|-------------|
+| `POSTGRES_URL` | `postgresql+asyncpg://postgres:postgres@postgres:5432/lifelink_db` | PostgreSQL connection |
+| `REDIS_URL` | `redis://redis:6379/0` | Redis connection |
+| `JWT_SECRET` | `change_me_before_deploy` | JWT signing secret |
+| `SIE_ENABLED` | `false` | AI embeddings (disabled by default) |
+| `LLM_PROVIDER` | `openai` | LLM backend |
 
 ## Data Import and Seeding
 
-### Seed PostgreSQL demo data (synthetic)
+**Automatic:** When you run `docker compose up`, the backend entrypoint automatically:
+1. Creates all database tables from `backend/scripts/schema.sql`
+2. Seeds 370+ demo users, 79 departments, 48 roles, 108 permissions
+3. Seeds government auth and hospital module data
 
-Generates hospitals, ambulances, and public users with donor profiles.
-
-```bash
-python backend/scripts/seed_postgres_data.py
-```
-
-### Import hospital locations (data.gov.in or Kaggle CSV)
+**Manual (if needed):**
 
 ```bash
-python backend/scripts/import_hospital_locations.py --input "D:\path\to\hospitals.csv" --drop
+# Re-run bootstrap (idempotent — skips if data exists)
+docker exec lifelink-backend python scripts/bootstrap_database.py
+
+# Import hospital locations from CSV
+docker exec lifelink-backend python scripts/import_hospital_locations.py --input /path/to/hospitals.csv --drop
 ```
 
-If your CSV uses different column names:
-
-```bash
-python backend/scripts/import_hospital_locations.py --input "D:\path\to\hospitals.csv" --name-col HospitalName --lat-col Latitude --lng-col Longitude --allow-fallback
-```
+For data migration from another database, see [SETUP.md](SETUP.md#migrating-data-from-another-database).
 
 ## Deployment
 
-### Backend on Render (single service)
+### Cloud Deployment
 
-- Render service definition is included in [render.yaml](render.yaml).
-- The backend now uses `backend/start.sh` to bootstrap SQL schema and demo data automatically before starting the FastAPI server.
-- The service runs FastAPI on the Render-provided `PORT` and uses a single PostgreSQL database.
-- Configure the environment variables in Render (values are defined in the render.yaml template):
-	- `POSTGRES_URL`
-	- `JWT_SECRET`
-	- `GROQ_API_KEY`
-	- `FRONTEND_URL` (your Vercel URL)
-	- `REDIS_URL` (optional)
-
-### Frontend on Vercel
-
-- Vercel SPA rewrite rules are defined in [client/vercel.json](client/vercel.json).
-- Set `VITE_API_URL` in Vercel to your Render backend URL.
+- **Backend**: [render.yaml](render.yaml) defines the Render service. The backend auto-bootstraps schema and seeds demo data on first start.
+- **Frontend**: Deploy to Vercel. Set `VITE_API_URL` to your backend URL.
+- **Docker**: `docker compose up -d --build` works on any machine with Docker installed.
 
 ### Notes
 
-- Redis is optional; in-memory caching is used if Redis is unavailable.
-- All AI calls run through the FastAPI backend; the Groq API key is never exposed to the frontend.
+- Redis is used for caching and Celery task queuing.
+- All AI calls run through the FastAPI backend; API keys are never exposed to the frontend.
+- SIE (AI embeddings) is disabled by default and behind a Docker profile to save resources.
 
 ## Testing
 
