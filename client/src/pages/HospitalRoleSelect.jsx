@@ -147,8 +147,15 @@ const HospitalRoleSelect = () => {
   }, [navigate]);
 
   const handleCardClick = useCallback((dept) => {
-    setAuthModalDept(dept);
-  }, []);
+    // If user is already authenticated (has a token and subRole is not set yet),
+    // skip the enterprise auth modal and directly select the role.
+    const existingToken = sessionStorage.getItem('lifelink_token');
+    if (existingToken && user?.role === 'hospital' && !user?.subRole) {
+      handleSelect(dept.key);
+    } else {
+      setAuthModalDept(dept);
+    }
+  }, [user, handleSelect]);
 
   const handleEscape = useCallback((e) => {
     if (authModalDept && e.key === 'Escape') setAuthModalDept(null);
