@@ -194,18 +194,12 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const [selectedOrg, setSelectedOrgRaw] = useState(null);
 
-    // Restore user + selected org from storage on mount
+    // Restore user from sessionStorage on mount
     useEffect(() => {
         const storedUser = sessionStorage.getItem('lifelink_user');
         if (storedUser) {
             try { setUser(JSON.parse(storedUser)); }
             catch { sessionStorage.removeItem('lifelink_user'); }
-        } else {
-            const cachedUser = localStorage.getItem('lifelink_user');
-            if (cachedUser) {
-                try { setUser(JSON.parse(cachedUser)); }
-                catch { localStorage.removeItem('lifelink_user'); }
-            }
         }
         // Restore selected org
         try {
@@ -225,7 +219,7 @@ export const AuthProvider = ({ children }) => {
         }
     }, []);
 
-    const login = (userData, token) => {
+    const login = useCallback((userData, token) => {
         // Ensure userData has a normalized role
         const role = (userData.role || '').toLowerCase();
         const route = ROLE_ROUTES[role];
@@ -240,20 +234,18 @@ export const AuthProvider = ({ children }) => {
             dashboardRoute: route?.dashboard || '/dashboard/public',
             workspaceRoute: route?.workspaceSelect || '/login',
         };
+        // SECURITY: Only store in sessionStorage, never localStorage.
+        // Token and user data are session-scoped to minimize XSS exposure.
         sessionStorage.setItem('lifelink_user', JSON.stringify(normalized));
         sessionStorage.setItem('lifelink_token', token);
-        // SECURITY FIX: Only store in sessionStorage, not localStorage.
-        // localStorage persists across sessions and is accessible to XSS.
-        localStorage.setItem('lifelink_user', JSON.stringify(normalized));
         setUser(normalized);
-    };
+    }, []);
 
     const updateUser = (updates) => {
         setUser((prev) => {
             if (!prev) return prev;
             const next = { ...prev, ...updates };
             sessionStorage.setItem('lifelink_user', JSON.stringify(next));
-            localStorage.setItem('lifelink_user', JSON.stringify(next));
             return next;
         });
     };
@@ -267,8 +259,6 @@ export const AuthProvider = ({ children }) => {
     const clearAuth = useCallback(() => {
         sessionStorage.removeItem('lifelink_user');
         sessionStorage.removeItem('lifelink_token');
-        localStorage.removeItem('lifelink_user');
-        // Note: lifelink_token is no longer stored in localStorage
         setUser(null);
     }, []);
 
@@ -283,10 +273,9 @@ export const AuthProvider = ({ children }) => {
         setUser((prev) => {
             if (!prev) return prev;
             // Preserve portal identity but clear workspace context
-            const { subRole, department_name, organization, workspaceId, ...rest } = prev;
+            const { subRole, department_name: _deptName, organization: _org, workspaceId: _wsId, ...rest } = prev;
             // Persist cleaned user (still authenticated at portal level)
             sessionStorage.setItem('lifelink_user', JSON.stringify(rest));
-            localStorage.setItem('lifelink_user', JSON.stringify(rest));
             return rest;
         });
         // Clear selected organization so workspace selector shows fresh
@@ -321,7 +310,7 @@ export const AuthProvider = ({ children }) => {
         } catch { /* non-critical */ }
 
         return getLoginRoute(normalized);
-    }, [login]);
+    }, []);
 
     /**
      * performLogout — Context-aware centralized logout.

@@ -5,9 +5,16 @@ Safe to run multiple times (CREATE TABLE IF NOT EXISTS).
 from __future__ import annotations
 
 import asyncio
+import os
+
 import asyncpg
 
-DB_URL = "postgresql://postgres:Maha_251@localhost:5432/lifelink_v1_db"
+DB_USER = os.environ.get("DB_USER", "postgres")
+DB_PASSWORD = os.environ.get("DB_PASSWORD", "postgres")
+DB_HOST = os.environ.get("DB_HOST", "localhost")
+DB_PORT = os.environ.get("DB_PORT", "5432")
+DB_NAME = os.environ.get("DB_NAME", "lifelink_db")
+DB_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 
 async def main():

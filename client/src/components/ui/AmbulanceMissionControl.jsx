@@ -397,19 +397,20 @@ const EquipmentStatus = ({ equipment }) => {
 };
 
 const CommunicationPanel = () => {
+  const [activeChannel, setActiveChannel] = useState('er');
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <button type="button" className="flex items-center justify-center gap-2 p-3 rounded-xl bg-sky-50 border border-sky-200 hover:bg-sky-100 active:scale-95 transition-all duration-200 text-xs font-semibold text-sky-700">
+        <button type="button" onClick={() => setActiveChannel('er')} className={`flex items-center justify-center gap-2 p-3 rounded-xl border active:scale-95 transition-all duration-200 text-xs font-semibold ${activeChannel === 'er' ? 'bg-sky-100 border-sky-300 text-sky-800 shadow-sm' : 'bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100'}`}>
           <i className="fas fa-hospital" /> ER
         </button>
-        <button type="button" className="flex items-center justify-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200 hover:bg-red-100 active:scale-95 transition-all duration-200 text-xs font-semibold text-red-700">
+        <button type="button" onClick={() => setActiveChannel('police')} className={`flex items-center justify-center gap-2 p-3 rounded-xl border active:scale-95 transition-all duration-200 text-xs font-semibold ${activeChannel === 'police' ? 'bg-red-100 border-red-300 text-red-800 shadow-sm' : 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100'}`}>
           <i className="fas fa-shield" /> Police
         </button>
-        <button type="button" className="flex items-center justify-center gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 hover:bg-amber-100 active:scale-95 transition-all duration-200 text-xs font-semibold text-amber-700">
+        <button type="button" onClick={() => setActiveChannel('fire')} className={`flex items-center justify-center gap-2 p-3 rounded-xl border active:scale-95 transition-all duration-200 text-xs font-semibold ${activeChannel === 'fire' ? 'bg-amber-100 border-amber-300 text-amber-800 shadow-sm' : 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'}`}>
           <i className="fas fa-fire-extinguisher" /> Fire
         </button>
-        <button type="button" className="flex items-center justify-center gap-2 p-3 rounded-xl bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 active:scale-95 transition-all duration-200 text-xs font-semibold text-emerald-700">
+        <button type="button" onClick={() => setActiveChannel('dispatch')} className={`flex items-center justify-center gap-2 p-3 rounded-xl border active:scale-95 transition-all duration-200 text-xs font-semibold ${activeChannel === 'dispatch' ? 'bg-emerald-100 border-emerald-300 text-emerald-800 shadow-sm' : 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'}`}>
           <i className="fas fa-phone" /> Dispatch
         </button>
       </div>

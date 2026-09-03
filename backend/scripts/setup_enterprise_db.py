@@ -4,6 +4,7 @@ Creates all tables with correct schema and seeds default data.
 Run directly: python scripts/setup_enterprise_db.py
 """
 import asyncio
+import os
 import asyncpg
 import bcrypt
 from uuid import uuid4
@@ -12,9 +13,11 @@ from datetime import datetime, timezone
 
 async def setup():
     conn = await asyncpg.connect(
-        host="localhost", port=5432,
-        user="postgres", password="Maha_251",
-        database="lifelink_v1_db",
+        host=os.environ.get("DB_HOST", "localhost"),
+        port=int(os.environ.get("DB_PORT", "5432")),
+        user=os.environ.get("DB_USER", "postgres"),
+        password=os.environ.get("DB_PASSWORD", "postgres"),
+        database=os.environ.get("DB_NAME", "lifelink_db"),
     )
 
     now = datetime.now(timezone.utc)
@@ -279,7 +282,7 @@ async def setup():
     # 6. SEED dev users — 2 users per role (24 total)
     DEV_USERS = [
         # CEO Office — 2 hospital_ceo users
-        ("ceo", "hospital_ceo", "angel.henry@lifelink.demo", "Password123", "Angel Henry"),
+        ("ceo", "hospital_ceo", "angel.henry@lifelink.demo", os.environ.get("DEMO_PASSWORD", "Password123"), "Angel Henry"),
         ("ceo", "hospital_ceo", "sarah.mitchell@lifelink.demo", "Password123", "Sarah Mitchell"),
         # Emergency — 2 emergency_physician users
         ("emergency", "emergency_physician", "doctor.emergency@lifelink.demo", "Password123", "Dr. Sarah Connor"),
@@ -317,7 +320,7 @@ async def setup():
 
     for dept_key, role_name, email, password, full_name in DEV_USERS:
         uid = uuid4().hex
-        pw_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+        pw_hash = bcrypt.hashpw(str(password).encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
         await conn.execute(
             "INSERT INTO enterprise_users (id, full_name, email, password_hash, status, mfa_enabled, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
             uid, full_name, email, pw_hash, "active", False, now, now,

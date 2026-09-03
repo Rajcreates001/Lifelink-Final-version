@@ -76,18 +76,18 @@ async def health() -> dict:
 async def health_ready() -> dict:
     """
     Readiness probe — checks all dependencies before reporting healthy.
-    Each dependency is checked individually; one failure doesn't cascade.
-    Returns 503 if critical dependencies are down.
+    Returns status code 200 if healthy, 503 if degraded.
+    Uses Response model to avoid exception-based flow control.
     """
+    from fastapi.responses import JSONResponse
     from app.core.config import get_settings
 
     settings = get_settings()
     checks = {}
     all_healthy = True
 
-    # 1. MongoDB / PostgreSQL check
+    # 1. PostgreSQL check
     try:
-        from app.db.database import get_db, require_db
         from sqlalchemy import text
         db = require_db()
         async with db() as session:
@@ -97,7 +97,7 @@ async def health_ready() -> dict:
         checks["database"] = {"status": "unhealthy", "error": str(e)[:100]}
         all_healthy = False
 
-    # 2. ML Model check (try loading a basic prediction)
+    # 2. ML Model check
     try:
         import os
         model_path = os.path.join(os.path.dirname(__file__), "..", "ml", "health_risk_model.joblib")
@@ -126,13 +126,16 @@ async def health_ready() -> dict:
         checks["llm_endpoint"] = {"status": "degraded", "error": str(e)[:80]}
 
     status_code = 200 if all_healthy else 503
-    raise HTTPException(status_code=status_code, detail={
-        "status": "ready" if all_healthy else "degraded",
-        "service": "lifelink-fastapi",
-        "version": "0.1.0",
-        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
-        "checks": checks,
-    })
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "status": "ready" if all_healthy else "degraded",
+            "service": "lifelink-fastapi",
+            "version": "0.1.0",
+            "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
+            "checks": checks,
+        },
+    )
 
 
 @router.post("/health/vitals", status_code=201)

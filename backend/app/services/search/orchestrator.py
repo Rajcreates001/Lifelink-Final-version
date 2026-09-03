@@ -377,6 +377,35 @@ class HybridSearchOrchestrator:
         self._complete_stage(stages, "medical_validation", stage_ctx)
 
         # ═══════════════════════════════════════════════════════════
+        # 8.5 HEADROOM CONTEXT COMPRESSION
+        # ═══════════════════════════════════════════════════════════
+        stage_ctx = self._start_stage(stages, "headroom_compression")
+        compression_stats = {"compressed": False, "original_tokens": 0, "compressed_tokens": 0}
+
+        try:
+            from app.services.ai_platform.headroom_service import HeadroomService
+            headroom = HeadroomService()
+            if headroom.is_available and ranked_results:
+                # Compress search results before summarization to save LLM tokens
+                chunks = [
+                    {"content": r.content_snippet or r.title or "", "tier": "tier_2"}
+                    for r in ranked_results[:10]
+                    if r.content_snippet or r.title
+                ]
+                if chunks:
+                    comp_result = await headroom.compress_rag_chunks(chunks, tier="tier_2")
+                    compression_stats = {
+                        "compressed": comp_result.get("compressed_chunks", []),
+                        "original_tokens": comp_result.get("total_original_tokens", 0),
+                        "compressed_tokens": comp_result.get("total_compressed_tokens", 0),
+                        "compression_ratio": comp_result.get("compression_ratio", 0),
+                    }
+        except Exception as e:
+            logger.debug("Headroom compression skipped: %s", e)
+
+        self._complete_stage(stages, "headroom_compression", stage_ctx)
+
+        # ═══════════════════════════════════════════════════════════
         # 9. AI SUMMARIZATION
         # ═══════════════════════════════════════════════════════════
         stage_ctx = self._start_stage(stages, "ai_summarization")

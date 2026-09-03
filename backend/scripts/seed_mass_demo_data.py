@@ -85,7 +85,7 @@ from app.services.indian_locale import (
 # Use Indian locale for Faker
 faker = Faker("en_IN")
 
-DEMO_PASSWORD = "Demo@2026!"
+DEMO_PASSWORD = os.environ.get("DEMO_PASSWORD", "Demo@2026!")
 DEMO_PASSWORD_HASH = None
 
 COUNTS = {

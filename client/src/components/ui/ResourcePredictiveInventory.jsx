@@ -37,7 +37,7 @@ const ResourcePredictiveInventory = () => {
         })}
       </div>
       <div className="px-3 pb-3">
-        <button className="w-full text-[9px] font-bold text-white bg-gradient-to-r from-violet-600 to-purple-600 py-1.5 rounded-xl hover:shadow-lg active:scale-95 transition-all">
+        <button onClick={() => alert('Generating AI Demand Forecast Report...\nAnalyzing consumption patterns, seasonal trends, and department utilization data.')} className="w-full text-[9px] font-bold text-white bg-gradient-to-r from-violet-600 to-purple-600 py-1.5 rounded-xl hover:shadow-lg active:scale-95 transition-all">
           <i className="fas fa-robot mr-1" />AI Demand Forecast Report
         </button>
       </div>

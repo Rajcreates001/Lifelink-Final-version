@@ -58,6 +58,7 @@ from app.routes.v2.government_auth import router as government_auth_v2_router
 from app.routes.reports.reports import router as reports_router
 from app.routes.gps_tracking import router as gps_tracking_router
 from app.routes.ml_pipeline import router as ml_pipeline_router
+from app.routes.ai_gateway import router as ai_gateway_router
 from app.routes.backup import router as backup_router
 from app.routes.status import router as status_router
 from app.services.prometheus_metrics import PrometheusMiddleware, get_metrics
@@ -153,9 +154,10 @@ Comprehensive API for AI-powered emergency healthcare management across India.
 - Realistic Bangalore routes with traffic and weather effects
 """,
     version="0.1.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json",
+    # Disable docs/redoc/openapi in production to prevent API schema leakage
+    docs_url="/docs" if settings.app_env != "production" else None,
+    redoc_url="/redoc" if settings.app_env != "production" else None,
+    openapi_url="/openapi.json" if settings.app_env != "production" else None,
     openapi_tags=[
         {"name": "health", "description": "Health check and system status"},
         {"name": "auth", "description": "User authentication (login, signup, JWT tokens)"},
@@ -274,6 +276,9 @@ app.include_router(enterprise_auth_v2_router, prefix="/v2")
 
 # LifeLink AI — dedicated chat system (completely isolated from public AI)
 app.include_router(lifelink_ai_v2_router, prefix="/v2")
+
+# AI Inference Gateway — Headroom + SIE integration
+app.include_router(ai_gateway_router, prefix="")
 
 # Government Auth routes (enterprise-grade authentication for government organizations)
 app.include_router(government_auth_v2_router, prefix="/v2")

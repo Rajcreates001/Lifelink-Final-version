@@ -239,6 +239,7 @@ const DesktopAmbulanceDashboard = () => {
   const { vehicle, incident, hospital, toIncident, toHospital, loading } = useAmbulanceMissionData();
   const activeModule = urlModule && moduleLabels[urlModule] ? urlModule : 'mission-overview';
   const [triageOpen, setTriageOpen] = useState(false);
+  const [triageInput, setTriageInput] = useState('');
   const [toast, setToast] = useState(null);
   const [missionStart] = useState(() => new Date().toISOString());
 
@@ -348,7 +349,7 @@ const DesktopAmbulanceDashboard = () => {
               </button>
             </div>
             <p className="text-xs text-slate-600 mb-4">Enter symptoms, vitals, or mechanism for AI triage:</p>
-            <textarea className="w-full border border-slate-200 rounded-lg p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-300" rows={3} placeholder="e.g. GCS 10, HR 122, BP 92/58, suspected internal hemorrhage..." />
+            <textarea value={triageInput} onChange={(e) => setTriageInput(e.target.value)} className="w-full border border-slate-200 rounded-lg p-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-300" rows={3} placeholder="e.g. GCS 10, HR 122, BP 92/58, suspected internal hemorrhage..." />
             <div className="flex justify-end gap-2 mt-3">
               <button type="button" onClick={() => setTriageOpen(false)} className="px-4 py-2 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600">Cancel</button>
               <button type="button" onClick={() => { showToast('AI Triage assessment submitted', 'success'); setTriageOpen(false); }}

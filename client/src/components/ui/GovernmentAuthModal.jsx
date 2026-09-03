@@ -502,11 +502,11 @@ const GovernmentAuthModal = ({ department, onClose, onLogin, loading }) => {
                 <span>Remember device</span>
               </label>
               <div className="flex gap-3 text-xs">
-                <button type="button" className="text-indigo-600 hover:text-indigo-800 font-medium transition-colors">
+                <button type="button" onClick={() => alert('Password reset link will be sent to your registered email address.')} className="text-indigo-600 hover:text-indigo-800 font-medium transition-colors">
                   <i className="fas fa-key mr-1" />
                   Forgot Password?
                 </button>
-                <button type="button" className="text-amber-600 hover:text-amber-800 font-medium transition-colors">
+                <button type="button" onClick={() => alert('Emergency Access: Enter your government-issued emergency credentials for immediate access.')} className="text-amber-600 hover:text-amber-800 font-medium transition-colors">
                   <i className="fas fa-lock-open mr-1" />
                   Emergency Access
                 </button>

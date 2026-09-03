@@ -38,7 +38,7 @@ const DeptAnomalyDetector = () => {
               <div className="ml-8 mr-2 px-2.5 py-2 rounded-lg bg-indigo-50/70 border border-indigo-100/50 mb-1 animate-fade-in">
                 <p className="text-[9px] text-slate-600"><strong>Impact:</strong> {a.impact}</p>
                 <p className="text-[9px] text-slate-600"><strong>AI Suggestion:</strong> {a.dept === 'Radiology' ? 'Schedule MRI-2 maintenance and redistribute workload' : a.dept === 'Emergency' ? 'Activate surge protocol and call in backup staff' : 'Review inventory management process'}.</p>
-                <button className="mt-1 text-[8px] font-bold text-white bg-indigo-600 px-2 py-0.5 rounded hover:bg-indigo-700 active:scale-95">Resolve</button>
+                <button onClick={() => alert('Resolving anomaly in ' + a.dept + ': ' + a.type + '\n' + a.detail)} className="mt-1 text-[8px] font-bold text-white bg-indigo-600 px-2 py-0.5 rounded hover:bg-indigo-700 active:scale-95">Resolve</button>
               </div>
             )}
           </div>

@@ -18,7 +18,9 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 
 const WS_BASE = import.meta.env.VITE_API_URL
   ? import.meta.env.VITE_API_URL.replace(/^http/, 'ws')
-  : 'ws://localhost:3001';
+  : typeof window !== 'undefined'
+    ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`
+    : 'ws://localhost:3001';
 
 const CHANNELS = {
   ambulance: `${WS_BASE}/v2/realtime/ws/ambulance`,

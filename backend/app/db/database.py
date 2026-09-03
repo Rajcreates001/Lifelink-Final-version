@@ -27,7 +27,14 @@ db_state = DbState()
 async def connect_database() -> None:
     """Initialize the PostgreSQL connection pool and create tables."""
     settings = get_settings()
-    db_state.engine = create_async_engine(settings.postgres_url, pool_pre_ping=True)
+    db_state.engine = create_async_engine(
+        settings.postgres_url,
+        pool_pre_ping=True,
+        pool_size=20,
+        max_overflow=10,
+        pool_timeout=30,
+        pool_recycle=1800,
+    )
     db_state.session_factory = async_sessionmaker(db_state.engine, expire_on_commit=False)
 
     async with db_state.engine.begin() as conn:

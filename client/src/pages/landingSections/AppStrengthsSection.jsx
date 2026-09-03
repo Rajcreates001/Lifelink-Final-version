@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { useScrollIn, useCountUp } from './hooks';
+import GraphDetailModal from './GraphDetailModal';
 
 const AppStrengthsSection = () => {
     const [entered, ref] = useScrollIn(0.05);

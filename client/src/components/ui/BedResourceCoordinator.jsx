@@ -41,7 +41,7 @@ const BedResourceCoordinator = () => {
         })}
       </div>
       <div className="px-3 pb-3 pt-1">
-        <button className="w-full text-[9px] font-bold text-white bg-gradient-to-r from-violet-600 to-purple-600 py-1.5 rounded-xl hover:shadow-lg active:scale-95 transition-all">
+        <button onClick={() => alert('AI optimizing bed resources: Analyzing utilization, staffing, and patient flow for optimal allocation.')} className="w-full text-[9px] font-bold text-white bg-gradient-to-r from-violet-600 to-purple-600 py-1.5 rounded-xl hover:shadow-lg active:scale-95 transition-all">
           <i className="fas fa-robot mr-1" />AI Optimize Resources
         </button>
       </div>

@@ -97,7 +97,7 @@ const BedDetailModal = ({ bed, onClose }) => {
                 <div className="bg-slate-50 rounded-lg px-3 py-2"><p className="text-[9px] text-slate-400">Equipment</p><p className="text-sm font-bold text-slate-800">{bed.equipment}</p></div>
                 <div className="bg-slate-50 rounded-lg px-3 py-2"><p className="text-[9px] text-slate-400">Predicted Release</p><p className="text-sm font-bold text-emerald-600">{bed.predictedRelease}</p></div>
               </div>
-              <button className="w-full text-xs font-bold text-white bg-indigo-600 py-2 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all">Assign Patient</button>
+              <button onClick={() => alert(`Assigning patient to bed ${bed.label}. AI recommends: ${bed.aiRecommendation}`)} className="w-full text-xs font-bold text-white bg-indigo-600 py-2 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all">Assign Patient</button>
             </div>
           )}
         </div>

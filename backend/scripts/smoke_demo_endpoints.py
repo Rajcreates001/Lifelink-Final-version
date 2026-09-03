@@ -9,7 +9,7 @@ import httpx
 
 BASE_URL = os.getenv("LIFELINK_API_URL", "http://localhost:3001").rstrip("/")
 TIMEOUT_SECONDS = float(os.getenv("LIFELINK_SMOKE_TIMEOUT", "25"))
-DEMO_PASSWORD = "Demo@2026!"
+DEMO_PASSWORD = os.environ.get("DEMO_PASSWORD", "Demo@2026!")
 
 
 def _auth_header(token: str | None) -> dict[str, str]:

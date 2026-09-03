@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import os
 import uuid
 from datetime import datetime, timezone
 
@@ -20,7 +21,12 @@ import asyncpg
 import bcrypt
 
 # ── Database connection ──────────────────────────────────────
-DB_URL = "postgresql://postgres:Maha_251@localhost:5432/lifelink_v1_db"
+DB_USER = os.environ.get("DB_USER", "postgres")
+DB_PASSWORD = os.environ.get("DB_PASSWORD", "postgres")
+DB_HOST = os.environ.get("DB_HOST", "localhost")
+DB_PORT = os.environ.get("DB_PORT", "5432")
+DB_NAME = os.environ.get("DB_NAME", "lifelink_db")
+DB_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 
 def _now() -> datetime:
@@ -487,14 +493,14 @@ for dept in GOV_DEPARTMENTS:
         "department": key,
         "role": role,
         "email": f"{org_prefix}.admin@gov.lifelink.demo",
-        "password": "Password123",
+        "password": os.environ.get("DEMO_PASSWORD", "Password123"),
         "name": f"Admin — {dept['name']}",
     })
     GOV_DEV_CREDENTIALS.append({
         "department": key,
         "role": secondary_role,
         "email": f"{org_prefix}.ops@gov.lifelink.demo",
-        "password": "Password123",
+        "password": os.environ.get("DEMO_PASSWORD", "Password123"),
         "name": f"Operator — {dept['name']}",
     })
 
@@ -589,7 +595,7 @@ async def main():
         print(f"  Organizations: {len(GOV_DEPARTMENTS)}")
         print(f"  Roles:          {len(GOV_ROLES)}")
         print(f"  Users created:  {users_created}")
-        print(f"  Password:       Password123")
+        print(f"  Password:       {os.environ.get('DEMO_PASSWORD', 'Password123')}")
         print(f"  Domain:         @gov.lifelink.demo")
         print(f"{'=' * 60}")
 

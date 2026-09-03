@@ -6,15 +6,22 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: bash start.sh
     autoDeploy: true
+    healthCheckPath: /health
     envVars:
       - key: APP_ENV
         value: production
+      - key: PORT
+        value: 3001
       - key: FRONTEND_URL
-        value: https://your-vercel-app.vercel.app
+        sync: false
       - key: POSTGRES_URL
-        sync: false
+        fromDatabase:
+          name: lifelink-db
+          property: connectionString
       - key: JWT_SECRET
-        sync: false
+        generateValue: true
+      - key: PRIVACY_SALT
+        generateValue: true
       - key: GROQ_API_KEY
         sync: false
       - key: GROQ_BASE_URL
@@ -26,12 +33,29 @@ services:
       - key: OPENAI_MODEL
         value: gpt-4o-mini
       - key: REDIS_URL
-        sync: false
+        fromService:
+          name: lifelink-redis
+          property: connectionString
       - key: CELERY_BROKER_URL
-        sync: false
+        fromService:
+          name: lifelink-redis
+          property: connectionString
       - key: CELERY_RESULT_BACKEND
-        sync: false
+        fromService:
+          name: lifelink-redis
+          property: connectionString
       - key: EMBEDDING_MODEL
         value: sentence-transformers/all-MiniLM-L6-v2
       - key: RAG_TOP_K
         value: "5"
+
+  - type: redis
+    name: lifelink-redis
+    ipAllowList: []
+    plan: free
+
+databases:
+  - name: lifelink-db
+    plan: free
+    databaseName: lifelink
+    ipAllowList: []

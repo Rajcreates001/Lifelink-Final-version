@@ -393,11 +393,11 @@ const WorkspaceAuthModal = ({ department, onClose, onLogin, loading }) => {
 
             {/* Forgot Password & Emergency Access */}
             <div className="flex justify-between text-xs">
-              <button type="button" className="text-indigo-600 hover:text-indigo-800 font-medium transition-colors">
+              <button type="button" onClick={() => alert('Password reset link will be sent to your registered email address.')} className="text-indigo-600 hover:text-indigo-800 font-medium transition-colors">
                 <i className="fas fa-key mr-1" />
                 Forgot Password?
               </button>
-              <button type="button" className="text-amber-600 hover:text-amber-800 font-medium transition-colors">
+              <button type="button" onClick={() => alert('Emergency Access: Contact your system administrator for emergency credentials.')} className="text-amber-600 hover:text-amber-800 font-medium transition-colors">
                 <i className="fas fa-lock-open mr-1" />
                 Emergency Access
               </button>

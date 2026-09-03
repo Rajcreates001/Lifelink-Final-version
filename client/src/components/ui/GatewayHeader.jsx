@@ -21,6 +21,7 @@ const PORTAL_CONFIG = {
 
 const GatewayHeader = ({ portal = 'government', userName = 'User', onLogout, onSwitchOrg }) => {
   const [profileOpen, setProfileOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const config = PORTAL_CONFIG[portal] || PORTAL_CONFIG.government;
 
   return (
@@ -53,13 +54,13 @@ const GatewayHeader = ({ portal = 'government', userName = 'User', onLogout, onS
           </span>
 
           {/* Notifications */}
-          <button className="relative w-9 h-9 rounded-xl border border-slate-200 bg-white flex items-center justify-center text-slate-400 hover:border-slate-300 hover:text-slate-600 hover:shadow-sm active:scale-[0.95] transition-all duration-200">
+          <button onClick={() => setNotifOpen(!notifOpen)} className="relative w-9 h-9 rounded-xl border border-slate-200 bg-white flex items-center justify-center text-slate-400 hover:border-slate-300 hover:text-slate-600 hover:shadow-sm active:scale-[0.95] transition-all duration-200">
             <i className="fas fa-bell text-sm" />
             <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[7px] font-bold flex items-center justify-center shadow-sm">3</span>
           </button>
 
           {/* Settings */}
-          <button className="w-9 h-9 rounded-xl border border-slate-200 bg-white flex items-center justify-center text-slate-400 hover:border-slate-300 hover:text-slate-600 hover:shadow-sm active:scale-[0.95] transition-all duration-200">
+          <button onClick={() => alert('Settings panel: Manage your preferences, security, and workspace configuration.')} className="w-9 h-9 rounded-xl border border-slate-200 bg-white flex items-center justify-center text-slate-400 hover:border-slate-300 hover:text-slate-600 hover:shadow-sm active:scale-[0.95] transition-all duration-200">
             <i className="fas fa-cog text-sm" />
           </button>
 
@@ -106,11 +107,11 @@ const GatewayHeader = ({ portal = 'government', userName = 'User', onLogout, onS
                         Switch Organization
                       </button>
                     )}
-                    <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-700 hover:bg-slate-50 transition-colors">
+                    <button onClick={() => { setProfileOpen(false); alert('Settings panel: Manage your preferences, security, and workspace configuration.'); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-700 hover:bg-slate-50 transition-colors">
                       <i className="fas fa-cog text-slate-400 w-4 text-center text-xs" />
                       Settings
                     </button>
-                    <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-700 hover:bg-slate-50 transition-colors">
+                    <button onClick={() => { setProfileOpen(false); setNotifOpen(true); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-700 hover:bg-slate-50 transition-colors">
                       <i className="fas fa-bell text-slate-400 w-4 text-center text-xs" />
                       Notifications
                     </button>

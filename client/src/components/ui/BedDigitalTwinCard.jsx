@@ -50,8 +50,8 @@ const BedDigitalTwinCard = ({ bed, onClick }) => {
       )}
       {expanded && (
         <div className="mt-2 flex gap-1">
-          <button className="flex-1 text-[9px] font-bold text-white bg-indigo-600 py-1 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all">Assign</button>
-          <button className="flex-1 text-[9px] font-bold text-slate-600 bg-slate-100 py-1 rounded-lg hover:bg-slate-200 active:scale-95 transition-all">Transfer</button>
+          <button onClick={() => alert('Assigning patient to ' + bed.label)} className="flex-1 text-[9px] font-bold text-white bg-indigo-600 py-1 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all">Assign</button>
+          <button onClick={() => alert('Transferring from ' + bed.label + ' to best available bed')} className="flex-1 text-[9px] font-bold text-slate-600 bg-slate-100 py-1 rounded-lg hover:bg-slate-200 active:scale-95 transition-all">Transfer</button>
         </div>
       )}
     </div>

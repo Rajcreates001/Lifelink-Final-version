@@ -3,6 +3,10 @@
 # ============================================================
 # Services: PostgreSQL, Redis, Backend API, Celery Worker,
 #           Celery Beat, Frontend
+#
+# Quick start:
+#   docker compose up -d postgres redis backend frontend
+#   (SIE is opt-in: docker compose --profile ai up sie)
 # ============================================================
 
 # ─── Shared Configuration ─────────────────────────────────
@@ -12,8 +16,8 @@ x-backend-env: &backend-env
   CELERY_BROKER_URL: redis://redis:6379/0
   CELERY_RESULT_BACKEND: redis://redis:6379/1
   APP_ENV: development
-  JWT_SECRET: c4e4bfbcd9e4e3a0a79508c19d2beb07067343183e66b0511260b0a7bfe17f5a
-  PRIVACY_SALT: change_me_in_production
+  JWT_SECRET: ${JWT_SECRET:-change_me_before_deploy}
+  PRIVACY_SALT: ${PRIVACY_SALT:-change_me_before_deploy}
   FRONTEND_URL: http://localhost:5000
   HOST: "0.0.0.0"
   PORT: "3001"
@@ -21,6 +25,21 @@ x-backend-env: &backend-env
   OPENAI_API_KEY: ${OPENAI_API_KEY:-}
   ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
   GROQ_API_KEY: ${GROQ_API_KEY:-}
+  # ─── AI Infrastructure: Headroom (Context Compression) ──────
+  HEADROOM_ENABLED: ${HEADROOM_ENABLED:-true}
+  # ─── AI Infrastructure: SIE (Superlinked Inference Engine) ──
+  SIE_ENABLED: ${SIE_ENABLED:-false}
+  SIE_BASE_URL: ${SIE_BASE_URL:-http://sie:8080}
+  SIE_API_KEY: ${SIE_API_KEY:-}
+  # ─── AI Infrastructure: Edge AI (Ambulance Runtime) ─────────
+  EDGE_AI_ENABLED: ${EDGE_AI_ENABLED:-false}
+  # ─── AI Infrastructure: Feature Flags ──────────────────────
+  ENABLE_SEMANTIC_SEARCH: ${ENABLE_SEMANTIC_SEARCH:-true}
+  ENABLE_RERANKING: ${ENABLE_RERANKING:-true}
+  ENABLE_AI_STRUCTURED_OUTPUT: ${ENABLE_AI_STRUCTURED_OUTPUT:-true}
+  ENABLE_OFFLINE_AMBULANCE_MODE: ${ENABLE_OFFLINE_AMBULANCE_MODE:-false}
+  ENABLE_AI_OBSERVABILITY: ${ENABLE_AI_OBSERVABILITY:-true}
+  ENABLE_SCRAPLING_SEARCH: ${ENABLE_SCRAPLING_SEARCH:-true}
 
 services:
   # ─── PostgreSQL ─────────────────────────────────────────────
@@ -64,12 +83,11 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+    image: lifelink-mern-v4-backend:latest
     container_name: lifelink-backend
     restart: unless-stopped
     volumes:
       - ./backend:/app
-      - ./scripts:/app/scripts
-      - backend_node_modules:/app/node_modules
     environment:
       <<: *backend-env
     command: ["api"]
@@ -81,7 +99,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3001/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3001/api/health')"]
       interval: 15s
       timeout: 5s
       retries: 10
@@ -92,11 +110,11 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+    image: lifelink-mern-v4-backend:latest
     container_name: lifelink-celery-worker
     restart: unless-stopped
     volumes:
       - ./backend:/app
-      - backend_node_modules:/app/node_modules
     environment:
       <<: *backend-env
     command: ["worker"]
@@ -117,17 +135,43 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+    image: lifelink-mern-v4-backend:latest
     container_name: lifelink-celery-beat
     restart: unless-stopped
     volumes:
       - ./backend:/app
-      - backend_node_modules:/app/node_modules
     environment:
       <<: *backend-env
     command: ["beat"]
     depends_on:
       redis:
         condition: service_healthy
+
+  # ─── SIE (Superlinked Inference Engine) ──────────────────────
+  # Opt-in: only starts with --profile ai
+  # Usage: docker compose --profile ai up sie
+  sie:
+    image: ghcr.io/superlinked/sie-server:latest-cpu-default
+    container_name: lifelink-sie
+    restart: unless-stopped
+    profiles:
+      - ai
+    volumes:
+      - sie-hf-cache:/app/.cache/huggingface
+    ports:
+      - "18080:8080"
+    environment:
+      - SIE_TELEMETRY_DISABLED=1
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/readyz')"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 4G
 
   # ─── Frontend ─────────────────────────────────────────────────
   frontend:
@@ -136,27 +180,20 @@ services:
       dockerfile: client/Dockerfile
     container_name: lifelink-frontend
     restart: unless-stopped
-    volumes:
-      - ./client:/app
-      - frontend_node_modules:/app/node_modules
-    environment:
-      - VITE_API_URL=http://localhost:3001
-    command: ["sh", "-c", "npm install && npm run dev -- --host 0.0.0.0 --port 5000"]
     ports:
-      - "5000:5000"
+      - "5000:80"
     depends_on:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5000"]
+      test: ["CMD-SHELL", "wget -qO /dev/null http://127.0.0.1:80/ || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 20s
+      start_period: 10s
 
 # ─── Named Volumes ───────────────────────────────────────────
 volumes:
   postgres_data:
   redis_data:
-  backend_node_modules:
-  frontend_node_modules:
+  sie-hf-cache:

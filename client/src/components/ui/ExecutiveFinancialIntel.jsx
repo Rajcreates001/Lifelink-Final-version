@@ -181,7 +181,7 @@ const ExecutiveFinancialIntel = () => {
               Cross-check 12 pending claims against insurance policy coverage to recover ~$22K.
             </p>
           </div>
-          <button className="text-[10px] font-bold text-amber-700 bg-white px-2.5 py-1.5 rounded-lg border border-amber-200 hover:bg-amber-100 active:scale-95 transition-all duration-200 whitespace-nowrap">
+          <button onClick={() => alert('Opening financial review: Cross-checking 12 pending claims against insurance policy coverage.')} className="text-[10px] font-bold text-amber-700 bg-white px-2.5 py-1.5 rounded-lg border border-amber-200 hover:bg-amber-100 active:scale-95 transition-all duration-200 whitespace-nowrap">
             Review
           </button>
         </div>

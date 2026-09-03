@@ -412,7 +412,7 @@ const SecurityTab = ({ formData, handleChange }) => (
                             <span className="text-xs font-semibold text-gray-600">{item.label}</span>
                         </div>
                         <p className={`text-sm font-bold ${item.color}`}>{item.status}</p>
-                        <button className="mt-2 text-xs font-semibold text-indigo-600 hover:text-indigo-800">{item.action} →</button>
+                        <button onClick={() => alert(`${item.action} ${item.label}: ${item.status}`)} className="mt-2 text-xs font-semibold text-indigo-600 hover:text-indigo-800">{item.action} →</button>
                     </div>
                 ))}
             </div>

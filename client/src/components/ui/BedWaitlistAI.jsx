@@ -33,8 +33,8 @@ const BedWaitlistAI = () => {
                 <p><span className="font-semibold text-slate-600">AI reasoning:</span> {w.aiReason}</p>
                 <p><span className="font-semibold text-slate-600">Suggestion:</span> {w.suggestion} <span className="text-emerald-600">({w.confidence}% conf)</span></p>
                 <div className="flex gap-1 mt-1">
-                  <button className="flex-1 text-[9px] font-bold text-white bg-emerald-600 py-1 rounded hover:bg-emerald-700 active:scale-95 transition-all">Assign Bed</button>
-                  <button className="flex-1 text-[9px] font-bold text-slate-600 bg-slate-100 py-1 rounded hover:bg-slate-200 active:scale-95 transition-all">Escalate</button>
+                  <button onClick={() => alert('Assigning bed to ' + w.patient + ' - ' + w.suggestion)} className="flex-1 text-[9px] font-bold text-white bg-emerald-600 py-1 rounded hover:bg-emerald-700 active:scale-95 transition-all">Assign Bed</button>
+                  <button onClick={() => alert('Escalating priority for ' + w.patient + ': ' + w.priority)} className="flex-1 text-[9px] font-bold text-slate-600 bg-slate-100 py-1 rounded hover:bg-slate-200 active:scale-95 transition-all">Escalate</button>
                 </div>
               </div>
             )}

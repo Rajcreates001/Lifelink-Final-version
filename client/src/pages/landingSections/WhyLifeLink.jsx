@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useScrollIn } from './hooks';
+import DetailModal from './DetailModal';
 
 const WhyLifeLink = () => {
     const [entered, ref] = useScrollIn();

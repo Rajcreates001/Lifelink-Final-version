@@ -382,6 +382,177 @@ class EnterpriseSession(Base):
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+# =====================================================================
+# AI INFRASTRUCTURE MODELS (Headroom + SIE Integration)
+# =====================================================================
+
+
+class AiConversation(Base):
+    """Isolated AI conversation per user/role/org/session."""
+    __tablename__ = "ai_conversations"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(40), index=True)
+    role_id: Mapped[str] = mapped_column(String(40), index=True)
+    organization_id: Mapped[str | None] = mapped_column(String(40), index=True)
+    hospital_id: Mapped[str | None] = mapped_column(String(40), index=True)
+    title: Mapped[str] = mapped_column(String(200))
+    status: Mapped[str] = mapped_column(String(30), default="active", index=True)
+    context_tier_config: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
+class AiMessage(Base):
+    """Individual message in an AI conversation with token tracking."""
+    __tablename__ = "ai_messages"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    conversation_id: Mapped[str] = mapped_column(String(40), ForeignKey("ai_conversations.id"), index=True)
+    user_id: Mapped[str] = mapped_column(String(40), index=True)
+    sender: Mapped[str] = mapped_column(String(20))  # user | assistant | system
+    content: Mapped[str] = mapped_column(Text)
+    original_token_count: Mapped[int] = mapped_column(Integer, default=0)
+    compressed_token_count: Mapped[int] = mapped_column(Integer, default=0)
+    context_version: Mapped[int] = mapped_column(Integer, default=1)
+    metadata_: Mapped[dict[str, Any]] = mapped_column("metadata", JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
+class AiContextItem(Base):
+    """Scoped context items for authorization-filtered retrieval."""
+    __tablename__ = "ai_context_items"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(40), index=True)
+    conversation_id: Mapped[str | None] = mapped_column(String(40), index=True)
+    source_type: Mapped[str] = mapped_column(String(60), index=True)  # record, document, conversation, rag_chunk, tool_output
+    source_id: Mapped[str | None] = mapped_column(String(120))
+    content: Mapped[str] = mapped_column(Text)
+    token_count: Mapped[int] = mapped_column(Integer, default=0)
+    importance: Mapped[str] = mapped_column(String(20), default="tier_2", index=True)  # tier_1, tier_2, tier_3, tier_4
+    authorization_scope: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    organization_id: Mapped[str | None] = mapped_column(String(40), index=True)
+    hospital_id: Mapped[str | None] = mapped_column(String(40), index=True)
+    department_id: Mapped[str | None] = mapped_column(String(40), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
+class AiMemory(Base):
+    """Persistent AI memory per user/role/org for cross-session context."""
+    __tablename__ = "ai_memory"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(40), index=True)
+    role_id: Mapped[str] = mapped_column(String(40), index=True)
+    organization_id: Mapped[str | None] = mapped_column(String(40), index=True)
+    memory_type: Mapped[str] = mapped_column(String(40), index=True)  # preference, fact, summary, pattern
+    content: Mapped[str] = mapped_column(Text)
+    embedding: Mapped[list[float] | None] = mapped_column(JSONB)
+    importance: Mapped[str] = mapped_column(String(20), default="tier_2")
+    access_count: Mapped[int] = mapped_column(Integer, default=0)
+    last_accessed: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
+class AiContextRetrieval(Base):
+    """Tracks what context was retrieved and sent to the LLM for each request."""
+    __tablename__ = "ai_context_retrievals"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    request_id: Mapped[str] = mapped_column(String(40), index=True)
+    conversation_id: Mapped[str | None] = mapped_column(String(40), index=True)
+    user_id: Mapped[str] = mapped_column(String(40), index=True)
+    context_item_ids: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    original_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    compressed_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    compression_ratio: Mapped[float] = mapped_column(Float, default=0.0)
+    retrieval_source: Mapped[str] = mapped_column(String(40))  # db, vector, scrapling, memory
+    reranked: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
+class AiAction(Base):
+    """Records every AI-initiated action for audit and human-in-the-loop."""
+    __tablename__ = "ai_actions"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(40), index=True)
+    role_id: Mapped[str] = mapped_column(String(40), index=True)
+    agent: Mapped[str] = mapped_column(String(60), index=True)
+    action_type: Mapped[str] = mapped_column(String(80), index=True)
+    input_reference: Mapped[str | None] = mapped_column(String(120))
+    output_reference: Mapped[str | None] = mapped_column(String(120))
+    data_sources: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    decision: Mapped[str] = mapped_column(String(200))
+    confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    approval_required: Mapped[bool] = mapped_column(Boolean, default=False)
+    approved_by: Mapped[str | None] = mapped_column(String(40))
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(30), default="pending", index=True)
+    result: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
+class AiToolCall(Base):
+    """Tracks every tool invocation by AI agents."""
+    __tablename__ = "ai_tool_calls"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    request_id: Mapped[str] = mapped_column(String(40), index=True)
+    user_id: Mapped[str] = mapped_column(String(40), index=True)
+    agent: Mapped[str] = mapped_column(String(60), index=True)
+    tool_name: Mapped[str] = mapped_column(String(80), index=True)
+    tool_input: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    tool_output: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    success: Mapped[bool] = mapped_column(Boolean, default=True)
+    latency_ms: Mapped[int] = mapped_column(Integer, default=0)
+    tokens_used: Mapped[int] = mapped_column(Integer, default=0)
+    authorization_scope: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
+class AiAuditLog(Base):
+    """Immutable audit trail for every AI action, retrieval, and decision."""
+    __tablename__ = "ai_audit_logs"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    request_id: Mapped[str] = mapped_column(String(40), index=True)
+    user_id: Mapped[str] = mapped_column(String(40), index=True)
+    role: Mapped[str] = mapped_column(String(40), index=True)
+    agent: Mapped[str] = mapped_column(String(60), index=True)
+    action: Mapped[str] = mapped_column(String(80), index=True)
+    input_reference: Mapped[str | None] = mapped_column(String(120))
+    output_reference: Mapped[str | None] = mapped_column(String(120))
+    tools_used: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    data_sources: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    decision: Mapped[str | None] = mapped_column(Text)
+    approval_required: Mapped[bool] = mapped_column(Boolean, default=False)
+    approved_by: Mapped[str | None] = mapped_column(String(40))
+    tokens_input: Mapped[int] = mapped_column(Integer, default=0)
+    tokens_output: Mapped[int] = mapped_column(Integer, default=0)
+    tokens_compressed: Mapped[int] = mapped_column(Integer, default=0)
+    latency_ms: Mapped[int] = mapped_column(Integer, default=0)
+    model: Mapped[str | None] = mapped_column(String(80))
+    fallback_used: Mapped[bool] = mapped_column(Boolean, default=False)
+    error: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
+class AiObservabilityMetrics(Base):
+    """Aggregated AI performance metrics for the infrastructure dashboard."""
+    __tablename__ = "ai_observability_metrics"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    metric_type: Mapped[str] = mapped_column(String(60), index=True)  # latency, tokens, compression, retrieval, fallback
+    metric_name: Mapped[str] = mapped_column(String(120), index=True)
+    value: Mapped[float] = mapped_column(Float, default=0.0)
+    tags: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
 class EnterpriseAuditLog(Base):
     """Immutable audit trail for every enterprise action."""
     __tablename__ = "enterprise_audit_logs"

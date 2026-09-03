@@ -42,7 +42,7 @@ const BedAllocationEngine = () => {
           ))}
         </div>
         <div className="pt-2 border-t border-slate-100">
-          <button className="w-full text-[10px] font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 py-2 rounded-xl hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all">
+          <button onClick={() => alert('AI analyzing all available beds...\nOptimizing assignment based on distance, equipment match, and AI predictions.')} className="w-full text-[10px] font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 py-2 rounded-xl hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all">
             <i className="fas fa-robot mr-1" />AI Auto-Assign Best Bed
           </button>
         </div>

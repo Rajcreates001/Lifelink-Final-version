@@ -33,7 +33,7 @@ const ResourceCriticalWatch = () => {
                 <p><span className="text-slate-400">Departments:</span> {c.depts} · <span className="text-slate-400">Patients at risk:</span> {c.patients}</p>
                 <p><span className="text-slate-400">AI recommendation:</span> {c.rec}</p>
                 <p><span className="text-slate-400">Supplier:</span> {c.supplier} · ETA: {c.eta} · <span className="text-emerald-600">{c.confidence}% conf</span></p>
-                <button className="w-full text-[9px] font-bold text-white bg-indigo-600 py-1 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all">Place Urgent Order</button>
+                <button onClick={() => alert('Placing urgent order: ' + c.resource + ' from ' + c.supplier + '\nETA: ' + c.eta + '\nDepartments affected: ' + c.depts)} className="w-full text-[9px] font-bold text-white bg-indigo-600 py-1 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all">Place Urgent Order</button>
               </div>
             )}
           </div>
