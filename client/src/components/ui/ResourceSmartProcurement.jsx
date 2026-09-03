@@ -38,8 +38,8 @@ const ResourceSmartProcurement = () => {
                 <p><span className="text-slate-400">AI reason:</span> <span className="text-slate-600">{o.reason}</span></p>
                 <p><span className="text-slate-400">Delivery:</span> {o.delivery} · <span className="text-slate-400">Risk:</span> {o.risk}</p>
                 <div className="flex gap-1 mt-1">
-                  <button className="flex-1 text-[9px] font-bold text-white bg-emerald-600 py-1 rounded hover:bg-emerald-700 active:scale-95 transition-all">Approve</button>
-                  <button className="flex-1 text-[9px] font-bold text-slate-600 bg-slate-100 py-1 rounded hover:bg-slate-200 active:scale-95 transition-all">Modify</button>
+                  <button onClick={() => alert('Approving procurement: ' + o.item + '\nSupplier: ' + o.supplier + '\nPrice: ' + o.price)} className="flex-1 text-[9px] font-bold text-white bg-emerald-600 py-1 rounded hover:bg-emerald-700 active:scale-95 transition-all">Approve</button>
+                  <button onClick={() => alert('Modifying procurement order for ' + o.item)} className="flex-1 text-[9px] font-bold text-slate-600 bg-slate-100 py-1 rounded hover:bg-slate-200 active:scale-95 transition-all">Modify</button>
                 </div>
               </div>
             )}

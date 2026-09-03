@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useScrollIn } from './hooks';
 import { AI_CAPABILITIES } from './constants';
+import DetailModal from './DetailModal';
 
 const AiShowcase = () => {
     const [entered, ref] = useScrollIn();

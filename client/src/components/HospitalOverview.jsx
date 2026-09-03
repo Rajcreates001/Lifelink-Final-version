@@ -167,7 +167,7 @@ const BottleneckDetector = () => {
                   <div><span className="text-slate-400 font-medium">Resolution:</span><p className="text-slate-700 font-semibold mt-0.5">{b.resolution}</p></div>
                   <div><span className="text-slate-400 font-medium">Expected Improvement:</span><p className="text-emerald-600 font-bold mt-0.5">{b.improvement}</p></div>
                 </div>
-                <button className="mt-2 text-[9px] font-bold text-white bg-indigo-600 px-3 py-1 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all">Apply Resolution</button>
+                <button onClick={() => alert(`Applying resolution for bottleneck: ${b.resolution}\nExpected improvement: ${b.improvement}`)} className="mt-2 text-[9px] font-bold text-white bg-indigo-600 px-3 py-1 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all">Apply Resolution</button>
               </div>
             )}
           </div>
@@ -552,7 +552,7 @@ const HospitalOverview = () => {
                       <div className="flex items-center gap-2 mt-1.5">
                         <button className="text-[9px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100 hover:bg-indigo-100 active:scale-95 transition-all" onClick={() => handleUpdateEmergency(alert._id || alert.id, 'Assigned')}><i className="fas fa-check text-[7px] mr-0.5"></i>Assign</button>
                         <button className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100 hover:bg-emerald-100 active:scale-95 transition-all" onClick={() => handleUpdateEmergency(alert._id || alert.id, 'Resolved')}><i className="fas fa-check-double text-[7px] mr-0.5"></i>Resolve</button>
-                        <button className="text-[9px] font-bold text-slate-500 bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-100 hover:bg-slate-100 transition-all"><i className="fas fa-robot text-[7px] mr-0.5"></i>AI Analyze</button>
+                        <button onClick={() => alert(`AI analyzing emergency: ${alert.patientName || 'Emergency case'}\nSymptoms: ${alert.symptoms || 'N/A'}\nSeverity: ${alert.severity || 'High'}\nAI is processing optimal response strategy...`)} className="text-[9px] font-bold text-slate-500 bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-100 hover:bg-slate-100 transition-all"><i className="fas fa-robot text-[7px] mr-0.5"></i>AI Analyze</button>
                       </div>
                     </div>
                   </div>

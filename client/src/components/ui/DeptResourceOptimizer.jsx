@@ -27,7 +27,7 @@ const DeptResourceOptimizer = () => {
               <span className="text-[8px] text-emerald-600 font-semibold">{r.benefit}</span>
               <span className="text-[8px] text-slate-400">{r.financial}</span>
             </div>
-            <button className="mt-1.5 w-full text-[9px] font-bold text-white bg-indigo-600 py-1 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all">
+            <button onClick={() => alert('Approving resource optimization: ' + r.title + '\nBenefit: ' + r.benefit + '\nFinancial impact: ' + r.financial)} className="mt-1.5 w-full text-[9px] font-bold text-white bg-indigo-600 py-1 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all">
               <i className="fas fa-check text-[7px] mr-1"></i>Approve & Execute
             </button>
           </div>

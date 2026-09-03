@@ -101,10 +101,8 @@ const Login = () => {
         setError('');
         setLoading(true);
         try {
-            if (!API_BASE_URL) {
-                setError('API URL not configured. Set VITE_API_URL in client/.env (e.g. the backend server) and restart Vite.');
-                return;
-            }
+            // API_BASE_URL can be empty in Docker (nginx proxies /v2/* to backend)
+            // or set to an explicit URL in local dev (e.g. http://localhost:3001)
             if (formData.role === 'hospital' && !formData.hospitalId.trim()) {
                 setError('Hospital ID is required for hospital login.');
                 return;

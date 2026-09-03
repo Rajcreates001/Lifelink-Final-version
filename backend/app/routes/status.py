@@ -1,22 +1,18 @@
 """
-LifeLink System Status — Public Health Check Endpoint
-======================================================
-Provides a public status page showing health of all services:
-- Backend API
-- PostgreSQL
-- MongoDB
-- Redis
-- Weaviate
-- ML Models
-- GPS Simulation
+LifeLink System Status — Health Check Endpoint
+===============================================
+Provides health status of core services.
+Requires authentication to prevent information leakage.
 """
 
+import asyncio
 import time
-import os
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from app.core.auth import require_roles
+from app.core.rbac import AuthContext
 
 logger = logging.getLogger("lifelink.status")
 router = APIRouter(tags=["status"])
@@ -49,65 +45,23 @@ async def check_backend():
 
 
 async def check_postgres():
-    import os
-    try:
-        import asyncpg
-        db_url = os.getenv("POSTGRES_URL") or os.getenv("DATABASE_URL", "postgresql://lifelink:password@localhost:5432/lifelink")
-        # asyncpg requires "postgresql://" not "postgresql+asyncpg://"
-        db_url = db_url.replace("postgresql+asyncpg://", "postgresql://")
-        conn = await asyncpg.connect(db_url, timeout=5)
-        try:
-            await conn.fetchval("SELECT 1")
-        finally:
-            await conn.close()
-        return "PostgreSQL connection healthy"
-    except ImportError:
-        import socket
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(3)
-        result = sock.connect_ex(('localhost', 5432))
-        sock.close()
-        if result == 0:
-            return "PostgreSQL port accessible"
-        raise Exception("PostgreSQL not reachable")
-
-
-async def check_mongodb():
     try:
         from app.db.database import get_db
+        from sqlalchemy import text
         db = get_db()
-        if db is not None:
-            return "PostgreSQL document store connection healthy"
-    except Exception:
-        pass
-    # Fallback: try direct connection
-    import os
-    mongo_uri = os.getenv("MONGO_URI") or os.getenv("MONGODB_URI") or os.getenv("MONGO_URL", "mongodb://localhost:27017")
-    try:
-        from motor.motor_asyncio import AsyncIOMotorClient
-        client = AsyncIOMotorClient(mongo_uri, serverSelectionTimeoutMS=3000)
-        try:
-            await client.admin.command("ping")
-            return "MongoDB connection healthy"
-        except Exception as e:
-            raise Exception(f"MongoDB unavailable: {str(e)[:100]}")
-        finally:
-            client.close()
-    except ImportError:
-        # motor not installed, check port
-        import socket
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(3)
-        result = sock.connect_ex(('localhost', 27017))
-        sock.close()
-        if result == 0:
-            return "MongoDB port accessible"
-        raise Exception("MongoDB not reachable")
+        if db is None:
+            raise Exception("Database not initialized")
+        async with db() as session:
+            await session.execute(text("SELECT 1"))
+        return "PostgreSQL connection healthy"
+    except Exception as e:
+        raise Exception(f"PostgreSQL check failed: {str(e)[:100]}")
 
 
 async def check_redis():
     try:
         import redis.asyncio as aioredis
+        import os
         redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
         r = aioredis.from_url(redis_url, socket_timeout=3)
         await r.ping()
@@ -115,25 +69,6 @@ async def check_redis():
         return "Redis connection healthy"
     except Exception as e:
         raise Exception(f"Redis unavailable: {e}")
-
-
-async def check_weaviate():
-    import urllib.request
-    import os
-    weaviate_url = os.getenv("WEAVIATE_URL", "http://host.docker.internal:8080")
-    try:
-        req = urllib.request.Request(f"{weaviate_url}/v1/.well-known/ready")
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            if resp.status == 200:
-                return "Weaviate connection healthy"
-            raise Exception(f"Weaviate returned {resp.status}")
-    except Exception:
-        # Try localhost fallback
-        req = urllib.request.Request("http://localhost:8080/v1/.well-known/ready")
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            if resp.status == 200:
-                return "Weaviate connection healthy"
-            raise Exception(f"Weaviate returned {resp.status}")
 
 
 async def check_ml_models():
@@ -145,30 +80,19 @@ async def check_ml_models():
     return f"{len(models)} ML models available"
 
 
-async def check_gps_simulation():
-    try:
-        from app.services.gps_simulator import gps_simulator
-        status = gps_simulator.get_status()
-        return f"GPS simulation {'active' if status.get('running') else 'idle'} — {status.get('ambulance_count', 0)} ambulances"
-    except Exception as e:
-        return f"GPS simulation service available (not running: {str(e)[:50]})"
-
-
 @router.get("/status")
-async def system_status():
+async def system_status(
+    ctx: AuthContext = Depends(require_roles("government", "hospital", "ambulance", "public")),
+):
     """
-    Public system status endpoint.
-    No authentication required.
-    Returns health status of all services.
+    System status endpoint. Requires authentication.
+    Returns health status of core services only.
     """
     checks = [
         ("Backend API", check_backend),
         ("PostgreSQL", check_postgres),
-        ("MongoDB", check_mongodb),
         ("Redis", check_redis),
-        ("Weaviate", check_weaviate),
         ("ML Models", check_ml_models),
-        ("GPS Simulation", check_gps_simulation),
     ]
 
     results = []
@@ -185,15 +109,8 @@ async def system_status():
     else:
         overall = "operational"
 
-    # Record for uptime history
-    try:
-        from app.services.uptime_tracker import get_uptime_tracker
-        tracker = get_uptime_tracker()
-        tracker.record_from_status({"services": results})
-    except Exception as e:
-        logger.debug(f"Uptime tracker: {e}")
-
-    # Compute real uptime from tracker
+    # Compute uptime from tracker
+    uptime = {}
     try:
         from app.services.uptime_tracker import get_uptime_tracker
         tracker = get_uptime_tracker()
@@ -225,11 +142,11 @@ async def system_status():
 
 
 @router.get("/status/history")
-async def status_history(days: int = 30):
-    """
-    Historical uptime data.
-    Returns daily uptime percentages and incident history.
-    """
+async def status_history(
+    days: int = 30,
+    ctx: AuthContext = Depends(require_roles("government", "hospital")),
+):
+    """Historical uptime data. Requires admin-level auth."""
     from app.services.uptime_tracker import get_uptime_tracker
     tracker = get_uptime_tracker()
 
@@ -241,25 +158,17 @@ async def status_history(days: int = 30):
     }
 
 
-@router.get("/status/services/{service_name}/uptime")
-async def service_uptime_history(service_name: str, days: int = 30):
-    """Get uptime history for a specific service."""
-    from app.services.uptime_tracker import get_uptime_tracker
-    tracker = get_uptime_tracker()
-    return tracker.get_service_uptime(service_name, days)
-
-
 @router.get("/status/{service}")
-async def service_status(service: str):
+async def service_status(
+    service: str,
+    ctx: AuthContext = Depends(require_roles("government", "hospital")),
+):
     """Check status of a specific service."""
     checks = {
         "backend": check_backend,
         "postgres": check_postgres,
-        "mongodb": check_mongodb,
         "redis": check_redis,
-        "weaviate": check_weaviate,
         "ml": check_ml_models,
-        "gps": check_gps_simulation,
     }
 
     check_fn = checks.get(service.lower())

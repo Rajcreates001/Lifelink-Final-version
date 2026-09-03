@@ -75,11 +75,8 @@ const Signup = () => {
         setError('');
         setLoading(true);
         try {
-            if (!API_BASE_URL) {
-                setError('API URL not configured. Set VITE_API_URL in client/.env and restart Vite.');
-                return;
-            }
-            const res = await fetch(API_BASE_URL + '/v2/auth/signup', {
+            // API_BASE_URL can be empty in Docker (nginx proxies /v2/* to backend)
+            const res = await fetch(`${API_BASE_URL}/v2/auth/signup`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData)
             });

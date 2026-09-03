@@ -37,7 +37,7 @@ const BedTransferEngine = () => {
           <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-100 space-y-2">
             <p className="text-[10px] font-semibold text-indigo-700">Transfer to {selected}</p>
             <p className="text-[9px] text-slate-500">Insurance compatible • Specialist available • Bed ready in 8 min</p>
-            <button className="w-full text-[10px] font-bold text-white bg-indigo-600 py-1.5 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all">
+            <button onClick={() => alert('Approving transfer to ' + selected + '...\nInsurance compatible, specialist available, bed ready in 8 min.')} className="w-full text-[10px] font-bold text-white bg-indigo-600 py-1.5 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all">
               <i className="fas fa-check mr-1" />Approve Transfer
             </button>
           </div>

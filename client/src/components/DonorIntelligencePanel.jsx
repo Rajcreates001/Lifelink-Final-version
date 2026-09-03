@@ -604,13 +604,13 @@ const DonorIntelligencePanel = ({
               )}
             </button>
             <div className="grid grid-cols-3 gap-2">
-              <button type="button" className="py-2 rounded-xl text-[10px] font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 active:scale-95 flex items-center justify-center gap-1">
+              <button type="button" onClick={() => alert('Initiating secure call to donor...')} className="py-2 rounded-xl text-[10px] font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 active:scale-95 flex items-center justify-center gap-1">
                 <i className="fas fa-phone" /> Call
               </button>
-              <button type="button" className="py-2 rounded-xl text-[10px] font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 active:scale-95 flex items-center justify-center gap-1">
+              <button type="button" onClick={() => alert('Opening navigation to donor location...')} className="py-2 rounded-xl text-[10px] font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 active:scale-95 flex items-center justify-center gap-1">
                 <i className="fas fa-location-arrow" /> Navigate
               </button>
-              <button type="button" className="py-2 rounded-xl text-[10px] font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 active:scale-95 flex items-center justify-center gap-1">
+              <button type="button" onClick={() => alert('Loading donor interaction history...')} className="py-2 rounded-xl text-[10px] font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 active:scale-95 flex items-center justify-center gap-1">
                 <i className="fas fa-clock-rotate-left" /> History
               </button>
             </div>

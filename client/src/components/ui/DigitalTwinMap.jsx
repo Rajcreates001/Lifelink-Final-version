@@ -191,7 +191,7 @@ const DigitalTwinMap = () => {
                   </span>
                 </div>
               </div>
-              <button className="mt-2 w-full text-[10px] font-bold text-white bg-indigo-600 py-1.5 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all">
+              <button onClick={() => alert(`Opening department: ${selected.department || selected.name || 'Unknown'}`)} className="mt-2 w-full text-[10px] font-bold text-white bg-indigo-600 py-1.5 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all">
                 Open Department
               </button>
             </div>

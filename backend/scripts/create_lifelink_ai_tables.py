@@ -14,10 +14,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Build database URL
 DB_USER = os.environ.get("DB_USER", "postgres")
-DB_PASSWORD = os.environ.get("DB_PASSWORD", "Maha_251")
+DB_PASSWORD = os.environ.get("DB_PASSWORD", "postgres")
 DB_HOST = os.environ.get("DB_HOST", "localhost")
 DB_PORT = os.environ.get("DB_PORT", "5432")
-DB_NAME = os.environ.get("DB_NAME", "lifelink")
+DB_NAME = os.environ.get("DB_NAME", "lifelink_db")
 
 SQL = """
 -- LifeLink AI Conversations

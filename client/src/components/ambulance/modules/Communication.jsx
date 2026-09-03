@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 const Communication = ({ incident, onAction }) => {
   const [activeChannel, setActiveChannel] = useState('hospital');
   const [messageText, setMessageText] = useState('');
+  const [micActive, setMicActive] = useState(false);
+  const [videoActive, setVideoActive] = useState(false);
 
   const channels = [
     { key: 'hospital', label: 'Hospital ER', icon: 'fa-hospital', color: 'sky', status: 'Connected' },
@@ -27,13 +29,13 @@ const Communication = ({ incident, onAction }) => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button type="button" className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center backdrop-blur-sm transition-all">
-              <i className="fas fa-microphone text-white" />
+            <button type="button" onClick={() => setMicActive(!micActive)} className={`w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-sm transition-all ${micActive ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-white/20 hover:bg-white/30'}`}>
+              <i className={`fas fa-microphone${micActive ? '' : '-slash'} text-white`} />
             </button>
-            <button type="button" className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center backdrop-blur-sm transition-all">
-              <i className="fas fa-video text-white" />
+            <button type="button" onClick={() => setVideoActive(!videoActive)} className={`w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-sm transition-all ${videoActive ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-white/20 hover:bg-white/30'}`}>
+              <i className={`fas fa-video${videoActive ? '' : '-slash'} text-white`} />
             </button>
-            <button type="button" className="w-10 h-10 rounded-full bg-red-500/80 hover:bg-red-600 flex items-center justify-center transition-all">
+            <button type="button" onClick={() => onAction?.('end-call')} className="w-10 h-10 rounded-full bg-red-500/80 hover:bg-red-600 flex items-center justify-center transition-all">
               <i className="fas fa-phone-slash text-white" />
             </button>
           </div>

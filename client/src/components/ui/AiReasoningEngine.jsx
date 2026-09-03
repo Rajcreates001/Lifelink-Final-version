@@ -131,7 +131,7 @@ const AiReasoningEngine = () => {
                   <p className="text-[11px] text-emerald-800 font-semibold">{reason.action}</p>
                   <p className="text-[9px] text-emerald-600 mt-0.5">{reason.improvement}</p>
                 </div>
-                <button className="text-[9px] font-bold text-white bg-emerald-600 px-2.5 py-1 rounded-lg hover:bg-emerald-700 active:scale-95 transition-all">
+                <button onClick={() => alert(`Executing: ${reason.action}\n${reason.improvement}`)} className="text-[9px] font-bold text-white bg-emerald-600 px-2.5 py-1 rounded-lg hover:bg-emerald-700 active:scale-95 transition-all">
                   Execute
                 </button>
               </div>

@@ -34,7 +34,7 @@ const BedBottleneckDetector = () => {
                 <p><span className="font-semibold text-slate-600">Evidence:</span> {b.evidence}</p>
                 <p><span className="font-semibold text-slate-600">AI action:</span> {b.action} <span className="text-emerald-600">({b.confidence}% conf)</span></p>
                 <p><span className="font-semibold text-slate-600">Expected:</span> {b.expected}</p>
-                <button className="w-full text-[9px] font-bold text-white bg-indigo-600 py-1 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all mt-1">Resolve with AI</button>
+                <button onClick={() => alert('AI resolving bottleneck: ' + b.action)} className="w-full text-[9px] font-bold text-white bg-indigo-600 py-1 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all mt-1">Resolve with AI</button>
               </div>
             )}
           </div>

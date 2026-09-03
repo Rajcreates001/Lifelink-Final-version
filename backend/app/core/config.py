@@ -49,6 +49,33 @@ class Settings(BaseSettings):
     sentry_dsn: str = ""
     sentry_traces_sample_rate: float = 0.1
 
+    # ─── AI Infrastructure: Headroom (Context Compression) ──────
+    headroom_enabled: bool = False
+    headroom_model: str = "kompress-v2-base"
+    headroom_compression_level: str = "balanced"  # aggressive | balanced | conservative
+    headroom_ccr_enabled: bool = True  # Cross-agent Context Retrieval
+    headroom_ccr_ttl_seconds: int = 3600
+
+    # ─── AI Infrastructure: SIE (Superlinked Inference Engine) ──
+    sie_enabled: bool = False
+    sie_base_url: str = "http://localhost:8080"
+    sie_api_key: str = ""
+    sie_embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    sie_reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    sie_timeout_seconds: float = 30.0
+
+    # ─── AI Infrastructure: Edge AI (Ambulance Runtime) ─────────
+    edge_ai_enabled: bool = False
+    edge_ai_fallback_mode: str = "rule_based"  # rule_based | cached | human_escalation
+
+    # ─── AI Infrastructure: Feature Flags ──────────────────────
+    enable_semantic_search: bool = True
+    enable_reranking: bool = True
+    enable_ai_structured_output: bool = True
+    enable_offline_ambulance_mode: bool = False
+    enable_ai_observability: bool = True
+    enable_scrapling_search: bool = True
+
     @property
     def cors_origins(self) -> list[str]:
         # Keep behavior close to existing Express setup.

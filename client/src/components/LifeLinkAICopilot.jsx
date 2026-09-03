@@ -940,7 +940,7 @@ const LifeLinkAICopilot = ({ variant = 'panel', onClose, location, moduleKey = '
                 {message.orchestration.actions.map((action, i) => (
                   <div key={i} className="flex items-center justify-between py-1.5 border-b border-amber-100 last:border-0">
                     <span className="text-[11px] text-amber-800">{action.type || 'Action'}: {action.summary || action.status || 'Queued'}</span>
-                    <button className="text-[9px] font-bold text-indigo-600 hover:text-indigo-800 px-2 py-0.5 rounded-lg bg-white/60 hover:bg-white">Approve</button>
+                    <button onClick={() => alert(`Approved: ${action.type || 'Action'} - ${action.summary || action.status || 'Queued'}`)} className="text-[9px] font-bold text-indigo-600 hover:text-indigo-800 px-2 py-0.5 rounded-lg bg-white/60 hover:bg-white">Approve</button>
                   </div>
                 ))}
               </div>

@@ -40,7 +40,7 @@ const ResourceInventoryBrain = () => {
                 <div><span className="text-slate-400">Reserve:</span> <span className="font-semibold text-slate-700">{c.reserve}</span></div>
                 <div><span className="text-slate-400">Alternative:</span> <span className="font-semibold text-slate-700">{c.alt}</span></div>
                 <div><span className="text-slate-400">History:</span> <span className="font-semibold text-emerald-600">{c.hist}</span></div>
-                <button className="col-span-2 text-[9px] font-bold text-white bg-indigo-600 py-1 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all">Reorder Now</button>
+                <button onClick={() => alert('Reordering ' + c.name + ' from ' + c.supplier + '\nDemand: ' + c.demand + '\nReserve: ' + c.reserve)} className="col-span-2 text-[9px] font-bold text-white bg-indigo-600 py-1 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all">Reorder Now</button>
               </div>
             )}
           </div>

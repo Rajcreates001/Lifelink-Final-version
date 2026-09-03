@@ -44,7 +44,7 @@ const DeptBottleneckDetector = () => {
                 <div className="mt-2 flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-100">
                   <i className="fas fa-robot text-emerald-500 text-[10px]"></i>
                   <span className="text-[10px] text-emerald-700 font-medium"><strong>AI Action:</strong> {b.action}</span>
-                  <button className="ml-auto text-[9px] font-bold text-white bg-emerald-600 px-2 py-0.5 rounded-lg hover:bg-emerald-700 active:scale-95">Apply</button>
+                  <button onClick={() => alert('Applying AI action: ' + b.action)} className="ml-auto text-[9px] font-bold text-white bg-emerald-600 px-2 py-0.5 rounded-lg hover:bg-emerald-700 active:scale-95">Apply</button>
                 </div>
               </div>
             )}

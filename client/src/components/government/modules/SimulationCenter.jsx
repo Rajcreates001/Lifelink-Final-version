@@ -76,7 +76,7 @@ class SimulationEngine {
   tick() {
     if (this.completed) return null;
     const elaspedMin = (Date.now() - this.startedAt) / 60000;
-    const severityMult = ({ Moderate: 1, Severe: 1.5, 'Very Severe': 2.5, Extreme: 4, Strong: 2, Major: 3, Great: 5, Watch: 0.5, Warning: 1, Emergency: 2.5, Catastrophic: 4, 'Catastrophic': 4 })[this.severity] || 1;
+    const severityMult = ({ Moderate: 1, Severe: 1.5, 'Very Severe': 2.5, Extreme: 4, Strong: 2, Major: 3, Great: 5, Watch: 0.5, Warning: 1, Emergency: 2.5, Catastrophic: 4 })[this.severity] || 1;
 
     // Phase transitions
     if (this.phase < this.config.phases.length - 1 && elaspedMin > (this.phase + 1) * 1.2) {

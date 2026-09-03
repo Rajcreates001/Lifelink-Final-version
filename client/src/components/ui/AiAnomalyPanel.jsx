@@ -117,7 +117,7 @@ const AiAnomalyPanel = () => {
                           92% confidence
                         </span>
                         <span className="text-[8px] text-slate-400">Detected 3 min ago</span>
-                        <button className="ml-auto text-[8px] font-bold text-white bg-indigo-600 px-2 py-0.5 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all">
+                        <button onClick={() => alert('Resolving AI-detected anomaly...')} className="ml-auto text-[8px] font-bold text-white bg-indigo-600 px-2 py-0.5 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all">
                           Resolve
                         </button>
                       </div>

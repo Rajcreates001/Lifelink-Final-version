@@ -21,17 +21,14 @@ if ('serviceWorker' in navigator) {
 }
 
 // ─── Prompt user to install PWA ────────────────────────────
-let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
-  deferredPrompt = e;
   // Store the event for later use
   window.__lifelinkInstallPrompt = e;
 });
 
 window.addEventListener('appinstalled', () => {
   console.log('[PWA] LifeLink installed successfully');
-  deferredPrompt = null;
   window.__lifelinkInstallPrompt = null;
 });
 

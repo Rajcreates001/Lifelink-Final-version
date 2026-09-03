@@ -181,7 +181,7 @@ const NotificationCard = ({ item, index, onOpenDetails, onDismiss }) => {
         <div
             className={`group relative overflow-hidden rounded-2xl border transition-all duration-300 cursor-pointer
                 ${config.border} ${config.bg} bg-opacity-40
-                hover:shadow-xl hover:-translate-y-1 hover:shadow-[0_8px_30px_-4px_${config.glow}]
+                hover:shadow-xl hover:-translate-y-1
                 ${isCritical ? 'animate-breathing-red-glow' : ''}
                 ${item.isRead ? 'opacity-70' : 'border-l-4'}`}
             style={{

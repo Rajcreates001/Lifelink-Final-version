@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useScrollIn } from './hooks';
 import { FEATURES } from './constants';
+import DetailModal from './DetailModal';
 
 const FeaturesSection = () => {
     const [entered, ref] = useScrollIn();

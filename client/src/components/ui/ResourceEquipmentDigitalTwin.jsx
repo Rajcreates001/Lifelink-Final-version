@@ -45,7 +45,7 @@ const ResourceEquipmentDigitalTwin = () => {
                 <span><span className="text-slate-400">Failure Risk:</span> <span className={`${eq.failurePct >= 15 ? 'text-red-600 font-semibold' : 'text-slate-600'}`}>{eq.failurePct}%</span></span>
                 <span><span className="text-slate-400">Maint Due:</span> {eq.maintDue}</span>
                 <span><span className="text-slate-400">Replacement:</span> {eq.replacement}</span>
-                <button className="text-[9px] font-bold text-white bg-indigo-600 py-0.5 rounded hover:bg-indigo-700 active:scale-95 transition-all">Schedule Maint</button>
+                <button onClick={() => alert('Scheduling maintenance for ' + eq.name + '\nNext maintenance due: ' + eq.maintDue + '\nFailure risk: ' + eq.failurePct + '%')} className="text-[9px] font-bold text-white bg-indigo-600 py-0.5 rounded hover:bg-indigo-700 active:scale-95 transition-all">Schedule Maint</button>
               </div>
             )}
           </div>

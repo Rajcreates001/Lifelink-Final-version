@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useScrollIn } from './hooks';
 import { RESEARCH } from './constants';
+import DetailModal from './DetailModal';
 
 const MLModelsSection = () => {
     const [entered, ref] = useScrollIn();

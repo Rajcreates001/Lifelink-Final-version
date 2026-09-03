@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useScrollIn } from './hooks';
+import DetailModal from './DetailModal';
 
 const ImpactShowcase = () => {
     const [entered, ref] = useScrollIn(0.1);

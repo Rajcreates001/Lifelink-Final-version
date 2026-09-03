@@ -24,7 +24,7 @@ const ResourceAllocationEngine = () => {
               <span className="text-[9px] font-bold text-emerald-600">{a.confidence}%</span>
             </div>
             <p className="text-[8px] text-indigo-500 mt-0.5">AI: {a.reason}</p>
-            <button className="w-full text-[8px] font-bold text-white bg-blue-600 py-1 rounded hover:bg-blue-700 active:scale-95 transition-all mt-1">{a.action}</button>
+            <button onClick={() => alert('Executing: ' + a.action + ' - ' + a.reason)} className="w-full text-[8px] font-bold text-white bg-blue-600 py-1 rounded hover:bg-blue-700 active:scale-95 transition-all mt-1">{a.action}</button>
           </div>
         ))}
       </div>

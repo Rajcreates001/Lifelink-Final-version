@@ -113,7 +113,7 @@ const DeptDetailModal = ({ dept, onClose }) => {
           <div className="p-3 rounded-lg bg-amber-50 border border-amber-100">
             <p className="text-[10px] text-amber-700 font-semibold"><i className="fas fa-lightbulb text-amber-500 mr-1"></i>Recommended Actions</p>
             <p className="text-[10px] text-amber-600 mt-1">{dept.id === 'emergency' ? 'Activate overflow protocol, call in 2 backup nurses, prepare 4 additional beds.' : dept.id === 'icu' ? 'Transfer 2 stable patients to General Ward, monitor ventilator usage.' : dept.id === 'radiology' ? 'Schedule MRI-2 maintenance, redistribute workload to CT scanner.' : dept.id === 'opd' ? 'Maintain current schedule. Consider teleconsult for follow-up visits.' : 'Continue current operations. Monitor for changes.'}</p>
-            <button className="mt-2 w-full text-[10px] font-bold text-white bg-indigo-600 py-1.5 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all"><i className="fas fa-arrow-right text-[8px] mr-1"></i>Enter Department Workspace</button>
+            <button onClick={() => alert(`Entering ${dept.name || 'Department'} workspace. Loading department-level analytics, staffing, and patient flow...`)} className="mt-2 w-full text-[10px] font-bold text-white bg-indigo-600 py-1.5 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all"><i className="fas fa-arrow-right text-[8px] mr-1"></i>Enter Department Workspace</button>
           </div>
         </div>
       </div>

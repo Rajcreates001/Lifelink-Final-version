@@ -160,7 +160,7 @@ const ExecutivePriorityCenter = () => {
                 <p className="text-[10px] text-indigo-700 font-semibold">
                   <span className="text-indigo-400">AI suggests:</span> {p.action}
                 </p>
-                <button className="ml-auto text-[9px] font-bold text-indigo-600 bg-white px-2 py-0.5 rounded-lg border border-indigo-200 hover:bg-indigo-100 active:scale-95 transition-all duration-200 whitespace-nowrap">
+                <button onClick={() => alert(`Applying AI recommendation: ${p.action}`)} className="ml-auto text-[9px] font-bold text-indigo-600 bg-white px-2 py-0.5 rounded-lg border border-indigo-200 hover:bg-indigo-100 active:scale-95 transition-all duration-200 whitespace-nowrap">
                   Apply
                 </button>
               </div>
