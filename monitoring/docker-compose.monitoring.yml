@@ -21,6 +21,10 @@ services:
       - "9090:9090"
     networks:
       - monitoring
+      # Reach the app's backend container by DNS name (scrape target
+      # backend:3001 in prometheus.yml). External network created by the
+      # main docker-compose.yml project.
+      - lifelink
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--output-document=-", "http://localhost:9090/-/healthy"]
       interval: 15s
@@ -76,3 +80,8 @@ volumes:
 networks:
   monitoring:
     driver: bridge
+  # Name depends on the app project directory (lifelink-mern-v4).
+  # If you rename the project folder, update this external network name.
+  lifelink:
+    external: true
+    name: lifelink-mern-v4_default

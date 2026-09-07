@@ -28,6 +28,7 @@ pytesseract
 pdf2image
 python-multipart==0.0.9
 alembic==1.13.1
+psycopg2-binary==2.9.9
 sentry-sdk[fastapi]>=2.0.0
 mesa>=3.0.0
 prometheus-client>=0.20.0
