@@ -1,2 +1,6 @@
+# Shell scripts must keep LF endings — CRLF breaks them inside Linux
+# containers ("exec ... no such file or directory" despite the file existing).
+*.sh text eol=lf
+
 *.csv filter=lfs diff=lfs merge=lfs -text
 *.joblib filter=lfs diff=lfs merge=lfs -text
