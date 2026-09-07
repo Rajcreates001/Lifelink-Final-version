@@ -1,9 +1,11 @@
 # dependencies
 node_modules/
+**/node_modules/
 
 # environment
 .env
 *.env
+!.env.example
 
 # Python caches
 __pycache__/
@@ -22,6 +24,7 @@ dist/
 
 # logs
 *.log
+*.err
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -29,20 +32,18 @@ yarn-error.log*
 # OS files
 .DS_Store
 
+# Celery runtime artifacts
+celerybeat-schedule/
+backend/celerybeat-schedule/
+
 # ignore generated docker build context files
 .dockerignore
 
 # ignore local AI vector index data
 backend/.rag/
 
-# ignore node environment artifacts
-**/node_modules/
-
 # Freebuff tooling metadata
 .freebuff/
-
-# runtime error logs
-*.err
 
 # e2e validation artifacts (regenerated on each run)
 tests/results/

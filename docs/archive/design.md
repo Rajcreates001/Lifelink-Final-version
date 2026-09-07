@@ -232,9 +232,9 @@ LLM_MAX_OUTPUT_TOKENS=8192
  
 # ── EVA's Actual LLM Credentials (for reference) ──
 # These are the values currently deployed in the EVA backend:
-#   OPENAI_API_KEY    = 10a92e750d5616640645cd96755a7b2154d42d20602c15d2d9d513724750d3a0
-#   OPENAI_BASE_URL   = http://144.79.62.242:8000/v1
-#   LLM_ENDPOINT      = http://144.79.62.242:8000/v1/chat/completions
+#   OPENAI_API_KEY    = [REDACTED - leaked credential, assume compromised. Rotate and never commit real keys.]
+#   OPENAI_BASE_URL   = [REDACTED - internal LLM server]
+#   LLM_ENDPOINT      = [REDACTED - internal LLM server]
 #   LLM_MODEL_NAME    = qwen3.6-27b
 #   LLM_MAX_OUTPUT_TOKENS = 8192
  
