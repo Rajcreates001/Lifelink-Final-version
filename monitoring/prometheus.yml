@@ -26,7 +26,7 @@ scrape_configs:
     metrics_path: '/metrics'
     scrape_interval: 10s
     static_configs:
-      - targets: ['host.docker.internal:4002']
+      - targets: ['backend:3001']
         labels:
           service: 'lifelink-backend'
           environment: 'development'

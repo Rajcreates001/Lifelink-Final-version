@@ -2,6 +2,7 @@ import json
 import logging
 import uuid
 from contextlib import asynccontextmanager
+from contextvars import ContextVar
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
@@ -64,6 +65,18 @@ from app.routes.status import router as status_router
 from app.services.prometheus_metrics import PrometheusMiddleware, get_metrics
 
 # ─── Structured JSON Logging ───────────────────────────────
+# Request correlation: the middleware sets this contextvar per request and
+# every log record emitted during that request (any logger) carries the ID.
+request_id_ctx: ContextVar[str] = ContextVar("request_id", default="")
+
+
+class RequestIdLogFilter(logging.Filter):
+    """Inject the current request_id from the contextvar into every record."""
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.request_id = request_id_ctx.get()
+        return True
+
+
 class JsonFormatter(logging.Formatter):
     """Format log records as structured JSON with correlation IDs."""
     def format(self, record: logging.LogRecord) -> str:
@@ -73,8 +86,9 @@ class JsonFormatter(logging.Formatter):
             "module": record.name,
             "message": record.getMessage(),
         }
-        if hasattr(record, "request_id"):
-            log_entry["request_id"] = record.request_id
+        request_id = getattr(record, "request_id", "")
+        if request_id:
+            log_entry["request_id"] = request_id
         if hasattr(record, "user_id"):
             log_entry["user_id"] = record.user_id
         if record.exc_info and record.exc_info[0]:
@@ -85,8 +99,15 @@ logger = logging.getLogger("lifelink.fastapi")
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
 handler.setFormatter(JsonFormatter())
+handler.addFilter(RequestIdLogFilter())
 logger.handlers.clear()
 logger.addHandler(handler)
+# Propagate the request-id filter to the root logger's handlers so ALL
+# loggers (uvicorn, app.services.*, …) emit request_id in their records.
+_root_logger = logging.getLogger()
+for _h in _root_logger.handlers:
+    if not any(isinstance(f, RequestIdLogFilter) for f in _h.filters):
+        _h.addFilter(RequestIdLogFilter())
 
 # Silence noisy libs
 logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
@@ -220,7 +241,11 @@ app.add_middleware(PrometheusMiddleware)
 async def add_request_id(request: Request, call_next):
     request_id = str(uuid.uuid4())[:8]
     request.state.request_id = request_id
-    response = await call_next(request)
+    token = request_id_ctx.set(request_id)
+    try:
+        response = await call_next(request)
+    finally:
+        request_id_ctx.reset(token)
     response.headers["X-Request-ID"] = request_id
     return response
 

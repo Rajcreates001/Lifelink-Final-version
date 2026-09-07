@@ -1,0 +1,87 @@
+# ============================================================
+# LifeLink — Production Overrides
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Changes vs. base docker-compose.yml:
+#   - No source-code bind mounts (code is baked into images)
+#   - APP_ENV=production (no --reload, no demo seeding, no docs UI)
+#   - Nightly automated PostgreSQL backups with 14-day retention
+#   - Resource limits on containers
+#
+# REQUIRED environment (set in .env or your environment):
+#   JWT_SECRET, PRIVACY_SALT — generate with: openssl rand -hex 32
+#   FRONTEND_URL — the public origin(s), comma-separated
+# ============================================================
+
+services:
+  backend:
+    environment:
+      APP_ENV: production
+      RATE_LIMIT_ENABLED: "true"
+    # base compose bind-mounts ./backend:/app; production uses the image only
+    volumes: []
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 4G
+
+  celery-worker:
+    environment:
+      APP_ENV: production
+    volumes: []
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 4G
+
+  celery-beat:
+    environment:
+      APP_ENV: production
+    volumes: []
+
+  frontend:
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+
+  # ─── Nightly PostgreSQL backups ─────────────────────────────
+  # Dumps the database at 02:30 UTC into the postgres_backups volume and
+  # prunes dump files older than 14 days. Restores: see scripts/restore_postgres.sh
+  postgres-backup:
+    image: postgres:15-alpine
+    container_name: lifelink-postgres-backup
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: lifelink_db
+    volumes:
+      - postgres_backups:/backups
+    entrypoint: >
+      /bin/sh -c '
+      echo "Backup sidecar started — first run at next 02:30 UTC";
+      while true; do
+        # sleep until 02:30 UTC
+        now=$$(date +%s);
+        target=$$(date -d "tomorrow 02:30" +%s);
+        [ $$(date +%H) -lt 02 ] && target=$$(date -d "today 02:30" +%s);
+        sleep $$((target - now));
+        ts=$$(date +%Y%m%d_%H%M%S);
+        echo "[backup] dumping to /backups/lifelink_$$ts.sql.gz";
+        pg_dump -Fc -f /backups/lifelink_$$ts.dump && echo "[backup] done";
+        find /backups -name "lifelink_*.dump" -mtime +14 -delete;
+        sleep 60;
+      done'
+
+volumes:
+  postgres_backups:

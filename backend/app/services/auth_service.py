@@ -8,7 +8,7 @@ from bson import ObjectId
 from fastapi import HTTPException
 
 from app.core.rbac import AMBULANCE_SUBROLES, GOVERNMENT_SUBROLES, HOSPITAL_SUBROLES, PORTAL_ROLES, AuthContext
-from app.core.security import create_access_token
+from app.core.security import create_access_token, create_refresh_token
 from app.schemas.portal_auth import PortalLoginRequest, PortalSignupRequest
 from app.services.collections import HOSPITALS, USERS
 from app.services.repository import MongoRepository
@@ -155,9 +155,11 @@ class AuthService:
 
         claims = {"role": user.get("role"), "sub_role": user.get("subRole")}
         token = create_access_token(str(user["_id"]), claims=claims)
+        refresh = create_refresh_token(str(user["_id"]), claims=claims)
 
         return {
             "token": token,
+            "refreshToken": refresh,
             "user": {
                 "id": user["_id"],
                 "name": user["name"],

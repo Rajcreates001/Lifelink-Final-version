@@ -3,33 +3,20 @@ import React from 'react';
 import Card from './ui/Card';
 import ReactDOM from 'react-dom';
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  LineElement,
-  PointElement,
-  ArcElement,
-  Filler,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js';
-import { Bar, Line, Doughnut } from 'react-chartjs-2';
-
-// Register ChartJS components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  LineElement,
-  PointElement,
-  ArcElement,
-  Filler,
-  Title,
-  Tooltip,
-  Legend
-);
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as ReTooltip,
+  AreaChart,
+  Area,
+  PieChart,
+  Pie,
+  Cell,
+  Legend as ReLegend,
+} from 'recharts';
 
 // ─── Chart Color Palette ───────────────────────────────
 export const GRADIENT_COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6'];
@@ -333,81 +320,75 @@ export const ExplainabilityPanel = ({ meta }) => {
   );
 };
 
-// --- ADD THIS COMPONENT: SimpleBarChart ---
-export const SimpleBarChart = ({ data, title, barColorClass, height = 200, className = '', onBarClick }) => {
-    const chartData = {
-        labels: data.map(d => d.label),
-        datasets: [{
-            label: title,
-            data: data.map(d => d.value),
-            backgroundColor: (ctx) => {
-              if (!ctx.chart?.ctx) return 'rgba(37, 99, 235, 0.7)';
-              const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, 300);
-              g.addColorStop(0, 'rgba(37, 99, 235, 0.85)');
-              g.addColorStop(0.5, 'rgba(14, 165, 233, 0.6)');
-              g.addColorStop(1, 'rgba(14, 165, 233, 0.2)');
-              return g;
-            },
-            hoverBackgroundColor: 'rgba(37, 99, 235, 0.95)',
-            borderRadius: 6,
-            borderSkipped: false,
-        }],
-    };
-    const options = {
-        responsive: true, maintainAspectRatio: false,
-        onClick: (event, elements) => { if (elements.length > 0 && onBarClick) onBarClick(data[elements[0].index]); },
-        animation: { duration: 1000, easing: 'easeOutQuart' },
-        plugins: {
-            legend: { display: false },
-            title: { display: !!title, text: title, font: { size: 13, weight: '600' } },
-            tooltip: { backgroundColor: 'rgba(15, 23, 42, 0.95)', titleFont: { size: 12, weight: '600' }, bodyFont: { size: 12 }, padding: 12, cornerRadius: 12, boxPadding: 6, displayColors: true, callbacks: { label: (ctx) => `${ctx.parsed.y}${onBarClick ? ' (click to drill down)' : ''}` } },
-        },
-        scales: { y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false }, ticks: { font: { size: 11 } } }, x: { grid: { display: false }, ticks: { font: { size: 10 } } } },
-    };
+// --- SimpleBarChart (recharts) ---
+export const SimpleBarChart = ({ data, title, height = 200, className = '', onBarClick }) => {
     return (
         <DashboardCard className={`animate-chart-entrance ${className}`.trim()}>
             <h3 className="font-bold text-lg text-gray-900 mb-4">{title}</h3>
-            <div style={{ height }}><Bar data={chartData} options={options} /></div>
+            <div style={{ height }}>
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={data} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
+                        <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                        <ReTooltip
+                            contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.95)', border: 'none', borderRadius: 12, fontSize: 12 }}
+                            cursor={{ fill: 'rgba(37, 99, 235, 0.06)' }}
+                            formatter={(value) => [`${value}${onBarClick ? ' (click to drill down)' : ''}`, null]}
+                        />
+                        <Bar
+                            dataKey="value"
+                            radius={[6, 6, 0, 0]}
+                            fill="rgba(37, 99, 235, 0.85)"
+                            onClick={(_, index) => { if (onBarClick) onBarClick(data[index]); }}
+                            cursor={onBarClick ? 'pointer' : 'default'}
+                        />
+                    </BarChart>
+                </ResponsiveContainer>
+            </div>
             {onBarClick && data.length > 0 && <p className="text-[10px] text-slate-400 mt-2 text-center italic">Click a bar to drill down</p>}
         </DashboardCard>
     );
 };
 
-// ─── Gradient Area Chart (with drill-down) ─────────────
+// ─── Gradient Area Chart (recharts, with drill-down) ─────────────
 export const GradientAreaChart = ({ data, title, lineColor = 'rgba(37, 99, 235, 0.8)', height = 180, className = '', onPointClick }) => {
-    const chartData = {
-      labels: data.map((d) => d.label),
-      datasets: [{
-        label: title, data: data.map((d) => d.value),
-        borderColor: lineColor,
-        backgroundColor: (ctx) => {
-          if (!ctx.chart?.ctx) return 'rgba(37, 99, 235, 0.15)';
-          const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, height);
-          g.addColorStop(0, lineColor.replace('0.8', '0.35'));
-          g.addColorStop(0.5, lineColor.replace('0.8', '0.12'));
-          g.addColorStop(1, 'rgba(255,255,255,0)');
-          return g;
-        },
-        borderWidth: 3, tension: 0.4, pointRadius: 4, pointHoverRadius: 8,
-        pointBackgroundColor: '#fff', pointBorderColor: lineColor, pointBorderWidth: 2.5, fill: true,
-      }],
-    };
-    const options = {
-      responsive: true, maintainAspectRatio: false,
-      onClick: (event, elements) => { if (elements.length > 0 && onPointClick) onPointClick(data[elements[0].index], elements[0].index); },
-      animation: { duration: 1200, easing: 'easeOutQuart' },
-      plugins: {
-        legend: { display: false }, title: { display: !!title, text: title, font: { size: 13, weight: '600' } },
-        tooltip: { backgroundColor: 'rgba(15, 23, 42, 0.95)', titleFont: { size: 12, weight: '600' }, bodyFont: { size: 12 }, padding: 12, cornerRadius: 12, boxPadding: 4, callbacks: { label: (ctx) => `${ctx.parsed.y}${onPointClick ? ' (click for details)' : ''}` } },
-      },
-      scales: { y: { ticks: { precision: 0, font: { size: 11 } }, beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false } }, x: { grid: { display: false }, ticks: { font: { size: 10 } } } },
-      elements: { point: { radius: 4, hoverRadius: 9, hoverBorderWidth: 3 } },
-      interaction: { intersect: false, mode: 'index' },
-    };
+    const strokeColor = lineColor.replace(/rgba?\([^)]*\)/, '#2563eb');
+    const gradientId = `areaGradient-${strokeColor.replace(/[^a-z0-9]/gi, '')}`;
     return (
       <DashboardCard className={`animate-chart-entrance ${className}`.trim()}>
         <h3 className="font-bold text-lg text-gray-900 mb-4">{title}</h3>
-        <div style={{ height }}><Line data={chartData} options={options} /></div>
+        <div style={{ height }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={data} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+                <defs>
+                    <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={strokeColor} stopOpacity={0.35} />
+                        <stop offset="100%" stopColor={strokeColor} stopOpacity={0} />
+                    </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <ReTooltip
+                    contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.95)', border: 'none', borderRadius: 12, fontSize: 12 }}
+                    formatter={(value, name) => [`${value}${onPointClick ? ' (click for details)' : ''}`, name]}
+                />
+                <Area
+                    type="monotone"
+                    dataKey="value"
+                    name={title}
+                    stroke={strokeColor}
+                    strokeWidth={3}
+                    fill={`url(#${gradientId})`}
+                    dot={{ r: 4, strokeWidth: 2.5, fill: '#fff', stroke: strokeColor }}
+                    activeDot={{ r: 8 }}
+                    onClick={(_, index) => { if (onPointClick) onPointClick(data[index], index); }}
+                    cursor={onPointClick ? 'pointer' : 'default'}
+                />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
         {onPointClick && <p className="text-[10px] text-slate-400 mt-2 text-center italic">Click a point to drill down</p>}
       </DashboardCard>
     );
@@ -416,30 +397,46 @@ export const GradientAreaChart = ({ data, title, lineColor = 'rgba(37, 99, 235, 
 // ─── SimpleLineChart (alias for GradientAreaChart) ─────
 export const SimpleLineChart = GradientAreaChart;
 
-// ─── Donut Chart (with drill-down) ─────────────────────
+// ─── Donut Chart (recharts, with drill-down) ─────────────────────
 export const DonutChart = ({ data, title, height = 240, className = '', onSliceClick, showLegend = true }) => {
-    const total = data.reduce((sum, d) => sum + (d.value || 0), 0);
-    const labels = data.map((d) => d.label || d.name);
-    const values = data.map((d) => d.value || d.count || 0);
-    const chartData = {
-      labels,
-      datasets: [{ data: values, backgroundColor: GRADIENT_COLORS, borderColor: '#fff', borderWidth: 3, hoverBorderColor: '#fff', hoverBorderWidth: 4, hoverOffset: 8 }],
-    };
-    const options = {
-      responsive: true, maintainAspectRatio: false, cutout: '60%',
-      onClick: (event, elements) => { if (elements.length > 0 && onSliceClick) onSliceClick(data[elements[0].index], elements[0].index); },
-      animation: { duration: 1000, easing: 'easeOutQuart', animateRotate: true },
-      plugins: {
-        legend: { display: showLegend, position: 'bottom', labels: { padding: 16, usePointStyle: true, font: { size: 11 } } },
-        tooltip: { backgroundColor: 'rgba(15, 23, 42, 0.95)', titleFont: { size: 12, weight: '600' }, bodyFont: { size: 12 }, padding: 12, cornerRadius: 12, callbacks: { label: (ctx) => { const pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : 0; return `${ctx.label}: ${ctx.parsed} (${pct}%)${onSliceClick ? ' — click to drill' : ''}`; } } },
-      },
-    };
+    const chartData = data.map((d) => ({ ...d, name: d.label || d.name, value: d.value || d.count || 0 }));
+    const total = chartData.reduce((sum, d) => sum + d.value, 0);
     return (
       <DashboardCard className={`animate-chart-entrance ${className}`.trim()}>
         <h3 className="font-bold text-lg text-gray-900 mb-4">{title}</h3>
         <div className="relative" style={{ height }}>
-          <Doughnut data={chartData} options={options} />
-          {total > 0 && <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><div className="text-center"><p className="text-2xl font-bold text-slate-800">{total}</p><p className="text-[10px] text-slate-400 uppercase">Total</p></div></div>}
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+                <Pie
+                    data={chartData}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius="60%"
+                    outerRadius="85%"
+                    paddingAngle={2}
+                    stroke="#fff"
+                    strokeWidth={3}
+                    animationDuration={1000}
+                    onClick={(entry, index) => { if (onSliceClick) onSliceClick(data[index], index); }}
+                    cursor={onSliceClick ? 'pointer' : 'default'}
+                >
+                    {chartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={GRADIENT_COLORS[index % GRADIENT_COLORS.length]} />
+                    ))}
+                </Pie>
+                {showLegend && (
+                    <ReLegend iconSize={8} wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+                )}
+                <ReTooltip
+                    contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.95)', border: 'none', borderRadius: 12, fontSize: 12 }}
+                    formatter={(value, name) => {
+                        const pct = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                        return [`${value} (${pct}%)${onSliceClick ? ' — click to drill' : ''}`, name];
+                    }}
+                />
+            </PieChart>
+          </ResponsiveContainer>
+          {total > 0 && <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ bottom: showLegend ? 32 : 0 }}><div className="text-center"><p className="text-2xl font-bold text-slate-800">{total}</p><p className="text-[10px] text-slate-400 uppercase">Total</p></div></div>}
         </div>
         {onSliceClick && <p className="text-[10px] text-slate-400 mt-1 text-center italic">Click a slice to drill down</p>}
       </DashboardCard>

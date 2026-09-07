@@ -7,6 +7,10 @@
 # Quick start:
 #   docker compose up -d postgres redis backend frontend
 #   (SIE is opt-in: docker compose --profile ai up sie)
+#
+# Production: overlay with docker-compose.prod.yml (no bind mounts,
+#   no demo seeding, nightly DB backups):
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 # ============================================================
 
 # ─── Shared Configuration ─────────────────────────────────
@@ -21,10 +25,13 @@ x-backend-env: &backend-env
   FRONTEND_URL: http://localhost:5000
   HOST: "0.0.0.0"
   PORT: "3001"
-  LLM_PROVIDER: openai
-  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-  ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+  RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+  LLM_PROVIDER: ${LLM_PROVIDER:-groq}
   GROQ_API_KEY: ${GROQ_API_KEY:-}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+  SENTRY_DSN: ${SENTRY_DSN:-}
+  ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
   # ─── AI Infrastructure: Headroom (Context Compression) ──────
   HEADROOM_ENABLED: ${HEADROOM_ENABLED:-true}
   # ─── AI Infrastructure: SIE (Superlinked Inference Engine) ──
@@ -44,7 +51,7 @@ x-backend-env: &backend-env
 services:
   # ─── PostgreSQL ─────────────────────────────────────────────
   postgres:
-    image: postgres:15
+    image: postgres:15-alpine
     container_name: lifelink-postgres
     restart: unless-stopped
     environment:
@@ -56,7 +63,7 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "lifelink_db"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d lifelink_db"]
       interval: 5s
       timeout: 5s
       retries: 5

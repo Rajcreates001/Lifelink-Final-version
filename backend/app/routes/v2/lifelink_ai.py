@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from pydantic import BaseModel
 
 from app.core.auth import get_current_user
+from app.services.rate_limiter import rate_limit_ml_heavy
 
 
 async def _current_user_dict(authorization: str | None = Header(default=None)) -> dict:
@@ -444,7 +445,8 @@ async def search_conversations(
 async def ask_ai(
     body: AskRequest,
     user: dict = Depends(_current_user_dict),
-    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service)
+    service: EnterpriseAIChatService = Depends(get_enterprise_ai_service),
+    _: None = Depends(rate_limit_ml_heavy.dependency()),
 ):
     """
     Ask LifeLink AI a question.

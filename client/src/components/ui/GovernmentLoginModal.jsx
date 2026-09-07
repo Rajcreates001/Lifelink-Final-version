@@ -103,11 +103,11 @@ const GovernmentLoginModal = ({ org, onClose, onSuccess }) => {
         return;
       }
 
-      const { user: userData, token } = res.data;
+      const { user: userData, token, refreshToken } = res.data;
       if (!userData || !token) {
         throw new Error('Invalid server response');
       }
-      login(userData, token);
+      login(userData, token, refreshToken);
       onSuccess(userData, token);
       onClose();
     } catch (err) {

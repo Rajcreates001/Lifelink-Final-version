@@ -13,6 +13,7 @@ from app.core.auth import require_scopes
 from app.core.config import get_settings
 from app.core.rbac import AuthContext
 from app.db.database import get_db, require_db
+from app.services.rate_limiter import rate_limit_ml
 from app.services.ai_platform import (
     EventStream,
     FeatureStore,
@@ -726,7 +727,8 @@ async def _module_data_summary(
 @router.post("/events/publish")
 async def publish_event(
     payload: PublishEvent,
-    ctx: AuthContext = Depends(require_scopes("dashboard:read"))
+    ctx: AuthContext = Depends(require_scopes("dashboard:read")),
+    _: None = Depends(rate_limit_ml.dependency()),
 ) -> dict:
     settings = get_settings()
     stream = EventStream(settings.redis_url)
@@ -753,7 +755,8 @@ async def publish_event(
 @router.post("/infer")
 async def infer(
     payload: InferenceRequest,
-    ctx: AuthContext = Depends(require_scopes("ai:ask"))
+    ctx: AuthContext = Depends(require_scopes("ai:ask")),
+    _: None = Depends(rate_limit_ml.dependency()),
 ) -> dict:
     model_map = {
         "health-risk": "predict_risk",

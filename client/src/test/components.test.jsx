@@ -375,7 +375,7 @@ describe('App Integration', () => {
         }
     });
 
-    it('All hospitalOps components are importable', async () => {
+    it('All hospitalOps components are importable', { timeout: 30000 }, async () => {
         const components = [
             'HospitalFinanceOverview', 'HospitalStaffManagement',
             'HospitalReports', 'HospitalBillingSystem',

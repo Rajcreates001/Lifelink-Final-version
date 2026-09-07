@@ -1,4 +1,4 @@
-"""Alembic migration environment."""
+"""Alembic migration environment (active — referenced by alembic.ini)."""
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
@@ -9,8 +9,8 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.core.database import Base
-from app.core.config import settings
+from app.core.config import get_settings
+from app.db.models import Base
 
 config = context.config
 if config.config_file_name is not None:
@@ -18,8 +18,15 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
+
+def _sync_db_url() -> str:
+    """Return the database URL with a sync driver (alembic runs sync)."""
+    url = get_settings().postgres_url
+    return url.replace("postgresql+asyncpg://", "postgresql://", 1)
+
+
 # Override sqlalchemy.url from settings
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+config.set_main_option("sqlalchemy.url", _sync_db_url())
 
 
 def run_migrations_offline() -> None:

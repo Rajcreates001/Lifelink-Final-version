@@ -135,7 +135,7 @@ const Login = () => {
                 ? { ...data.user, subRole: null }
                 : data.user;
             // Use centralized performLogin — records timeline, stores user, returns route
-            const landingRoute = performLogin(userForSession, data.token);
+            const landingRoute = performLogin(userForSession, data.token, data.refreshToken);
             navigate(landingRoute, { replace: true });
         } catch (err) {
             const msg = err.message || '';

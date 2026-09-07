@@ -25,7 +25,14 @@ db_state = DbState()
 
 
 async def connect_database() -> None:
-    """Initialize the PostgreSQL connection pool and create tables."""
+    """Initialize the PostgreSQL connection pool.
+
+    Schema management is owned by Alembic (run by the Docker entrypoint via
+    `alembic upgrade head`). In non-production environments we additionally
+    run Base.metadata.create_all as a dev convenience so a fresh local
+    database works without running migrations; production NEVER auto-creates
+    schema — migrations only.
+    """
     settings = get_settings()
     db_state.engine = create_async_engine(
         settings.postgres_url,
@@ -37,8 +44,9 @@ async def connect_database() -> None:
     )
     db_state.session_factory = async_sessionmaker(db_state.engine, expire_on_commit=False)
 
-    async with db_state.engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    if settings.app_env != "production":
+        async with db_state.engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
 
 
 async def close_database() -> None:

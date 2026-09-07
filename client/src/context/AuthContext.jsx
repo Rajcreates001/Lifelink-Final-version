@@ -219,7 +219,7 @@ export const AuthProvider = ({ children }) => {
         }
     }, []);
 
-    const login = useCallback((userData, token) => {
+    const login = useCallback((userData, token, refreshToken) => {
         // Ensure userData has a normalized role
         const role = (userData.role || '').toLowerCase();
         const route = ROLE_ROUTES[role];
@@ -238,6 +238,9 @@ export const AuthProvider = ({ children }) => {
         // Token and user data are session-scoped to minimize XSS exposure.
         sessionStorage.setItem('lifelink_user', JSON.stringify(normalized));
         sessionStorage.setItem('lifelink_token', token);
+        if (refreshToken) {
+            sessionStorage.setItem('lifelink_refresh_token', refreshToken);
+        }
         setUser(normalized);
     }, []);
 
@@ -259,6 +262,7 @@ export const AuthProvider = ({ children }) => {
     const clearAuth = useCallback(() => {
         sessionStorage.removeItem('lifelink_user');
         sessionStorage.removeItem('lifelink_token');
+        sessionStorage.removeItem('lifelink_refresh_token');
         setUser(null);
     }, []);
 
@@ -288,12 +292,12 @@ export const AuthProvider = ({ children }) => {
      * stores the user, and returns the correct landing page route.
      * Navigation is the caller's responsibility.
      */
-    const performLogin = useCallback((userData, token) => {
+    const performLogin = useCallback((userData, token, refreshToken) => {
         const normalized = {
             ...userData,
             role: (userData.role || '').toLowerCase(),
         };
-        login(normalized, token);
+        login(normalized, token, refreshToken);
 
         // Record sign-in to LifeTimeline
         try {

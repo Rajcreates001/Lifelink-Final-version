@@ -13,6 +13,41 @@ export const getAuthToken = () => (
   sessionStorage.getItem('lifelink_token')
 );
 
+export const getRefreshToken = () => (
+  sessionStorage.getItem('lifelink_refresh_token')
+);
+
+// ─── Access token refresh (single-flight) ─────────────────
+let refreshInflight = null;
+
+async function refreshAccessToken() {
+  if (!refreshInflight) {
+    refreshInflight = (async () => {
+      const refreshToken = getRefreshToken();
+      if (!refreshToken) return null;
+      try {
+        const res = await fetch(`${API_BASE_URL}/v2/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken }),
+        });
+        if (!res.ok) return null;
+        const data = await res.json().catch(() => ({}));
+        if (data && data.token) {
+          sessionStorage.setItem('lifelink_token', data.token);
+          return data.token;
+        }
+        return null;
+      } catch {
+        return null;
+      }
+    })().finally(() => {
+      refreshInflight = null;
+    });
+  }
+  return refreshInflight;
+}
+
 const responseCache = new Map();
 const inflightRequests = new Map();
 const DEFAULT_TTL_MS = 120000;
@@ -89,12 +124,21 @@ export const apiFetch = async (path, options = {}) => {
     const fetchCache = rawCache === false ? 'no-store' : (rawCache || undefined);
 
     try {
-      const res = await fetch(url, {
+      let res = await fetch(url, {
         ...fetchInit,
         ...(fetchCache ? { cache: fetchCache } : {}),
         headers,
         signal: controller.signal,
       });
+
+      // On 401, try one transparent refresh-and-retry before surfacing the error.
+      if (res.status === 401 && getRefreshToken() && !options._isRetry) {
+        const newToken = await refreshAccessToken();
+        if (newToken) {
+          headers.Authorization = `Bearer ${newToken}`;
+          return apiFetch(path, { ...options, headers, _isRetry: true });
+        }
+      }
 
       const data = await res.json().catch(() => ({}));
 

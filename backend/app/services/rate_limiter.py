@@ -125,7 +125,12 @@ class RateLimiter:
             result = limiter.check(client_ip)
 
             if not result.allowed:
-                logger.warning("Rate limit hit — %s/%s (IP: %s)", self.namespace, client_ip)
+                logger.warning(
+                    "Rate limit hit — %s blocked IP %s (retry after %.1fs)",
+                    self.namespace,
+                    client_ip,
+                    result.retry_after,
+                )
                 raise HTTPException(
                     status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                     detail={

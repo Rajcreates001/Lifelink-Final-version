@@ -64,20 +64,43 @@ except Exception:
 
 # ─── Run Database Migration ───────────────────────────────
 run_migration() {
-    echo "📦 Applying schema (SQL schema.sql)..."
+    # Alembic is the single source of truth for schema management.
+    # The legacy schema.sql bootstrap only fills in seed/demo data.
+    echo "📦 Applying Alembic migrations..."
+    if command -v alembic >/dev/null 2>&1; then
+        # First deployment on an empty DB: schema.sql may already have created
+        # tables via bootstrap; stamp so Alembic starts from the right revision.
+        if [ -f "scripts/bootstrap_database.py" ]; then
+            python scripts/bootstrap_database.py || echo "⚠️  bootstrap_database.py failed — continuing with Alembic"
+        elif [ -f "backend/scripts/bootstrap_database.py" ]; then
+            python backend/scripts/bootstrap_database.py || echo "⚠️  bootstrap_database.py failed — continuing with Alembic"
+        fi
 
-    # Try backend/scripts first (Docker layout: backend/ -> /app/)
-    if [ -f "scripts/bootstrap_database.py" ]; then
-        python scripts/bootstrap_database.py
-    elif [ -f "backend/scripts/bootstrap_database.py" ]; then
-        python backend/scripts/bootstrap_database.py
+        # If the alembic_version table does not exist but the schema does
+        # (databases created before this change), stamp to head instead of failing.
+        STAMPED=$(python -c "
+import asyncio, asyncpg, os
+async def main():
+    dsn = '${PG_DSN}'
+    conn = await asyncpg.connect(dsn=dsn)
+    try:
+        has_version = await conn.fetchval(\"SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'alembic_version')\")
+        has_docs = await conn.fetchval(\"SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'documents')\")
+        print('yes' if (not has_version and has_docs) else 'no')
+    finally:
+        await conn.close()
+asyncio.run(main())
+" 2>/dev/null || echo no)
+
+        if [ "$STAMPED" = "yes" ]; then
+            echo "📦 Pre-Alembic database detected — stamping alembic_version to head..."
+            alembic stamp head || true
+        fi
+
+        alembic upgrade head && echo "✅ Alembic migrations applied"
     else
-        echo "⚠️  bootstrap_database.py not found — skipping migration"
-        return 0
+        echo "⚠️  alembic not installed — falling back to bootstrap only"
     fi
-
-    echo "📦 Stamping Alembic head..."
-    cd /app && alembic stamp head 2>/dev/null || true
 
     echo "✅ Database setup complete!"
 }
@@ -85,6 +108,9 @@ run_migration() {
 # ─── Start Backend API ────────────────────────────────────
 start_api() {
     echo "🚀 Starting LifeLink Backend API on port ${APP_PORT}..."
+    if [ "${APP_ENV:-development}" = "production" ]; then
+        exec uvicorn app.main:app --host 0.0.0.0 --port "${APP_PORT}"
+    fi
     exec uvicorn app.main:app --host 0.0.0.0 --port "${APP_PORT}" --reload
 }
 

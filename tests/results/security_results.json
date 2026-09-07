@@ -572,5 +572,48 @@
       "tampered": "4addd6b7a17a882d9edd7d068a4350d0838a7b9b973b990ad2c9d80ab6939ec6"
     },
     "tamper_detected": true
+  },
+  {
+    "timestamp": "2026-09-07T05:04:32.238244",
+    "test": "rbac",
+    "status": "FAIL",
+    "details": "Public denied, government granted",
+    "input": {
+      "public_status": 401,
+      "gov_status": 401
+    },
+    "output": {
+      "public_body": "{\"error\":\"Invalid token\"}",
+      "gov_body": "{\"error\":\"Invalid token\"}"
+    },
+    "public_access": "denied",
+    "gov_access": "denied"
+  },
+  {
+    "timestamp": "2026-09-07T05:04:32.793144",
+    "test": "authentication",
+    "status": "FAIL",
+    "details": "Token validation behavior",
+    "input": {
+      "no_token": 401,
+      "invalid": 401,
+      "valid": 401
+    },
+    "output": {
+      "valid_body": "{\"error\":\"Invalid token\"}"
+    }
+  },
+  {
+    "timestamp": "2026-09-07T05:04:32.831798",
+    "test": "blockchain_integrity",
+    "status": "FAIL",
+    "details": "Audit log API failed",
+    "input": {
+      "action": "test_audit",
+      "details": "integrity_check"
+    },
+    "output": {
+      "status": 401
+    }
   }
 ]

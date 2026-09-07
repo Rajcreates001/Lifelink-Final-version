@@ -98,6 +98,19 @@ def main() -> None:
 
     dsn = _normalize_dsn(postgres_url)
 
+    # Demo seeding is a development/staging convenience. Production must not
+    # auto-populate demo users — it also applies the base schema only if the
+    # documents table is missing (normally Alembic owns schema).
+    if settings.app_env == "production":
+        print("[bootstrap_database] APP_ENV=production — applying base schema only, skipping demo seed.")
+
+        async def _run_prod() -> None:
+            await _wait_for_postgres(dsn)
+            await _apply_schema(dsn)
+
+        asyncio.run(_run_prod())
+        return
+
     async def _run() -> None:
         await _wait_for_postgres(dsn)
         await _apply_schema(dsn)

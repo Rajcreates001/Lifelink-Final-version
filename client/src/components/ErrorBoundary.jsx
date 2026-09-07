@@ -1,13 +1,12 @@
+// client/src/components/ErrorBoundary.jsx
+// Catches render-time errors in dashboard subtrees and shows a recovery UI
+// instead of a blank page. Emergency software must degrade visibly, not vanish.
 import React from 'react';
 
-/**
- * Error Boundary — catches React rendering errors and shows a fallback UI.
- * Prevents the entire app from crashing when a single component fails.
- */
-class ErrorBoundary extends React.Component {
+export default class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null, errorInfo: null };
+    this.state = { hasError: false, error: null };
   }
 
   static getDerivedStateFromError(error) {
@@ -15,63 +14,59 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    this.setState({ errorInfo });
-    // Log to console in development
-    if (import.meta.env.DEV) {
-      console.error('[ErrorBoundary] Component error:', error, errorInfo);
-    }
+    // eslint-disable-next-line no-console
+    console.error('[LifeLink] UI error caught by boundary:', error, errorInfo);
   }
 
   handleReset = () => {
-    this.setState({ hasError: false, error: null, errorInfo: null });
+    this.setState({ hasError: false, error: null });
+  };
+
+  handleReload = () => {
+    window.location.reload();
   };
 
   render() {
     if (this.state.hasError) {
-      const errorTitle = this.props.fallbackTitle || 'Something went wrong';
-      const errorMessage = this.state.error?.message || 'An unexpected error occurred.';
-
+      const compact = this.props.compact;
       return (
-        <div className="min-h-[200px] flex items-center justify-center p-6">
-          <div className="max-w-md w-full bg-white rounded-xl border border-red-200 shadow-lg p-6 text-center">
-            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <i className="fas fa-exclamation-triangle text-red-500 text-lg" />
+        <div
+          className={`flex items-center justify-center ${compact ? 'p-6' : 'min-h-[50vh] p-12'}`}
+          role="alert"
+        >
+          <div className="max-w-md w-full text-center rounded-2xl border border-red-100 bg-red-50/60 p-6">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-red-100 text-2xl">
+              ⚠️
             </div>
-            <h3 className="text-lg font-bold text-gray-900 mb-2">{errorTitle}</h3>
-            <p className="text-sm text-gray-500 mb-4">
-              {errorMessage.length > 200 ? errorMessage.slice(0, 200) + '...' : errorMessage}
+            <h2 className="mb-1 text-base font-bold text-slate-800">
+              {this.props.title || 'Something went wrong'}
+            </h2>
+            <p className="mb-4 text-xs text-slate-500">
+              This panel hit an unexpected error. Your data is safe — use the button below to retry, or reload the page.
             </p>
-            <div className="flex gap-2 justify-center">
+            <div className="flex items-center justify-center gap-2">
               <button
                 onClick={this.handleReset}
-                className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+                className="rounded-lg bg-[#2563EB] px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-blue-700"
               >
-                Try Again
+                Try again
               </button>
               <button
-                onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300 transition-colors"
+                onClick={this.handleReload}
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50"
               >
-                Reload Page
+                Reload page
               </button>
             </div>
-            {import.meta.env.DEV && this.state.errorInfo && (
-              <details className="mt-4 text-left">
-                <summary className="text-xs text-gray-400 cursor-pointer">Error Details (Dev)</summary>
-                <pre className="text-xs text-red-600 mt-2 overflow-auto max-h-40 bg-red-50 p-2 rounded">
-                  {this.state.error?.stack}
-                  {'\n\n'}
-                  {this.state.errorInfo?.componentStack}
-                </pre>
-              </details>
+            {import.meta.env.DEV && this.state.error && (
+              <pre className="mt-4 max-h-32 overflow-auto rounded-lg bg-slate-900 p-3 text-left text-[10px] text-red-300 whitespace-pre-wrap">
+                {String(this.state.error)}
+              </pre>
             )}
           </div>
         </div>
       );
     }
-
     return this.props.children;
   }
 }
-
-export default ErrorBoundary;
