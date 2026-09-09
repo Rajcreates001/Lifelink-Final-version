@@ -403,6 +403,13 @@ class HybridSearchOrchestrator:
         except Exception as e:
             logger.debug("Headroom compression skipped: %s", e)
 
+        logger.info(
+            "Headroom compression: compressed=%s tokens %s -> %s",
+            compression_stats.get("compressed") is not False,
+            compression_stats.get("original_tokens"),
+            compression_stats.get("compressed_tokens"),
+        )
+
         self._complete_stage(stages, "headroom_compression", stage_ctx)
 
         # ═══════════════════════════════════════════════════════════

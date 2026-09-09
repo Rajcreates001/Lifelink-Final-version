@@ -3,7 +3,16 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
+import { sweepStorageCaches } from './utils/storageSweeper'
+// Font Awesome: self-hosted from npm so all `<i class="fas fa-...">` icons
+// (navbar logo, dashboards, 916 usages) render under the CSP without a CDN.
+import '@fortawesome/fontawesome-free/css/all.min.css'
 import './index.css'
+
+// ─── localStorage cache hygiene ────────────────────────────
+// Evict stale/overflowing API cache entries once at boot. Preferences and
+// auth keys are never touched. Must run before components read their caches.
+sweepStorageCaches();
 
 // ─── Register Service Worker for PWA ───────────────────────
 if ('serviceWorker' in navigator) {

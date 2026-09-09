@@ -553,7 +553,10 @@ async def ask_ai(
         org_summary = (
             f"Organization: {gov_org_info.get('name', 'Government Organization')} "
         )
-        system_prompt = (
+        # System prompt for the LLM path; the current stub response path does
+        # not consume it yet. Kept (assigned to _) to preserve the
+        # prompt-engineering work for the real LLM wiring (F841 ratchet in CI).
+        _ = (
             f"You are LifeLink AI, the Government of India's National Emergency Response Intelligence. "
             f"Current user: {user.get('name') or user.get('fullName') or 'Officer'}.\n"
             f"Role: {role_label}\n"
@@ -584,7 +587,7 @@ async def ask_ai(
             f"{hospital_info.get('bed_summary', '500 beds total.')}\n"
             f"{hospital_info.get('department_status_text', '12 departments registered.')}"
         )
-        _system_prompt = (
+        _ = (
             f"You are LifeLink AI, an enterprise hospital assistant. "
             f"Current user: {user.get('name') or user.get('fullName') or 'Staff'}.\n"
             f"Role: {role_label}\n"
@@ -624,7 +627,7 @@ async def ask_ai(
     latency_ms = int((time.time() - start_time) * 1000)
 
     # 6. Store assistant message
-    _assistant_msg = await service.add_message(
+    await service.add_message(
         conversation_id=conversation_id,
         hospital_id=auth["org_id"],
         user_id=auth["user_id"],
@@ -636,7 +639,7 @@ async def ask_ai(
         reasoning=[
             f"Loaded context for {role_label} ({auth['role_id']})",
             f"Verified permissions: {accessible_modules_str}",
-            f"Generated response within role scope",
+            "Generated response within role scope",
         ]
     )
     # 7. Log audit

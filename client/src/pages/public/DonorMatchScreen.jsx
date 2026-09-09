@@ -10,6 +10,7 @@ const DonorMatchScreen = ({ user, onBack, rightSlot }) => {
   const [loading, setLoading] = useState(false);
   const [requesting, setRequesting] = useState(false);
   const [requestMessage, setRequestMessage] = useState('');
+  const [usingFallback, setUsingFallback] = useState(false);
 
   useEffect(() => {
     if (!navigator.geolocation) return;
@@ -20,9 +21,27 @@ const DonorMatchScreen = ({ user, onBack, rightSlot }) => {
     );
   }, []);
 
+  // ─── Preload: show the donor directory immediately, before location resolves ──
+  // The AI-ranked match refines this list once geolocation is available.
+  // apiFetch dedupes/shares the request that PublicDashboard's preload warmed,
+  // so this is instant (or rides the same in-flight call) — no duplicate fetch.
+  useEffect(() => {
+    let cancelled = false;
+    const loadDirectory = async () => {
+      const res = await apiFetch('/api/donors', { method: 'GET', timeoutMs: 10000 });
+      if (!cancelled && res?.ok && Array.isArray(res.data) && res.data.length > 0) {
+        setDonors((prev) => (prev.length > 0 ? prev : res.data));
+        setUsingFallback(true);
+      }
+    };
+    loadDirectory();
+    return () => { cancelled = true; };
+  }, []);
+
   const handleMatch = async () => {
     if (!location) return;
     setLoading(true);
+    setUsingFallback(false);
     const res = await apiFetch('/v2/public/donors/match', {
       method: 'POST',
       body: JSON.stringify({
@@ -37,6 +56,12 @@ const DonorMatchScreen = ({ user, onBack, rightSlot }) => {
     }
     setLoading(false);
   };
+
+  // Auto-run the AI match once location becomes available (no extra tap).
+  useEffect(() => {
+    if (location && donors.length === 0) handleMatch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location]);
 
   const handleEmergencyRequest = async () => {
     setRequesting(true);
@@ -98,15 +123,20 @@ const DonorMatchScreen = ({ user, onBack, rightSlot }) => {
         <button onClick={handleMatch} disabled={loading || !location} className="w-full rounded-2xl bg-amber-500 text-white font-bold py-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg active:scale-95 disabled:opacity-60">
           {loading ? 'Matching...' : 'Find Donors'}
         </button>
+        {usingFallback && (
+          <p className="text-[11px] text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 animate-fade-in">
+            Showing available donors from the directory. Enable location for AI-ranked matching by distance.
+          </p>
+        )}
         <div className="space-y-3">
           {donors.length === 0 && !loading && (
             <p className="text-xs text-slate-500 animate-fade-in">No donors matched yet. Try a different blood group or urgency.</p>
           )}
           {donors.map((donor, index) => (
-            <MobileCard key={donor.id || donor.user_id || donor._id} className="animate-fade-in-up" style={{ animationDelay: `${300 + index * 100}ms` }}>
+            <MobileCard key={donor.id || donor.user_id || donor._id || `donor-${index}`} className="animate-fade-in-up" style={{ animationDelay: `${300 + index * 100}ms` }}>
               <p className="font-semibold text-slate-900">{donor.name}</p>
-              <p className="text-xs text-slate-500">{donor.blood_group} • {donor.distance_km} km</p>
-              <p className="text-xs text-slate-500">Score {donor.score}</p>
+              <p className="text-xs text-slate-500">{donor.blood_group || donor.bloodGroup || '—'}{donor.distance_km !== undefined ? ` • ${donor.distance_km} km` : ''}</p>
+              {donor.score !== undefined && <p className="text-xs text-slate-500">Score {donor.score}</p>}
             </MobileCard>
           ))}
         </div>

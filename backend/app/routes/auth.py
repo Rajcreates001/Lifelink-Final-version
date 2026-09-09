@@ -6,7 +6,7 @@ import jwt
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.config import get_settings
-from app.db.database import get_db, require_db
+from app.db.database import require_db
 from app.schemas.user import LoginRequest, SignupRequest
 from app.db.models import GovVerificationRequest
 from app.services.collections import HOSPITALS, USERS

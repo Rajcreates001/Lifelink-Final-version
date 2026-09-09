@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import { API_BASE_URL } from '../config/api';
 
 const AuthContext = createContext(null);
 
@@ -260,6 +261,21 @@ export const AuthProvider = ({ children }) => {
      * Use this for FULL logout (standalone roles, gateway pages).
      */
     const clearAuth = useCallback(() => {
+        // Best-effort server-side revocation: burn the access + refresh tokens
+        // so a stolen copy dies with this logout. Fire-and-forget; local cleanup
+        // happens regardless of the outcome.
+        const refreshToken = sessionStorage.getItem('lifelink_refresh_token');
+        const token = sessionStorage.getItem('lifelink_token');
+        if (token) {
+            fetch(`${API_BASE_URL}/v2/auth/logout`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ refreshToken: refreshToken || null }),
+            }).catch(() => { /* network error — local session is cleared anyway */ });
+        }
         sessionStorage.removeItem('lifelink_user');
         sessionStorage.removeItem('lifelink_token');
         sessionStorage.removeItem('lifelink_refresh_token');

@@ -917,13 +917,13 @@ def compute_risk_score(
     if blood_pressure_sys is not None:
         if blood_pressure_sys >= 180:
             score += 18
-            drivers.append({"factor": f"BP ≥180 (Severe hypertension)", "contribution": 18, "detail": "Severe hypertension requires urgent evaluation."})
+            drivers.append({"factor": "BP ≥180 (Severe hypertension)", "contribution": 18, "detail": "Severe hypertension requires urgent evaluation."})
         elif blood_pressure_sys >= 140:
             score += 12
-            drivers.append({"factor": f"BP 140–179 (Hypertension)", "contribution": 12, "detail": "Elevated blood pressure contributes to cardiovascular and renal risk."})
+            drivers.append({"factor": "BP 140–179 (Hypertension)", "contribution": 12, "detail": "Elevated blood pressure contributes to cardiovascular and renal risk."})
         elif blood_pressure_sys >= 130:
             score += 5
-            drivers.append({"factor": f"BP 130–139 (Elevated)", "contribution": 5, "detail": "Borderline elevation; further assessment recommended."})
+            drivers.append({"factor": "BP 130–139 (Elevated)", "contribution": 5, "detail": "Borderline elevation; further assessment recommended."})
     else:
         missing_data.append("blood_pressure")
 
@@ -931,13 +931,13 @@ def compute_risk_score(
     if heart_rate is not None:
         if heart_rate > 120:
             score += 10
-            drivers.append({"factor": f"HR >120 bpm (Tachycardia)", "contribution": 10, "detail": "Significant tachycardia may indicate underlying pathology."})
+            drivers.append({"factor": "HR >120 bpm (Tachycardia)", "contribution": 10, "detail": "Significant tachycardia may indicate underlying pathology."})
         elif heart_rate > 100:
             score += 6
-            drivers.append({"factor": f"HR 101–120 bpm", "contribution": 6, "detail": "Elevated resting heart rate."})
+            drivers.append({"factor": "HR 101–120 bpm", "contribution": 6, "detail": "Elevated resting heart rate."})
         if heart_rate < 50:
             score += 6
-            drivers.append({"factor": f"HR <50 bpm (Bradycardia)", "contribution": 6, "detail": "Low heart rate may require evaluation if symptomatic."})
+            drivers.append({"factor": "HR <50 bpm (Bradycardia)", "contribution": 6, "detail": "Low heart rate may require evaluation if symptomatic."})
     else:
         missing_data.append("heart_rate")
 
@@ -945,10 +945,10 @@ def compute_risk_score(
     if oxygen is not None:
         if oxygen < 90:
             score += 15
-            drivers.append({"factor": f"SpO₂ <90%", "contribution": 15, "detail": "Hypoxemia requires urgent evaluation."})
+            drivers.append({"factor": "SpO₂ <90%", "contribution": 15, "detail": "Hypoxemia requires urgent evaluation."})
         elif oxygen < 95:
             score += 6
-            drivers.append({"factor": f"SpO₂ 90–94%", "contribution": 6, "detail": "Mildly reduced oxygen saturation warrants further assessment."})
+            drivers.append({"factor": "SpO₂ 90–94%", "contribution": 6, "detail": "Mildly reduced oxygen saturation warrants further assessment."})
     else:
         missing_data.append("oxygen_saturation")
 

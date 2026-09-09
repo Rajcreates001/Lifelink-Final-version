@@ -117,14 +117,8 @@ const DesktopPublicDashboard = () => {
     }
   }, [user?.id, fetchNotifications]);
 
-  useEffect(() => {
-    if (!user?.id) return;
-    // Only preload endpoints NOT already fetched by fetchData (avoid duplication)
-    Promise.allSettled([
-      apiFetch('/api/health/records/' + user.id, { method: 'GET', timeoutMs: 8000 }),
-      apiFetch(`/api/notifications/${user.id}`, { method: 'GET', timeoutMs: 8000 }),
-    ]);
-  }, [user?.id]);
+  // Data is preloaded by PublicDashboard via preloadService; apiFetch's
+  // in-flight dedup means fetchData below joins the warm requests.
 
   useEffect(() => { fetchData(); }, [fetchData]);
 

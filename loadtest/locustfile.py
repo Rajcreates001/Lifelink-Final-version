@@ -6,12 +6,12 @@ Handles authentication automatically and tests all available API endpoints.
 
 Usage:
     # Headless mode (recommended):
-    locust -f locustfile.py --host=http://localhost:4002 \
+    locust -f locustfile.py --host=http://localhost:3001 \
         --headless -u 50 -r 5 --run-time 60s \
         --html=reports/load_test_report.html --csv=reports/lifelink
 
     # Web UI mode:
-    locust -f locustfile.py --host=http://localhost:4002
+    locust -f locustfile.py --host=http://localhost:3001
 """
 
 import json

@@ -5,7 +5,7 @@ import time
 
 import requests
 
-from tests.utils.auth import build_token
+from tests.test_security.test_access_control import _signup_and_login
 from tests.utils.logger import log_test
 from tests.utils.result_writer import save_result
 
@@ -24,7 +24,7 @@ def _latest_prediction(token: str):
 
 
 def test_differential_privacy():
-    token = build_token("hospital")
+    token = _signup_and_login("hospital", verified=True)
     headers = {"Authorization": f"Bearer {token}"}
 
     payload = {"hospital_id": "demo-hospital", "weight_count": 8, "noise_std": 0.08}

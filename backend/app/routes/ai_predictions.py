@@ -13,20 +13,14 @@ Validated ML prediction endpoints for:
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 
-from app.db.database import require_db
-from app.services.collections import USERS
 from app.services.medical_knowledge import validate_health_payload
-from app.services.repository import MongoRepository
 from app.core.auth import get_current_user, AuthContext
 from app.services.rate_limiter import rate_limit_ml
 
 from app.routes.ai_shared import (
-    as_object_id,
-    ensure_meta,
     load_hotspot_seed_data,
     run_prediction,
 )
@@ -37,7 +31,6 @@ from app.routes.ai_schemas import (
     EmergencySeverityPayload,
     ETAPayload,
     HealthRiskPayload,
-    HospitalPerformancePayload,
     HospitalSeverityPayload,
     InventoryPayload,
     OutbreakForecastPayload,

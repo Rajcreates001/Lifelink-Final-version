@@ -971,5 +971,179 @@
       "patient_id": "p-123"
     },
     "output": {}
+  },
+  {
+    "timestamp": "2026-09-07T17:21:54.273178",
+    "test": "anonymization",
+    "status": "FAIL",
+    "details": "PII removed from anonymized payload",
+    "input": {
+      "id": "emg-1",
+      "name": "Jane Doe",
+      "phone": "+100000000",
+      "address": "123 Test St",
+      "severity": "High",
+      "location": "12.9,77.5",
+      "patient_id": "p-999"
+    },
+    "output": {
+      "error": "Invalid token"
+    },
+    "pii_found": false
+  },
+  {
+    "timestamp": "2026-09-07T17:22:23.180293",
+    "test": "differential_privacy",
+    "status": "FAIL",
+    "details": "No weight variation detected",
+    "input": {
+      "hospital_id": "demo-hospital",
+      "weight_count": 8,
+      "noise_std": 0.08
+    },
+    "output": {
+      "first": null,
+      "second": null
+    },
+    "difference_detected": false
+  },
+  {
+    "timestamp": "2026-09-07T17:22:23.270168",
+    "test": "federated_privacy",
+    "status": "FAIL",
+    "details": "PII detected in response",
+    "input": {
+      "hospital_id": "demo-hospital",
+      "metrics": {
+        "samples": 120
+      },
+      "weights": [
+        0.1,
+        0.2,
+        0.3
+      ],
+      "name": "Jane Doe",
+      "phone": "+100000000",
+      "patient_id": "p-123"
+    },
+    "output": {
+      "error": "Invalid token"
+    }
+  },
+  {
+    "timestamp": "2026-09-08T06:41:04.804706",
+    "test": "anonymization",
+    "status": "FAIL",
+    "details": "PII removed from anonymized payload",
+    "input": {
+      "id": "emg-1",
+      "name": "Jane Doe",
+      "phone": "+100000000",
+      "address": "123 Test St",
+      "severity": "High",
+      "location": "12.9,77.5",
+      "patient_id": "p-999"
+    },
+    "output": {
+      "error": "Invalid token"
+    },
+    "pii_found": false
+  },
+  {
+    "timestamp": "2026-09-08T06:41:33.235349",
+    "test": "differential_privacy",
+    "status": "FAIL",
+    "details": "No weight variation detected",
+    "input": {
+      "hospital_id": "demo-hospital",
+      "weight_count": 8,
+      "noise_std": 0.08
+    },
+    "output": {
+      "first": null,
+      "second": null
+    },
+    "difference_detected": false
+  },
+  {
+    "timestamp": "2026-09-08T06:41:33.287304",
+    "test": "federated_privacy",
+    "status": "FAIL",
+    "details": "PII detected in response",
+    "input": {
+      "hospital_id": "demo-hospital",
+      "metrics": {
+        "samples": 120
+      },
+      "weights": [
+        0.1,
+        0.2,
+        0.3
+      ],
+      "name": "Jane Doe",
+      "phone": "+100000000",
+      "patient_id": "p-123"
+    },
+    "output": {
+      "error": "Invalid token"
+    }
+  },
+  {
+    "timestamp": "2026-09-08T06:42:34.324382",
+    "test": "anonymization",
+    "status": "FAIL",
+    "details": "PII removed from anonymized payload",
+    "input": {
+      "id": "emg-1",
+      "name": "Jane Doe",
+      "phone": "+100000000",
+      "address": "123 Test St",
+      "severity": "High",
+      "location": "12.9,77.5",
+      "patient_id": "p-999"
+    },
+    "output": {
+      "error": "Invalid token"
+    },
+    "pii_found": false
+  },
+  {
+    "timestamp": "2026-09-08T06:43:02.686253",
+    "test": "differential_privacy",
+    "status": "FAIL",
+    "details": "No weight variation detected",
+    "input": {
+      "hospital_id": "demo-hospital",
+      "weight_count": 8,
+      "noise_std": 0.08
+    },
+    "output": {
+      "first": null,
+      "second": null
+    },
+    "difference_detected": false
+  },
+  {
+    "timestamp": "2026-09-08T06:43:02.741061",
+    "test": "federated_privacy",
+    "status": "FAIL",
+    "details": "PII detected in response",
+    "input": {
+      "hospital_id": "demo-hospital",
+      "metrics": {
+        "samples": 120
+      },
+      "weights": [
+        0.1,
+        0.2,
+        0.3
+      ],
+      "name": "Jane Doe",
+      "phone": "+100000000",
+      "patient_id": "p-123"
+    },
+    "output": {
+      "error": "Invalid token"
+    }
   }
 ]

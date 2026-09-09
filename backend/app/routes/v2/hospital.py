@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from app.core.auth import get_optional_user, require_roles, require_scopes
 from app.core.dependencies import get_hospital_service, get_routing_service
 from app.core.rbac import AuthContext
-from app.db.database import get_db, require_db
+from app.db.database import require_db
 from app.services.collections import ANALYTICS_EVENTS, HOSPITALS, HOSPITAL_WAIT_TIMES, RESOURCES
 from app.services.hospital_service import HospitalService
 from app.services.indian_locale import SECONDARY_CITIES, PRIMARY_CITY

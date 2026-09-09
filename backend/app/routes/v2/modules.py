@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.auth import require_scopes
 from app.core.dependencies import get_realtime_service
-from app.db.database import get_db, require_db
+from app.db.database import require_db
 from app.services.collections import MODULE_ALERTS, MODULE_AUTOMATIONS, MODULE_ITEMS
 from app.services.realtime_service import RealtimeService
 from app.services.repository import MongoRepository

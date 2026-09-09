@@ -69,6 +69,7 @@ class KnowledgeDomainManager:
         hospital_id: str | None = None,
         department_id: str | None = None,
         government_level: str | None = None,
+        sub_role: str | None = None,
     ) -> dict[str, Any]:
         """
         Build metadata filters for vector search based on authorization.
@@ -105,7 +106,6 @@ class KnowledgeDomainManager:
     ) -> KnowledgeDomain:
         """Classify a document into a knowledge domain."""
         doc_type = metadata.get("document_type", "")
-        source = metadata.get("source", "")
 
         if doc_type in ("medical_record", "patient_data", "diagnosis", "prescription"):
             return KnowledgeDomain.MEDICAL_KNOWLEDGE

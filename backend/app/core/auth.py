@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from fastapi import Depends, Header, HTTPException, status
 from bson import ObjectId
+from bson.errors import InvalidId
+from jwt import InvalidTokenError
 
 from app.core.rbac import AuthContext, ensure_roles, ensure_scopes, resolve_scopes
 from app.core.security import decode_access_token
@@ -27,8 +29,8 @@ async def get_optional_user(authorization: str | None = Header(default=None)) ->
 
     try:
         payload = decode_access_token(token)
-    except Exception:
-        return None
+    except InvalidTokenError:
+        return None  # malformed/expired/revoked token — optional auth simply opts out
 
     user_id = payload.get("id") or payload.get("sub")
     role = payload.get("role") or payload.get("portal") or payload.get("portalRole")
@@ -41,7 +43,7 @@ async def get_optional_user(authorization: str | None = Header(default=None)) ->
     user_repo = MongoRepository(db, USERS)
     try:
         lookup_id = ObjectId(str(user_id))
-    except Exception:
+    except InvalidId:
         lookup_id = user_id
     user = await user_repo.find_one({"_id": lookup_id})
     if not user:
@@ -72,7 +74,7 @@ async def get_current_user(authorization: str | None = Header(default=None)) -> 
     user_repo = MongoRepository(db, USERS)
     try:
         lookup_id = ObjectId(str(user_id))
-    except Exception:
+    except InvalidId:
         lookup_id = user_id
     user = await user_repo.find_one({"_id": lookup_id})
     if not user:

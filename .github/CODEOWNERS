@@ -1,0 +1,18 @@
+# Default owners — everything requires review from the maintainers below.
+# Syntax: https://docs.github.com/en/repositories/managing-a-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+*                                       @lifelink-maintainers
+
+# Backend API and services
+/backend/                               @lifelink-maintainers/backend
+
+# Client app
+/client/                                @lifelink-maintainers/frontend
+
+# Infrastructure, CI/CD, deployments
+/.github/                               @lifelink-maintainers/devops
+/docker-compose*.yml                    @lifelink-maintainers/devops
+/scripts/                               @lifelink-maintainers/devops
+/monitoring/                            @lifelink-maintainers/devops
+
+# Database migrations require backend + devops review
+/backend/migrations/                    @lifelink-maintainers/backend @lifelink-maintainers/devops

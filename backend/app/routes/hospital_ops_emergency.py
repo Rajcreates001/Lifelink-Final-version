@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Body, HTTPException, Query, Depends
 from app.core.auth import get_current_user, AuthContext
 
-from app.db.database import get_db, require_db
+from app.db.database import require_db
 from app.services.repository import MongoRepository
 from app.services.collections import (
     AMBULANCE_ASSIGNMENTS,
@@ -173,8 +173,10 @@ async def emergency_intake(
     if is_encryption_enabled():
         for rec in records:
             if isinstance(rec, dict):
-                if rec.get('name'): rec['name'] = decrypt_field(rec['name'])
-                if rec.get('contact'): rec['contact'] = decrypt_field(rec['contact'])
+                if rec.get('name'):
+                    rec['name'] = decrypt_field(rec['name'])
+                if rec.get('contact'):
+                    rec['contact'] = decrypt_field(rec['contact'])
     return {"count": len(records), "data": records}
 
 

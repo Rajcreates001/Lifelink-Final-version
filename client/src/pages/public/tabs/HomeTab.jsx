@@ -50,14 +50,20 @@ const HomeTab = ({ user, data, sosStats, fetchData, fetchNotifications }) => {
   const [triggeredAt, setTriggeredAt] = useState(null);
   const [selectedIncident, setSelectedIncident] = useState(null);
   const [selectedHospital, setSelectedHospital] = useState(null);
-  const [dbStatus, setDbStatus] = useState(null);
+  const [dbStatus, setDbStatus] = useState(() => {
+    // Preload: paint the last known data-health instantly, then revalidate.
+    try {
+      const stored = localStorage.getItem('lifelink:public-db-status');
+      return stored ? JSON.parse(stored) : null;
+    } catch { return null; }
+  });
   const [dbStatusError, setDbStatusError] = useState('');
 
   // ─── Hook: Geolocation ────────────────────────────────
   const { location: sosLocation, status: sosLocationStatus } = useGeolocation();
 
   // ─── Hook: Speech Recognition ─────────────────────────
-  const { isRecording, transcript, toggleRecording, isSupported: speechSupported } = useSpeechRecognition();
+  const { isRecording, transcript, setTranscript, toggleRecording, isSupported: speechSupported } = useSpeechRecognition();
 
   // ─── Hook: SOS Polling ────────────────────────────────
   useSosPolling(sosId, setSosStatus);
@@ -165,7 +171,8 @@ const HomeTab = ({ user, data, sosStats, fetchData, fetchNotifications }) => {
     try {
       const res = await apiFetch('/v2/agents/ask', {
         method: 'POST',
-        body: JSON.stringify({ query: `Provide step-by-step emergency guidance for: ${prompt}. Keep it short.`, latitude: sosLocation?.lat, longitude: sosLocation?.lng })
+        body: JSON.stringify({ query: `Provide step-by-step emergency guidance for: ${prompt}. Keep it short.`, latitude: sosLocation?.lat, longitude: sosLocation?.lng }),
+        timeoutMs: 90000
       });
       if (res.ok) {
         const answer = res.data?.answer || '';

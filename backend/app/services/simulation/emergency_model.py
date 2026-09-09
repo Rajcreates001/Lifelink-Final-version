@@ -219,10 +219,8 @@ class Ambulance(Agent):
         nearest_hosp = min(hospitals, key=lambda h: haversine_km(
             self.lat, self.lng, h.lat, h.lng))
         dist = haversine_km(self.lat, self.lng, nearest_hosp.lat, nearest_hosp.lng)
-        (dist / self.speed_kph) * 60
 
         # Admit patient
-        _severity_bonus = {"critical": 0, "high": 1, "moderate": 2, "low": 3}
         nearest_hosp.admit_patient(self.current_incident.severity)
         self.current_incident.hospital_id = nearest_hosp.unique_id
         self.total_distance_km += dist

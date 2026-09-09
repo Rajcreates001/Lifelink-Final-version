@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.db.database import require_db
@@ -70,10 +70,6 @@ async def check_profile_cluster(payload: ProfileClusterRequest, ctx: AuthContext
     if isinstance(user.get("sos_alerts"), dict):
         sos_count = len(user["sos_alerts"])
     donation_count = len(user.get("donation_history") or []) if isinstance(user.get("donation_history"), list) else 0
-
-    emergency_rate = min(15, sos_count + 1)
-    avg_response_time = max(5, 25 - donation_count * 2)
-    hospital_bed_occupancy = min(100, max(20, 50 + sos_count * 5))
 
     cluster_payload = {
         "sos_usage": sos_count,

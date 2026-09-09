@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.core.auth import require_roles, require_scopes
 from app.core.dependencies import get_government_service
 from app.core.rbac import AuthContext
-from app.db.database import get_db, require_db
+from app.db.database import require_db
 from app.services.government_service import GovernmentService
 from app.services.collections import USERS
 from app.services.repository import MongoRepository

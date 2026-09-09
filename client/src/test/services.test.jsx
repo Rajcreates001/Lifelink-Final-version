@@ -145,7 +145,7 @@ describe('Staff Scheduling Constants', () => {
 describe('Kubernetes Manifests', () => {
     it('backend deployment has correct port', () => {
         // This is a structural test - verify the YAML concept
-        const backendPort = 4002;
+        const backendPort = 3001;
         expect(backendPort).toBeGreaterThan(0);
         expect(backendPort).toBeLessThan(65535);
     });

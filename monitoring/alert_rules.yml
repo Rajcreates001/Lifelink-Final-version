@@ -1,0 +1,89 @@
+# LifeLink Alert Rules
+# Loaded by Prometheus via rule_files in prometheus.yml.
+# These cover the core production signals; wire Alertmanager (email/Slack/
+# PagerDuty) when a notification channel exists — rules alone only surface
+# fires in the Prometheus UI and Grafana alerting.
+
+groups:
+  - name: lifelink-availability
+    rules:
+      # Backend completely down for 1 minute.
+      - alert: BackendDown
+        expr: up{job="lifelink-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "LifeLink backend is down"
+          description: "The backend scrape target has been unreachable for over 1 minute."
+
+      # Node exporter (host metrics) down for 5 minutes.
+      - alert: NodeExporterDown
+        expr: up{job="node-exporter"} == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Node exporter is down"
+          description: "Host-level metrics have been unavailable for 5 minutes."
+
+  - name: lifelink-api-health
+    rules:
+      # High 5xx rate: >5% of requests over 5 minutes.
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m]))
+          /
+          sum(rate(http_requests_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High 5xx error rate (>5%)"
+          description: "More than 5% of API responses are server errors over the last 5 minutes."
+
+      # Slow API: 95th percentile latency above 2s for 10 minutes.
+      - alert: HighLatencyP95
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API p95 latency above 2s"
+          description: "The 95th percentile request duration has exceeded 2 seconds for 10 minutes."
+
+      # Backend process starved: event-loop blocked alerts come from the
+      # Python runtime exporter; here we catch request pile-ups instead.
+      - alert: RequestBacklog
+        expr: sum(rate(http_requests_total[5m])) == 0 and up{job="lifelink-backend"} == 1
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Backend up but receiving no traffic"
+          description: "Backend is healthy but zero requests observed for 15m — possible proxy/network fault."
+
+  - name: lifelink-resources
+    rules:
+      # Host under memory pressure.
+      - alert: HostMemoryPressure
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 0.9
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Host memory usage above 90%"
+          description: "Available memory on the Docker host has dropped below 10% for 10 minutes."
+
+      # Host disk filling up.
+      - alert: HostDiskFilling
+        expr: (1 - (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"})) > 0.85
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Host disk usage above 85%"
+          description: "A non-tmpfs filesystem is over 85% full — check Postgres/Redis volumes."

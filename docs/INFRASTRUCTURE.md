@@ -33,13 +33,13 @@ The GPS simulator (`backend/app/services/gps_simulator.py`) provides:
 
 ```bash
 # Start simulation
-curl -X POST http://localhost:4002/api/gps-tracking/start
+curl -X POST http://localhost:3001/api/gps-tracking/start
 
 # Get all positions
-curl http://localhost:4002/api/gps-tracking/ambulances
+curl http://localhost:3001/api/gps-tracking/ambulances
 
 # Stop simulation
-curl -X POST http://localhost:4002/api/gps-tracking/stop
+curl -X POST http://localhost:3001/api/gps-tracking/stop
 ```
 
 ### Frontend Component
@@ -68,10 +68,10 @@ pip install -r requirements.txt
 
 ```bash
 # Interactive mode (web UI)
-locust -f locustfile.py --host=http://localhost:4002
+locust -f locustfile.py --host=http://localhost:3001
 
 # Headless mode (CI/CD)
-locust -f locustfile.py --host=http://localhost:4002 \
+locust -f locustfile.py --host=http://localhost:3001 \
     --headless -u 100 -r 10 --run-time 2m \
     --html=reports/load_test_report.html
 ```
@@ -126,7 +126,7 @@ The pre-configured Grafana dashboard (`lifelink-overview.json`) includes:
 ```
 ┌─────────────────┐     ┌──────────────────┐
 │  LifeLink API   │────▶│    Prometheus    │
-│   (port 4002)   │     │   (port 9090)    │
+│   (port 3001)   │     │   (port 9090)    │
 └─────────────────┘     └────────┬─────────┘
                                  │
 ┌─────────────────┐              │
@@ -157,11 +157,11 @@ cd monitoring
 docker-compose -f docker-compose.monitoring.yml up -d
 
 # Start GPS simulation (via API)
-curl -X POST http://localhost:4002/api/gps-tracking/start
+curl -X POST http://localhost:3001/api/gps-tracking/start
 
 # Run load tests
 cd ../loadtest
-locust -f locustfile.py --host=http://localhost:4002
+locust -f locustfile.py --host=http://localhost:3001
 ```
 
 ---

@@ -1,0 +1,24 @@
+[flake8]
+# flake8 config for the LifeLink backend.
+#
+# This gate runs as a RATCHET (see .flake8-baseline and the CI workflow).
+# The baseline pins today's violation count; CI fails only when it GROWS.
+# Fix code, then lower the baseline. Never raise it.
+#
+# Ignored codes below are deliberate, documented choices - not oversights:
+#   E203, W503        conflict with PEP 8 / black-style formatting
+#   E122,E124,        continuation-line indentation style noise (legacy code;
+#   E127, E128        tracked via the ratchet when files are touched)
+#   E402              module-level imports after app setup (FastAPI pattern:
+#                     settings/logging configured before router imports)
+#   F403, F405        deliberate star-import aggregation pattern shared by the
+#                     hospital_ops_* route modules
+#   E712              '== True' comparisons are idiomatic in SQLAlchemy filters
+max-line-length = 120
+extend-ignore = E203,W503,E122,E124,E127,E128,E402,F403,F405,E712
+exclude =
+    .git,
+    __pycache__,
+    migrations,
+    build,
+    dist

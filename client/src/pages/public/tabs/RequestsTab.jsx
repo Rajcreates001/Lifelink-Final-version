@@ -42,8 +42,9 @@ const URGENCY_CONFIG = {
 // ─── Main Component ─────────────────────────────────────
 const RequestsTab = ({ user, onRequestSuccess }) => {
   const [requestForm, setRequestForm] = useState({
-    type: 'blood', age: '', gender: 'Male', contact: '',
-    requiredTime: '', specific: '', urgency: 'low', details: ''
+    type: 'blood', age: '28', gender: 'Male', contact: '',
+    requiredTime: 'Within 24 hours', specific: 'O+ blood type required', urgency: 'high',
+    details: 'Road accident victim with heavy bleeding admitted to emergency — needs immediate blood transfusion.'
   });
   const [submitting, setSubmitting] = useState(false);
   const [activeAnalysisStep, setActiveAnalysisStep] = useState(-1);

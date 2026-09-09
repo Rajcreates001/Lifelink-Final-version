@@ -158,6 +158,7 @@ const HealthRiskCalculator = () => {
   const loadHistory = async () => {
     if (!user?.id) return;
     try {
+      // apiFetch dedupes/shares the preload request warmed by PublicDashboard.
       const res = await apiFetch(`/api/health/risk/history/${user.id}`, { method: 'GET' });
       if (res.ok && Array.isArray(res.data?.data)) {
         setHistory(res.data.data.map((item) => ({
@@ -332,7 +333,7 @@ const HealthRiskCalculator = () => {
     setAiLoading(true);
     try {
       const query = `Provide a brief condition prediction and early warning advice for symptoms: ${formData.symptoms || 'none'}; vitals: age ${formData.age}, bmi ${formData.bmi}, bp ${formData.blood_pressure}, hr ${formData.heart_rate}.`;
-      const res = await apiFetch('/v2/agents/ask', { method: 'POST', body: JSON.stringify({ query }) });
+      const res = await apiFetch('/v2/agents/ask', { method: 'POST', body: JSON.stringify({ query }), timeoutMs: 90000 });
       if (res.ok) setAiInsight(res.data?.answer || 'No additional insights found.');
       else setAiInsight('AI insights unavailable right now.');
     } catch { setAiInsight('AI insights unavailable right now.'); }

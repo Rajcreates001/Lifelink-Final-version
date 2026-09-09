@@ -87,6 +87,8 @@ const FindDonorsTab = ({ user, data }) => {
     );
   }, []);
 
+  const userBloodGroup = data?.healthRecords?.bloodGroup || data?.publicProfile?.healthRecords?.bloodGroup || 'O+';
+
   // ─── Fetch Donor Matches ────────────────────────────
   useEffect(() => {
     const fetchMatches = async () => {
@@ -94,10 +96,9 @@ const FindDonorsTab = ({ user, data }) => {
       setDonorMatchLoading(true);
       setDonorMatchError('');
       try {
-        const bloodGroup = data?.healthRecords?.bloodGroup || data?.publicProfile?.healthRecords?.bloodGroup || 'O+';
         const res = await apiFetch('/v2/public/donors/match', {
           method: 'POST',
-          body: JSON.stringify({ blood_group: bloodGroup, urgency: 'medium', latitude: donorLocation.lat, longitude: donorLocation.lng }),
+          body: JSON.stringify({ blood_group: userBloodGroup, urgency: 'medium', latitude: donorLocation.lat, longitude: donorLocation.lng }),
           timeoutMs: 15000,
         });
         if (res.ok) setDonorMatches(res.data?.donors || []);
@@ -106,7 +107,21 @@ const FindDonorsTab = ({ user, data }) => {
       finally { setDonorMatchLoading(false); }
     };
     fetchMatches();
-  }, [donorLocation, data]);
+  }, [donorLocation, userBloodGroup]);
+
+  // ─── Preload: warm donor-directory as an instant fallback list while the ──
+  // precise AI match runs; apiFetch dedupes the preload request.
+  useEffect(() => {
+    let cancelled = false;
+    const loadDirectory = async () => {
+      const res = await apiFetch('/api/donors', { method: 'GET', timeoutMs: 10000 });
+      if (!cancelled && res?.ok && Array.isArray(res.data) && res.data.length > 0) {
+        setDonorMatches((prev) => (prev.length > 0 ? prev : res.data.slice(0, 50)));
+      }
+    };
+    loadDirectory();
+    return () => { cancelled = true; };
+  }, []);
 
   // ─── Filtered & Sorted Donors ─────────────────────────
   const visibleDonors = useMemo(() => {
@@ -191,7 +206,6 @@ const FindDonorsTab = ({ user, data }) => {
 
   // ─── Derived Data ─────────────────────────────────────
   const activeFilterCount = [donorSearch.trim().length > 0, donorGroupFilter !== 'all', donorAvailabilityFilter !== 'all'].filter(Boolean).length;
-  const userBloodGroup = data?.healthRecords?.bloodGroup || data?.publicProfile?.healthRecords?.bloodGroup || 'O+';
   // Recipient compatibility: which donor groups can donate TO this user?
   const userCompatibleGroups = RECIPIENT_COMPAT[userBloodGroup] || ['O+', 'O-'];
 

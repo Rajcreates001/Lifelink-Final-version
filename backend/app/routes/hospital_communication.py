@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from app.core.auth import get_current_user, AuthContext
 from pydantic import BaseModel
 
-from app.db.database import get_db, require_db
+from app.db.database import require_db
 from app.services.collections import HOSPITAL_MESSAGES, HOSPITAL_NETWORK_AGREEMENTS, HOSPITALS, USERS
 from app.services.repository import MongoRepository
 

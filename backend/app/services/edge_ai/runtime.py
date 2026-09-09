@@ -233,7 +233,7 @@ class EdgeAIRuntime:
             "",
             "⚠️ This is a rule-based response. AI inference unavailable.",
             "Please proceed with clinical judgment.",
-            f"Event stored for sync when connectivity is restored.",
+            "Event stored for sync when connectivity is restored.",
         ])
 
         return "\n".join(response_parts)

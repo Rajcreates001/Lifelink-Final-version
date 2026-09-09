@@ -28,13 +28,10 @@ SIE is NOT the application database — it is a dedicated inference service.
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import math
-import time
 from typing import Any
-from uuid import uuid4
 
 import httpx
 

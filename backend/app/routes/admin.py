@@ -2,8 +2,8 @@ from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.db.database import get_db, require_db
-from app.core.auth import get_current_user, AuthContext
+from app.db.database import require_db
+from app.core.auth import require_roles, AuthContext
 from app.services.collections import USERS
 from app.services.repository import MongoRepository
 
@@ -22,7 +22,10 @@ def _as_object_id(value: str) -> ObjectId:
 
 
 @router.post("/users/verify")
-async def verify_hospital(payload: VerifyHospitalRequest, ctx: AuthContext = Depends(get_current_user)):
+async def verify_hospital(
+    payload: VerifyHospitalRequest,
+    ctx: AuthContext = Depends(require_roles("government")),
+):
     db = require_db()
     user_repo = MongoRepository(db, USERS)
 

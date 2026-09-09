@@ -814,6 +814,41 @@ ROLE_CONTEXTS = {
         "can_access_finance": False,
         "can_access_admin": False,
     },
+    # ── Demo account sub-role aliases ────────────────────────────────
+    # The seeded demo accounts (seed_mass_demo_data.py) use sub-roles like
+    # "dispatcher", "finance", and "national_admin". Map them to the closest
+    # real role context so LifeLink AI responses are role-aware instead of
+    # falling back to the generic "Staff" profile.
+    "dispatcher": {
+        "role_label": "Ambulance Dispatcher",
+        "scope": "emergency",
+        "description": "Ambulance dispatcher coordinating fleet and assignments",
+        "accessible_modules": ["operations", "live-monitoring", "ambulance-tracking", "dispatch"],
+        "knowledge_domains": ["dispatch_ops", "gps_tracking", "vehicle_status", "eta", "hospital_allocation"],
+        "can_access_clinical": False,
+        "can_access_finance": False,
+        "can_access_admin": False,
+    },
+    "finance": {
+        "role_label": "Finance Officer",
+        "scope": "financial",
+        "description": "Finance department with billing and revenue access",
+        "accessible_modules": ["billing", "revenue-analytics", "insurance", "cost-optimization"],
+        "knowledge_domains": ["revenue", "claims", "budgets", "invoices", "payments", "insurance", "expenses", "forecasts"],
+        "can_access_clinical": False,
+        "can_access_finance": True,
+        "can_access_admin": False,
+    },
+    "national_admin": {
+        "role_label": "National Administrator",
+        "scope": "government",
+        "description": "National-level emergency response administrator",
+        "accessible_modules": ["command-center", "operations", "disaster-management", "policy-workflow", "ai-ml-lab"],
+        "knowledge_domains": ["emergency_coordination", "inter_agency_response", "national_crisis", "policy_compliance", "resource_mobilization"],
+        "can_access_clinical": False,
+        "can_access_finance": False,
+        "can_access_admin": True,
+    },
 }
 
 DEFAULT_ROLE_CONTEXT = {
@@ -1056,8 +1091,8 @@ class EnterpriseAIChatService:
                     "role_id": role_id,
                     "role_label": role_label,
                     "department": department or "Government",
-                    "scope": role_context["scope"],
-                    "description": role_context["description"],
+                    "scope": role_context.get("scope", "government"),
+                    "description": role_context.get("description", "Government official"),
                 },
                 "role": role_context,
                 "current_module": current_module,
@@ -1081,8 +1116,8 @@ class EnterpriseAIChatService:
                     "role_id": role_id,
                     "role_label": role_label,
                     "department": department or "General",
-                    "scope": role_context["scope"],
-                    "description": role_context["description"],
+                    "scope": role_context.get("scope", "general"),
+                    "description": role_context.get("description", "Hospital staff"),
                 },
                 "role": role_context,
                 "current_module": current_module,

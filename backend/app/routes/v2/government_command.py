@@ -18,7 +18,7 @@ from app.core.auth import require_scopes
 from app.core.config import get_settings
 from app.core.dependencies import get_realtime_service
 from app.core.rbac import AuthContext
-from app.db.database import get_db, require_db
+from app.db.database import require_db
 from app.db.models import (
     GovAmbulance,
     GovAuditLog,
@@ -35,7 +35,7 @@ from app.db.models import (
 )
 from app.services.cache_store import CacheStore
 from app.services.realtime_service import RealtimeService
-from app.services.collections import USERS
+from app.services.collections import GOVERNMENT_REPORTS, USERS
 from app.services.repository import MongoRepository
 
 router = APIRouter(tags=["government-command"])
@@ -524,6 +524,78 @@ async def command_overview(ctx: AuthContext = Depends(require_scopes("dashboard:
         "ambulances": ambulances or 0,
         "emergencies": emergencies or 0,
     }
+
+
+@router.get("/emergencies")
+async def list_government_emergencies(
+    status: str | None = Query(None),
+    severity: str | None = Query(None),
+    limit: int = Query(100, ge=1, le=500),
+    ctx: AuthContext = Depends(require_scopes("dashboard:read")),
+):
+    """List emergencies for the Intelligence module.
+
+    The frontend calls /v2/government/emergencies; data lives in the gov_emergencies
+    table (seeded) — return it in the same {count, data} shape as government-ops.
+    """
+    db = require_db()
+    async with db() as session:
+        stmt = select(GovEmergency).order_by(GovEmergency.created_at.desc()).limit(limit)
+        if status:
+            stmt = stmt.where(GovEmergency.status == status)
+        if severity:
+            stmt = stmt.where(GovEmergency.severity == severity)
+        rows = (await session.execute(stmt)).scalars().all()
+    data = [
+        {
+            "_id": str(row.id),
+            "type": row.emergency_type,
+            "severity": row.severity,
+            "status": row.status,
+            "location": {"lat": row.latitude, "lng": row.longitude},
+            "district": getattr(row, "district", None) or row.city if hasattr(row, "city") else getattr(row, "district", None),
+            "createdAt": row.created_at.isoformat() if row.created_at else None,
+        }
+        for row in rows
+    ]
+    return {"count": len(data), "data": data}
+
+
+@router.get("/reports")
+async def list_government_reports(
+    status: str | None = Query(None),
+    scope: str | None = Query(None),
+    limit: int = Query(100, ge=1, le=500),
+    ctx: AuthContext = Depends(require_scopes("dashboard:read")),
+):
+    """List government reports for the Reports module (frontend: /v2/government/reports)."""
+    db = require_db()
+    repo = MongoRepository(db, GOVERNMENT_REPORTS)
+    query: dict[str, Any] = {}
+    if status:
+        query["status"] = status
+    if scope:
+        query["scope"] = scope
+    reports = await repo.find_many(query, limit=limit)
+    return {"count": len(reports), "data": reports}
+
+
+@router.post("/reports", status_code=201)
+async def create_government_report(payload: dict = Body(...), ctx: AuthContext = Depends(require_scopes("gov:admin"))):
+    """Create a government report (frontend Reports module POST)."""
+    db = require_db()
+    repo = MongoRepository(db, GOVERNMENT_REPORTS)
+    now = datetime.now(timezone.utc)
+    doc = {
+        "title": str(payload.get("title") or "Untitled report")[:200],
+        "scope": payload.get("scope") or "National",
+        "summary": payload.get("summary") or "Automated report generated.",
+        "status": "Ready",
+        "createdAt": now.isoformat(),
+        "updatedAt": now.isoformat(),
+    }
+    created = await repo.insert_one(doc)
+    return created
 
 
 @router.post("/decision/engine")

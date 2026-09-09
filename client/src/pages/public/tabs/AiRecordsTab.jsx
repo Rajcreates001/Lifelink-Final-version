@@ -66,8 +66,16 @@ function useCountUp(target, duration = 1200) {
 }
 
 // ─── Main Component ─────────────────────────────────────
+const SAMPLE_REPORT = `Patient: 45-year-old male, admitted via OPD.
+Vitals: BP 150/95 mmHg, HR 92 bpm, SpO2 97%, BMI 28.4.
+Lab results: Fasting glucose 178 mg/dL, HbA1c 8.1%, creatinine 1.2 mg/dL.
+Complaints: persistent fatigue, excessive thirst, frequent urination.
+History: Type 2 Diabetes Mellitus (5 years), Stage 1 Hypertension.
+Medication: Metformin 500mg twice daily, Amlodipine 5mg once daily.
+Assessment: Blood glucose poorly controlled; recommend HbA1c recheck in 3 months and lifestyle modification.`;
+
 const AiRecordsTab = ({ user }) => {
-  const [reportText, setReportText] = useState('');
+  const [reportText, setReportText] = useState(SAMPLE_REPORT);
   const [reportResult, setReportResult] = useState(null);
   const [analyzingReport, setAnalyzingReport] = useState(false);
   const [reportHistory, setReportHistory] = useState([]);
@@ -89,8 +97,9 @@ const AiRecordsTab = ({ user }) => {
   useEffect(() => {
     const loadReportHistory = async () => {
       if (!user?.id) return;
+      // apiFetch dedupes/shares the preload request warmed by PublicDashboard.
       const res = await apiFetch(`/api/health/records/${user.id}`, { method: 'GET' });
-      if (res.ok && Array.isArray(res.data?.data)) setReportHistory(res.data.data);
+      if (res?.ok && Array.isArray(res.data?.data)) setReportHistory(res.data.data);
     };
     loadReportHistory();
   }, [user?.id]);

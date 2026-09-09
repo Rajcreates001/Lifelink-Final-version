@@ -29,9 +29,7 @@ from __future__ import annotations
 
 import json
 import logging
-import time
 from typing import Any
-from uuid import uuid4
 
 from app.core.config import get_settings
 
@@ -163,7 +161,8 @@ class HeadroomService:
         """
         Compress a tool output (JSON, log, API response) before sending to LLM.
 
-        Returns dict with keys: compressed, original_tokens, compressed_tokens, tier
+        Returns dict with keys: compressed (bool), compressed_output, original_tokens,
+        compressed_tokens, tier
         """
         if not self._available:
             return self._fallback_compress(output)
@@ -173,11 +172,11 @@ class HeadroomService:
         # Tier 1 never gets compressed
         if not policy.get("compress", True):
             return {
-                "compressed": output,
+                "compressed": False,
+                "compressed_output": output,
                 "original_tokens": self._estimate_tokens(output),
                 "compressed_tokens": self._estimate_tokens(output),
                 "tier": tier,
-                "compressed": False,
                 "reason": "Tier 1 critical data preserved intact",
             }
 
@@ -195,11 +194,11 @@ class HeadroomService:
             )
 
             return {
-                "compressed": compressed_text,
+                "compressed": True,
+                "compressed_output": compressed_text,
                 "original_tokens": result.tokens_before if hasattr(result, "tokens_before") else original_tokens,
                 "compressed_tokens": compressed_tokens,
                 "tier": tier,
-                "compressed": True,
                 "compression_ratio": comp_ratio,
             }
         except Exception as exc:
@@ -371,11 +370,11 @@ class HeadroomService:
         compressed_tokens = self._estimate_tokens(compressed_text)
 
         return {
-            "compressed": compressed_text,
+            "compressed": True,
+            "compressed_output": compressed_text,
             "original_tokens": tokens,
             "compressed_tokens": compressed_tokens,
             "tier": "tier_2",
-            "compressed": True,
             "fallback": True,
             "compression_ratio": (
                 round(1 - compressed_tokens / tokens, 3)

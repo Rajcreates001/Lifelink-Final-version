@@ -336,7 +336,7 @@ async def build_report_analysis(report_text: str, user_id: str | None, source_me
     summary = result.get("summary") or "Automated summary generated from the submitted report."
 
     # Evidence-based vital assessment
-    _vital_assessment = assess_vitals(
+    assess_vitals(
         heart_rate=metrics.get("heart_rate"),
         blood_pressure_sys=metrics.get("blood_pressure_systolic"),
         blood_pressure_dia=metrics.get("blood_pressure_diastolic"),

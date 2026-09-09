@@ -5,7 +5,6 @@ Provides health status of core services.
 Requires authentication to prevent information leakage.
 """
 
-import asyncio
 import time
 import logging
 from datetime import datetime, timezone

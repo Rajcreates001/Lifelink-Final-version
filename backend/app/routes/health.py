@@ -4,7 +4,7 @@ from bson import ObjectId
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from app.db.database import get_db, require_db
+from app.db.database import require_db
 from app.services.collections import HEALTH_RECORDS, PREDICTIONS
 from app.services.repository import MongoRepository
 

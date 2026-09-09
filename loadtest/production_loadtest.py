@@ -9,7 +9,7 @@ This test simulates:
 - Authentication flow (signup → login → API calls)
 
 Usage:
-    python production_loadtest.py --host http://localhost:4002 --users 200 --duration 120
+    python production_loadtest.py --host http://localhost:3001 --users 200 --duration 120
 """
 
 import argparse
@@ -218,7 +218,7 @@ def worker(client: HTTPClient, stats: StatsCollector, user_id: int,
 
 def main():
     parser = argparse.ArgumentParser(description="LifeLink Production Load Test")
-    parser.add_argument("--host", default="http://localhost:4002", help="Backend URL")
+    parser.add_argument("--host", default="http://localhost:3001", help="Backend URL")
     parser.add_argument("--users", type=int, default=200, help="Number of concurrent users")
     parser.add_argument("--duration", type=int, default=120, help="Test duration in seconds")
     parser.add_argument("--ramp-up", type=int, default=30, help="Ramp-up time in seconds")

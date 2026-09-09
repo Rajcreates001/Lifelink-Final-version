@@ -12,7 +12,7 @@ from app.core.auth import get_optional_user, require_roles
 from app.core.config import get_settings
 from app.core.dependencies import get_public_service, get_realtime_service, get_routing_service, get_weather_service
 from app.core.rbac import AuthContext
-from app.db.database import get_db, require_db
+from app.db.database import require_db
 from app.services.cache_store import CacheStore
 from app.services.collections import (
     ALERTS,

@@ -5,12 +5,29 @@ import time
 
 import requests
 
+import pytest
+
 from tests.utils.logger import log_test
 from tests.utils.result_writer import save_result
 
 
 BASE_URL = os.getenv("LIFELINK_BASE_URL", "http://localhost:3001")
 RESULT_FILE = "performance_results.json"
+
+
+def _server_reachable() -> bool:
+    """Skip (not fail) in environments without a running backend, e.g. CI."""
+    try:
+        requests.get(f"{BASE_URL}/api/health", timeout=2)
+        return True
+    except requests.RequestException:
+        return False
+
+
+pytestmark = pytest.mark.skipif(
+    not _server_reachable(),
+    reason=f"no live backend at {BASE_URL} — performance tests need a running server",
+)
 
 
 def test_api_speed():

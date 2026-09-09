@@ -34,14 +34,6 @@ from dataclasses import dataclass, field
 from typing import Any
 from uuid import uuid4
 
-from app.core.config import get_settings
-from app.core.rbac import (
-    BASE_SCOPES,
-    HOSPITAL_SUBROLES,
-    GOVERNMENT_SUBROLES,
-    AMBULANCE_SUBROLES,
-    PORTAL_ROLES,
-)
 
 logger = logging.getLogger("lifelink.ai.context_builder")
 

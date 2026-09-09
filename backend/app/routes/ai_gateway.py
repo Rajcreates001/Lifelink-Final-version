@@ -18,11 +18,9 @@ Endpoints:
 from __future__ import annotations
 
 import logging
-import time
 from typing import Any
-from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
@@ -31,7 +29,6 @@ from app.services.ai_platform.context_builder import UserContext
 from app.services.ai_platform.orchestrator import (
     AIOrchestrator,
     AIRequest,
-    Priority,
 )
 from app.services.ai_platform.headroom_service import HeadroomService
 from app.services.ai_platform.sie_client import get_sie_client

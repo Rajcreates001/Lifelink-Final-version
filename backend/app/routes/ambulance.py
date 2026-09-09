@@ -8,7 +8,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException
 from app.core.auth import get_current_user, AuthContext
 from app.core.dependencies import get_realtime_service, get_routing_service
 from app.services.rate_limiter import rate_limit_ambulance_write
-from app.db.database import get_db, require_db
+from app.db.database import require_db
 from app.services.collections import ALERTS, AMBULANCE_ASSIGNMENTS, AMBULANCES, NOTIFICATIONS, USERS
 from app.services.repository import MongoRepository
 from app.services.routing_service import RoutingService

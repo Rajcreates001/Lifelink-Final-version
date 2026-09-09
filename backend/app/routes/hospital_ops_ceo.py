@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Body, HTTPException, Query, Depends
 from app.core.auth import get_current_user, AuthContext
 
-from app.db.database import get_db, require_db
+from app.db.database import require_db
 from app.services.repository import MongoRepository
 from app.services.collections import (
     AMBULANCE_ASSIGNMENTS,
@@ -72,6 +72,10 @@ async def ceo_global_metrics(hospitalId: str = Query(...),
                 created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
             except ValueError:
                 created_at = now
+        if created_at.tzinfo is None:
+            # Stored docs may hold naive datetimes — normalize to UTC so
+            # comparisons against tz-aware cutoffs never raise TypeError.
+            created_at = created_at.replace(tzinfo=timezone.utc)
         amount = float(inv.get("amount") or 0)
         if created_at >= month_cutoff:
             monthly_total += amount

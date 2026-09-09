@@ -14,7 +14,7 @@ from app.core.celery_app import celery_app
 from app.core.config import get_settings
 from app.core.dependencies import get_routing_service, get_weather_service
 from app.core.rbac import AuthContext
-from app.db.database import get_db, require_db
+from app.db.database import require_db
 from app.services.cache_store import CacheStore
 from app.services.collections import ANALYTICS_EVENTS, PREDICTIONS
 from app.services.prediction_store import get_latest_prediction

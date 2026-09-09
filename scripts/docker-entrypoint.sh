@@ -105,9 +105,37 @@ asyncio.run(main())
     echo "✅ Database setup complete!"
 }
 
+# ─── Demo AI seeding ─────────────────────────────────────
+# Runs the real ML endpoints + AI chat endpoints with demo inputs so every
+# role's dashboard shows persisted outputs immediately (demo mode only).
+# Runs in the background after the API is healthy so startup is not blocked.
+run_demo_ai_seed() {
+    if [ "${APP_ENV:-development}" = "production" ]; then
+        echo "ℹ️  APP_ENV=production — skipping demo AI seed"
+        return 0
+    fi
+    if [ "${SEED_DEMO_AI:-true}" != "true" ]; then
+        echo "ℹ️  SEED_DEMO_AI=false — skipping demo AI seed"
+        return 0
+    fi
+    (
+        # Wait for the API health endpoint (up to ~90s) before seeding.
+        for i in $(seq 1 30); do
+            if python -c "import urllib.request; urllib.request.urlopen('http://localhost:${APP_PORT}/api/health', timeout=3)" 2>/dev/null; then
+                echo "🤖 Seeding demo AI outputs (predictions + chat history)..."
+                python scripts/seed_demo_ai.py || echo "⚠️  Demo AI seed failed (non-fatal) — dashboards will show data once users interact."
+                return 0
+            fi
+            sleep 3
+        done
+        echo "⚠️  API not healthy in time — skipping demo AI seed"
+    ) &
+}
+
 # ─── Start Backend API ────────────────────────────────────
 start_api() {
     echo "🚀 Starting LifeLink Backend API on port ${APP_PORT}..."
+    run_demo_ai_seed
     if [ "${APP_ENV:-development}" = "production" ]; then
         exec uvicorn app.main:app --host 0.0.0.0 --port "${APP_PORT}"
     fi

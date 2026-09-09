@@ -26,12 +26,12 @@ x-backend-env: &backend-env
   HOST: "0.0.0.0"
   PORT: "3001"
   RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
-  LLM_PROVIDER: ${LLM_PROVIDER:-groq}
-  GROQ_API_KEY: ${GROQ_API_KEY:-}
-  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-  OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
-  SENTRY_DSN: ${SENTRY_DSN:-}
-  ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+  # NOTE: LLM keys (GROQ_*, OPENAI_*), SENTRY_DSN and ENCRYPTION_KEY are
+  # intentionally NOT set here. Compose interpolation only reads the ROOT .env,
+  # and an empty injected var would override backend/.env (bind-mounted to
+  # /app/.env) which Settings reads inside the container. Set them in
+  # backend/.env or as real OS environment variables — both are picked up by
+  # app.core.config.Settings.
   # ─── AI Infrastructure: Headroom (Context Compression) ──────
   HEADROOM_ENABLED: ${HEADROOM_ENABLED:-true}
   # ─── AI Infrastructure: SIE (Superlinked Inference Engine) ──
@@ -47,6 +47,9 @@ x-backend-env: &backend-env
   ENABLE_OFFLINE_AMBULANCE_MODE: ${ENABLE_OFFLINE_AMBULANCE_MODE:-false}
   ENABLE_AI_OBSERVABILITY: ${ENABLE_AI_OBSERVABILITY:-true}
   ENABLE_SCRAPLING_SEARCH: ${ENABLE_SCRAPLING_SEARCH:-true}
+  # Demo AI seeding: runs real ML endpoints + AI chat with demo inputs on boot
+  # (dev/staging only). Set SEED_DEMO_AI=false to disable.
+  SEED_DEMO_AI: ${SEED_DEMO_AI:-true}
 
 services:
   # ─── PostgreSQL ─────────────────────────────────────────────

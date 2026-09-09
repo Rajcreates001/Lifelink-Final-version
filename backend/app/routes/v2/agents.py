@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from app.core.auth import get_current_user, get_optional_user, require_scopes
 from app.core.rbac import AuthContext
 from app.core.dependencies import get_ai_chat_service, get_routing_service, get_weather_service
-from app.db.database import get_db, require_db
+from app.db.database import require_db
 from app.services.agents.orchestrator import run_decision_workflow
 from app.services.agents.memory_store import append_log, create_session, ensure_session, get_session, update_session
 from app.services.ai_chat_service import AiChatService
@@ -754,6 +754,7 @@ async def ask(
     if answer is None:
         try:
             answer = await generate_response_async(
+                timeout=75.0,
                 prompt=(
                     f"Question: {question}\n"
                     f"Module focus: {module}\n"
@@ -779,14 +780,32 @@ async def ask(
             )
         except Exception as exc:
             error_text = str(exc)
+            error_lower = error_text.lower()
             context_lines = [line.strip() for line in (context_text or '').splitlines() if line.strip()]
             context_preview = " ".join(context_lines[:2]) if context_lines else "No stored context found."
             attachment_note = "Attachments received." if attachments else "No attachments provided."
             web_note = f"Web results: {len(web_results)} source(s)." if web_results else "Web search disabled or unavailable."
-            if "not configured" in error_text.lower() or "api key" in error_text.lower():
+            if (
+                "not configured" in error_lower
+                or "api key" in error_lower
+                or "connection error" in error_lower
+                or "timed out" in error_lower
+                or "timeout" in error_lower
+            ):
+                # No LLM key configured, or the provider is unreachable —
+                # answer from built-in LifeLink context instead of surfacing
+                # a configuration/network error to the user.
+                context_lines = [line.strip() for line in (context_text or '').splitlines() if line.strip()]
+                context_preview = " ".join(context_lines[:3]) if context_lines else ""
                 answer = (
-                    "The AI assistant cannot generate responses because the backend LLM provider is not configured correctly. "
-                    "Please verify your OPENAI_API_KEY or GROQ_API_KEY and LLM_PROVIDER settings, then retry."
+                    f"Here's what I can tell you about “{question}” based on LifeLink's current data.\n\n"
+                    f"{context_preview}\n\n"
+                    f"Platform overview: {metadata_summary}\n\n"
+                    "Suggested next steps:\n"
+                    "1. Review the relevant dashboard module for live details.\n"
+                    "2. Use the AI/ML lab to run a specific prediction for deeper analysis.\n"
+                    "3. Ask a follow-up question and I'll refine the answer.\n\n"
+                    "Note: live AI-generated analysis is temporarily unavailable — the LLM provider isn't configured or is unreachable. Answers use built-in LifeLink knowledge."
                 )
             else:
                 answer = (
@@ -828,13 +847,25 @@ async def ask(
             "attachments": attachment_summaries,
             "execute": False,
         }
-        workflow = await asyncio.to_thread(run_decision_workflow, event_payload, memory_id=session["id"])
-        orchestration = {
-            "mode": "supervised",
-            "notes": workflow.get("notes", []),
-            "actions": workflow.get("actions", []),
-            "requires_confirmation": True,
-        }
+        try:
+            workflow = await asyncio.to_thread(run_decision_workflow, event_payload, memory_id=session["id"])
+            orchestration = {
+                "mode": "supervised",
+                "notes": workflow.get("notes", []),
+                "actions": workflow.get("actions", []),
+                "requires_confirmation": True,
+            }
+        except Exception as workflow_err:
+            # Decision workflow (langgraph) may call the LLM provider; if the
+            # provider is unreachable or misconfigured, degrade to a normal
+            # answer instead of failing the whole request.
+            logger.warning("Decision workflow failed; skipping orchestration: %s", workflow_err)
+            orchestration = {
+                "mode": "supervised",
+                "notes": [f"Orchestration skipped: agent workflow could not complete ({type(workflow_err).__name__})."],
+                "actions": [],
+                "requires_confirmation": False,
+            }
 
     reasoning = []
     if context_text and context_text != "No additional context found.":

@@ -307,11 +307,14 @@ class MongoRepository:
         projection: dict[str, Any] | None = None,
         sort: list[tuple[str, int]] | None = None,
         limit: int | None = None,
+        skip: int | None = None,
     ) -> list[dict[str, Any]]:
         try:
             cursor = self.collection.find(query, projection)
             if sort:
                 cursor = cursor.sort(sort)
+            if skip:
+                cursor = cursor.skip(skip)
             if limit:
                 cursor = cursor.limit(limit)
             docs = await cursor.to_list(length=limit or 1000)
@@ -354,5 +357,11 @@ class MongoRepository:
         try:
             result = await self.collection.delete_one({"_id": doc_id})
             return result.deleted_count > 0
+        except Exception as exc:
+            self._raise_db_error(exc)
+
+    async def count_documents(self, query: dict[str, Any]) -> int:
+        try:
+            return await self.collection.count_documents(query)
         except Exception as exc:
             self._raise_db_error(exc)

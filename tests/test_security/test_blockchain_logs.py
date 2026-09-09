@@ -9,9 +9,9 @@ from pathlib import Path
 import asyncpg
 import requests
 
-from tests.utils.auth import build_token
 from tests.utils.logger import log_test
 from tests.utils.result_writer import save_result
+from tests.test_security.test_access_control import _signup_and_login
 
 
 BASE_URL = os.getenv("LIFELINK_BASE_URL", "http://localhost:3001")
@@ -41,7 +41,7 @@ def _hash_chain(action: str, actor: str, details: str, timestamp: str, prev_hash
 
 
 def test_blockchain_logs():
-    token = build_token("government", sub_role="district_admin")
+    token = _signup_and_login("government", sub_role="district_admin")
     headers = {"Authorization": f"Bearer {token}"}
     payload = {"action": "test_audit", "details": "integrity_check"}
 

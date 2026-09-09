@@ -8,7 +8,7 @@ const SpeechRecognitionAPI =
 /**
  * useSpeechRecognition — Manages browser SpeechRecognition lifecycle.
  *
- * @returns {{ isRecording: boolean, transcript: string, toggleRecording: () => void, isSupported: boolean }}
+ * @returns {{ isRecording: boolean, transcript: string, setTranscript: (t: string) => void, toggleRecording: () => void, isSupported: boolean }}
  */
 export function useSpeechRecognition() {
   const [isRecording, setIsRecording] = useState(false);
@@ -48,6 +48,7 @@ export function useSpeechRecognition() {
   return {
     isRecording,
     transcript,
+    setTranscript,
     toggleRecording,
     isSupported: !!SpeechRecognitionAPI,
   };

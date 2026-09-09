@@ -5,8 +5,8 @@ Comprehensive tests for ALL backend API endpoints.
 Tests authentication, CRUD operations, and error handling.
 
 Usage:
-    python tests/e2e_api_endpoints.py --base-url http://localhost:4002
-    python tests/e2e_api_endpoints.py --base-url http://localhost:4002 --verbose
+    python tests/e2e_api_endpoints.py --base-url http://localhost:3001
+    python tests/e2e_api_endpoints.py --base-url http://localhost:3001 --verbose
 """
 
 import argparse
@@ -19,7 +19,7 @@ from urllib.error import URLError, HTTPError
 
 
 # ─── Configuration ────────────────────────────────────────────
-BASE_URL = "http://localhost:4002"
+BASE_URL = "http://localhost:3001"
 TIMEOUT = 15
 VERBOSE = False
 
@@ -343,7 +343,7 @@ def main():
     global BASE_URL, VERBOSE, total_tests, passed, failed, errors
 
     parser = argparse.ArgumentParser(description="LifeLink E2E API Endpoint Tests")
-    parser.add_argument("--base-url", default="http://localhost:4002", help="Backend URL")
+    parser.add_argument("--base-url", default="http://localhost:3001", help="Backend URL")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
     args = parser.parse_args()
 

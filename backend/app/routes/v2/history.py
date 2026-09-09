@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.auth import require_roles
 from app.core.rbac import AuthContext
-from app.db.database import get_db, require_db
+from app.db.database import require_db
 from app.services.collections import ANALYTICS_EVENTS, USERS
 from app.services.repository import MongoRepository
 

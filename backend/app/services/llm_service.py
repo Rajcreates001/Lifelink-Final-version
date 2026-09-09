@@ -79,11 +79,32 @@ async def generate_response_async(
     provider never blocks the FastAPI event loop (which froze the whole API
     and caused cascading timeouts on unrelated endpoints).
     """
+    if _provider_circuit_open():
+        return _graceful_fallback()
     return await asyncio.wait_for(
         asyncio.to_thread(generate_response, prompt, system_prompt, mode),
         timeout=timeout,
     )
 
+# ─── Circuit breaker ─────────────────────────────────────────
+# When the LLM provider is unreachable, remember it for BREAKER_COOLDOWN_S
+# and answer from the graceful fallback instantly instead of re-dialing a
+# dead endpoint on every request (which made AI endpoints take 60-100s).
+BREAKER_COOLDOWN_S = 60.0
+_provider_down_until: float = 0.0
+
+def _provider_circuit_open() -> bool:
+    import time as _time
+    return _time.monotonic() < _provider_down_until
+
+def _mark_provider_down() -> None:
+    global _provider_down_until
+    import time
+    _provider_down_until = time.monotonic() + BREAKER_COOLDOWN_S
+
+def _mark_provider_up() -> None:
+    global _provider_down_until
+    _provider_down_until = 0.0
 
 def _graceful_fallback() -> str:
     """Return a helpful response when the inference provider is unavailable.
@@ -117,6 +138,49 @@ def generate_response(prompt: str, system_prompt: str | None = None, mode: str =
     ]
 
     provider = _resolve_llm_provider(settings)
+
+    # ─── Provider failover: try the primary, then any other configured ──
+    # provider before degrading to the graceful fallback. A dead primary
+    # (e.g. self-hosted vLLM down) fails fast (3s connect) so AI-backed
+    # endpoints stay responsive.
+    primary = provider
+    secondary = "groq" if primary == "openai" else "openai"
+    secondary_configured = (
+        (settings.groq_api_key or "").strip() not in {"", "not-needed"}
+        if secondary == "groq"
+        else (settings.openai_api_key or "").strip() not in {"", "not-needed"}
+    )
+    try:
+        result = _generate_with_provider(primary, messages, temperature, max_tokens, effective_mode, settings)
+        _mark_provider_up()
+        return result
+    except Exception as primary_exc:
+        _mark_provider_down()
+        if not secondary_configured:
+            logger.warning("LLM provider '%s' unavailable (%s); using graceful fallback", primary, str(primary_exc)[:120])
+            return _graceful_fallback()
+        logger.warning(
+            "LLM provider '%s' failed (%s); failing over to '%s'",
+            primary, str(primary_exc)[:120], secondary,
+        )
+        try:
+            return _generate_with_provider(secondary, messages, temperature, max_tokens, effective_mode, settings)
+        except Exception as secondary_exc:
+            logger.warning(
+                "LLM secondary provider '%s' also failed (%s); degrading to graceful fallback",
+                secondary, str(secondary_exc)[:120],
+            )
+            return _graceful_fallback()
+
+
+def _generate_with_provider(
+    provider: str,
+    messages: list[dict[str, str]],
+    temperature: float,
+    max_tokens: int,
+    effective_mode: str,
+    settings: Settings,
+) -> str:
     if provider == "openai":
         if not settings.openai_api_key:
             raise RuntimeError(
@@ -138,10 +202,17 @@ def generate_response(prompt: str, system_prompt: str | None = None, mode: str =
             pass  # Graceful degradation: skip cache on Redis failure
 
         try:
-            import openai
-            openai.api_key = settings.openai_api_key
-            openai.base_url = base_url
-            completion = openai.chat.completions.create(
+            import httpx
+            from openai import OpenAI
+            # Fail FAST when the endpoint is unreachable: 3s connect, 30s read.
+            # A dead primary must never stall failover to the secondary provider.
+            client = OpenAI(
+                api_key=settings.openai_api_key,
+                base_url=base_url,
+                timeout=httpx.Timeout(connect=3.0, read=30.0, write=10.0, pool=3.0),
+                max_retries=0,
+            )
+            completion = client.chat.completions.create(
                 model=model,
                 messages=messages,
                 temperature=temperature,
@@ -183,7 +254,7 @@ def generate_response(prompt: str, system_prompt: str | None = None, mode: str =
         client = Groq(
             api_key=settings.groq_api_key,
             base_url=settings.groq_base_url,
-            timeout=6,
+            timeout=15,
             max_retries=0,
         )
         completion = client.chat.completions.create(

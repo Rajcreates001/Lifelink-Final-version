@@ -48,7 +48,8 @@ const SmartSosScreen = ({ user, onBack, rightSlot }) => {
   useEffect(() => {
     if (!sosId) return;
     const interval = setInterval(async () => {
-      const res = await apiFetch(`/v2/public/sos/${sosId}`, { method: 'GET', timeoutMs: 12000 });
+      // no-store: live status must never come from the GET response cache.
+      const res = await apiFetch(`/v2/public/sos/${sosId}`, { method: 'GET', timeoutMs: 12000, cache: 'no-store' });
       if (res.ok) {
         setStatus(res.data);
       }
@@ -139,7 +140,8 @@ const SmartSosScreen = ({ user, onBack, rightSlot }) => {
       const query = `Provide step-by-step emergency guidance for: ${message}. Keep it short and actionable.`;
       const res = await apiFetch('/v2/agents/ask', {
         method: 'POST',
-        body: JSON.stringify({ query, latitude: location?.lat, longitude: location?.lng })
+        body: JSON.stringify({ query, latitude: location?.lat, longitude: location?.lng }),
+        timeoutMs: 90000
       });
       if (res.ok) {
         const answer = res.data?.answer || '';

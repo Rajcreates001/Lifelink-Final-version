@@ -53,6 +53,10 @@ def analyze_medical_report(text: str) -> dict:
     Analyze medical report text using keyword matching.
     Returns detected conditions, risk score, and risk level.
     """
+    # Accept dict payloads transparently: the ML runner passes the full
+    # payload dict (e.g. {"report_text": ...}), not a bare string.
+    if isinstance(text, dict):
+        text = text.get("report_text") or text.get("report") or text.get("text") or ""
     if not isinstance(text, str) or not text.strip():
         return {
             "summary": "Report text missing.",

@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Query, Depends
 from app.core.auth import get_current_user, AuthContext
 
-from app.db.database import get_db, require_db
+from app.db.database import require_db
 from app.services.repository import MongoRepository
 from app.services.collections import (
     BED_ALLOCATIONS

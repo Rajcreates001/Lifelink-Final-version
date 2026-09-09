@@ -4,4 +4,4 @@ Security: FAIL
 AI: FAIL
 Performance: FAIL
 
-Overall: 46% PASS
+Overall: 40% PASS

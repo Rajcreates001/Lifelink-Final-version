@@ -47,3 +47,7 @@ backend/.rag/
 
 # e2e validation artifacts (regenerated on each run)
 tests/results/
+
+# generated load-test / e2e reports (regenerated on each run)
+loadtest/reports/
+reports/e2e/

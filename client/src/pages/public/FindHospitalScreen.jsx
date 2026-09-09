@@ -14,11 +14,51 @@ const FindHospitalScreen = ({ onBack, rightSlot }) => {
   const [aiSuggestion, setAiSuggestion] = useState('');
   const [aiRanked, setAiRanked] = useState([]);
 
+  // Location denied/unsupported: stop the eternal "Loading..." and paint the
+  // preloaded nearby list (or mock fallback) instead.
+  const setLocationStatusDenied = () => {
+    setLoading(false);
+    setHospitals((prev) => {
+      if (prev.length > 0) return prev;
+      return mockHospitals.slice(0, 6).map((item) => ({
+        id: item.id,
+        name: item.name,
+        distance_km: null,
+        beds_available: item.bedsAvailable,
+        beds_total: item.bedsAvailable + 40,
+        eta_seconds: null,
+        safety_score: Math.round(item.rating * 20),
+      }));
+    });
+  };
+
+  // ─── Preload: adopt the warm nearby-hospitals list; apiFetch dedupes the ──
+  // request PublicDashboard's preload warmed, so no duplicate fetch occurs.
   useEffect(() => {
-    if (!navigator.geolocation) return;
+    if (location || hospitals.length > 0) return;
+    let cancelled = false;
+    const loadWarm = async () => {
+      const res = await apiFetch('/v2/hospital/nearby?lat=12.9716&lng=77.5946&limit=5&radius_km=50&include_eta=true', { method: 'GET', timeoutMs: 12000 });
+      if (!cancelled && res?.ok) {
+        const list = res.data?.hospitals || [];
+        if (list.length) {
+          setHospitals((prev) => (prev.length > 0 ? prev : list));
+          setLoading(false);
+        }
+      }
+    };
+    loadWarm();
+    return () => { cancelled = true; };
+  }, [location, hospitals.length]);
+
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setLocationStatusDenied();
+      return;
+    }
     navigator.geolocation.getCurrentPosition(
       (pos) => setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => setLocation(null),
+      () => setLocationStatusDenied(),
       { enableHighAccuracy: true }
     );
   }, []);
@@ -88,7 +128,8 @@ const FindHospitalScreen = ({ onBack, rightSlot }) => {
           query: `Best hospital for ${condition} emergency?`,
           latitude: location.lat,
           longitude: location.lng,
-        })
+        }),
+        timeoutMs: 90000
       });
       if (res.ok) {
         const ranked = res.data?.actions?.find((action) => action.type === 'hospital_rank')?.ranked || [];

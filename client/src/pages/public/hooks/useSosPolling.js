@@ -13,7 +13,9 @@ export function useSosPolling(sosId, onUpdate, intervalMs = 4000) {
     if (!sosId || !onUpdate) return;
     const interval = setInterval(async () => {
       try {
-        const res = await apiFetch(`/v2/public/sos/${sosId}`, { method: 'GET', timeoutMs: 12000 });
+        // no-store: this is live status — the apiFetch GET cache would
+        // otherwise keep returning the first response for its TTL window.
+        const res = await apiFetch(`/v2/public/sos/${sosId}`, { method: 'GET', timeoutMs: 12000, cache: 'no-store' });
         if (res.ok) onUpdate(res.data);
       } catch {
         // Polling errors are non-fatal; the next interval will retry

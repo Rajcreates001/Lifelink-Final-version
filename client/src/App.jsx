@@ -15,7 +15,6 @@ const HospitalDashboard = lazy(() => import('./pages/HospitalDashboard'));
 const GovernmentDashboard = lazy(() => import('./pages/GovernmentDashboard'));
 const AmbulanceDashboard = lazy(() => import('./pages/AmbulanceDashboard'));
 const LandingPage = lazy(() => import('./pages/LandingPage'));
-const ApiTest = lazy(() => import('./pages/ApiTest'));
 const HospitalRoleSelect = lazy(() => import('./pages/HospitalRoleSelect'));
 const GovernmentRoleSelect = lazy(() => import('./pages/GovernmentRoleSelect'));
 const SwitchPortal = lazy(() => import('./pages/SwitchPortal'));
@@ -221,9 +220,6 @@ const App = () => {
                             </ProtectedRoute>
                         }
                     />
-
-                    {/* API Test Page */}
-                    <Route path="/api-test" element={<ApiTest />} />
 
                     {/* Public Status Page */}
                     <Route path="/status" element={<StatusPage />} />

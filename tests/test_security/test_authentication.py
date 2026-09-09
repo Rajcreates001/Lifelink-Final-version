@@ -4,9 +4,9 @@ import os
 
 import requests
 
-from tests.utils.auth import build_token
 from tests.utils.logger import log_test
 from tests.utils.result_writer import save_result
+from tests.test_security.test_access_control import _signup_and_login
 
 
 BASE_URL = os.getenv("LIFELINK_BASE_URL", "http://localhost:3001")
@@ -19,7 +19,7 @@ def test_authentication():
     no_token = requests.get(endpoint, timeout=10)
     invalid_token = requests.get(endpoint, headers={"Authorization": "Bearer invalid"}, timeout=10)
 
-    valid_token = build_token("hospital")
+    valid_token = _signup_and_login("government", sub_role="district_admin")
     valid_resp = requests.get(endpoint, headers={"Authorization": f"Bearer {valid_token}"}, timeout=10)
 
     status = "PASS"

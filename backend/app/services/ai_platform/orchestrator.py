@@ -45,7 +45,6 @@ Architecture:
 
 from __future__ import annotations
 
-import json
 import logging
 import time
 from dataclasses import dataclass, field
@@ -59,7 +58,7 @@ from app.services.ai_platform.context_builder import (
     UserContext,
 )
 from app.services.ai_platform.headroom_service import HeadroomService
-from app.services.ai_platform.sie_client import SIEClient, get_sie_client
+from app.services.ai_platform.sie_client import get_sie_client
 
 logger = logging.getLogger("lifelink.ai.orchestrator")
 
@@ -208,7 +207,6 @@ class AIOrchestrator:
                 logger.warning("SIE retrieval failed, proceeding without: %s", exc)
 
         # Step 4: Compress context (Headroom)
-        compressed_context = ai_context.items
         original_tokens = ai_context.total_tokens
         compressed_tokens = original_tokens
 
@@ -282,7 +280,6 @@ class AIOrchestrator:
         from app.services.multi_agent import (
             clinical_agent,
             emergency_agent,
-            coordinator_agent,
         )
 
         # Build the agent event
@@ -347,7 +344,7 @@ class AIOrchestrator:
             if phrase in response_text.lower():
                 requires_human_review = True
                 disclaimers.append(
-                    f"Response may contain absolute claims — verify with clinical data"
+                    "Response may contain absolute claims — verify with clinical data"
                 )
                 break
 

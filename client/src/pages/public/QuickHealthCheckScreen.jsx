@@ -51,7 +51,7 @@ const QuickHealthCheckScreen = ({ user, onBack, rightSlot }) => {
     try {
       const reportSnippet = docText ? `\n\nAttached report excerpt:\n${docText.slice(0, 2000)}` : '';
       const query = `Provide a short condition prediction and early warning tips for symptoms: ${form.symptoms || 'none'}, vitals: HR ${form.heart_rate}, BP ${form.blood_pressure}, O2 ${form.oxygen}.${reportSnippet}`;
-      const res = await apiFetch('/v2/agents/ask', { method: 'POST', body: JSON.stringify({ query }) });
+      const res = await apiFetch('/v2/agents/ask', { method: 'POST', body: JSON.stringify({ query }), timeoutMs: 90000 });
       if (res.ok) {
         setAiAdvice(res.data?.answer || 'No additional insights available.');
       } else {

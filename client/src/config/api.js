@@ -35,6 +35,10 @@ async function refreshAccessToken() {
         const data = await res.json().catch(() => ({}));
         if (data && data.token) {
           sessionStorage.setItem('lifelink_token', data.token);
+          // Server rotates refresh tokens — persist the fresh one (if any).
+          if (data.refreshToken) {
+            sessionStorage.setItem('lifelink_refresh_token', data.refreshToken);
+          }
           return data.token;
         }
         return null;

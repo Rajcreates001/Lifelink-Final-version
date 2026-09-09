@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from app.core.auth import require_scopes
 from app.core.dependencies import get_data_integration_service
 from app.core.rbac import AuthContext
-from app.db.database import get_db, require_db
+from app.db.database import require_db
 from app.services.collections import EMERGENCY_EVENTS, HEALTH_RECORDS, HOSPITALS
 from app.services.data_integration_service import DataIntegrationService
 from app.services.repository import MongoRepository

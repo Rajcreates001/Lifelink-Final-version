@@ -1,10 +1,10 @@
 from datetime import datetime, timezone
 
 from bson import ObjectId
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
 
-from app.db.database import get_db, require_db
+from app.db.database import require_db
 from app.core.auth import get_current_user, AuthContext
 from app.services.collections import RESOURCE_REQUESTS, USERS
 from app.services.repository import MongoRepository
@@ -49,13 +49,23 @@ def _as_object_id(value: str) -> ObjectId:
 
 
 @router.get("/donors")
-async def get_donors(ctx: AuthContext = Depends(get_current_user)):
+async def get_donors(
+    response: Response,
+    limit: int = Query(default=100, ge=1, le=500, description="Page size (max 500)"),
+    offset: int = Query(default=0, ge=0, description="Number of records to skip"),
+    ctx: AuthContext = Depends(get_current_user),
+):
+    """List donors with pagination. Unpaged consumers get the first `limit`
+    records; the X-Total-Count header lets clients page through the rest."""
     db = require_db()
     user_repo = MongoRepository(db, USERS)
 
+    total = await user_repo.count_documents({"role": "public"})
     donors = await user_repo.find_many(
         {"role": "public"},
-        projection={"name": 1, "location": 1, "phone": 1, "publicProfile": 1}
+        projection={"name": 1, "location": 1, "phone": 1, "publicProfile": 1},
+        limit=limit,
+        skip=offset,
     )
     results = []
     for donor in donors:
@@ -77,6 +87,7 @@ async def get_donors(ctx: AuthContext = Depends(get_current_user)):
             }
         )
 
+    response.headers["X-Total-Count"] = str(total)
     return results
 
 

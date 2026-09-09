@@ -5,7 +5,7 @@ import time
 
 import requests
 
-from tests.utils.auth import build_token
+from tests.test_security.test_access_control import _signup_and_login
 from tests.utils.logger import log_test
 from tests.utils.result_writer import save_result
 
@@ -15,7 +15,7 @@ RESULT_FILE = "privacy_results.json"
 
 
 def test_federated_privacy():
-    token = build_token("hospital")
+    token = _signup_and_login("hospital", verified=True)
     payload = {
         "hospital_id": "demo-hospital",
         "metrics": {"samples": 120},

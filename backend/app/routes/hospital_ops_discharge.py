@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 from app.core.auth import require_scopes
 from app.core.rbac import AuthContext
-from app.db.database import get_db, require_db
+from app.db.database import require_db
 from app.services.collections import PATIENTS
 from app.services.repository import MongoRepository
 
@@ -324,16 +324,16 @@ def _generate_discharge_summary(patient: dict, payload: DischargeRequest) -> str
     severity = patient.get("severity", "N/A")
 
     lines = [
-        f"DISCHARGE SUMMARY",
-        f"=" * 40,
+        "DISCHARGE SUMMARY",
+        "=" * 40,
         f"Patient: {name}",
         f"Diagnosis: {diagnosis}",
         f"Severity at admission: {severity}",
         f"Discharge type: {payload.discharge_type}",
         f"Condition at discharge: {payload.condition_at_discharge}",
-        f"",
-        f"Treatment completed as per protocol.",
-        f"Patient is stable and fit for discharge.",
+        "",
+        "Treatment completed as per protocol.",
+        "Patient is stable and fit for discharge.",
     ]
 
     if payload.medications_prescribed:
