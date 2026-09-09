@@ -32,7 +32,7 @@ const BedKnowledgeGraph = () => {
         <div className="relative w-full" style={{ aspectRatio: '100/92' }}>
           <svg viewBox="0 0 100 92" className="w-full h-full">
             <defs>
-              <filter id="bg-glow"><feGaussianBlur stdDeviation="0.5"/><feMerge><feMergeNode/></feMerge></filter>
+              <filter id="bg-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur in="SourceGraphic" stdDeviation="0.5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
             </defs>
             {connections.map(([a, b]) => {
               const na = nodes.find(n => n.id === a);

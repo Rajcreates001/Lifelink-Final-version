@@ -745,14 +745,21 @@ async def _seed_collection(
     repo: MongoRepository,
     query: dict[str, Any],
     docs: list[dict[str, Any]],
-    force: bool = False
+    force: bool = False,
+    scope_ids: list[str] | None = None,
 ) -> int:
     if not force:
         existing = await repo.find_one(query)
         if existing:
             return 0
     inserted = 0
+    scope = scope_ids or []
     for doc in docs:
+        # Stamp both addressing keys on every seeded row so routes that query
+        # `hospital` and consumers seeded with `hospitalId` both resolve it.
+        if scope:
+            doc["hospital"] = scope[0]
+            doc["hospitalId"] = scope[0]
         await repo.insert_one(doc)
         inserted += 1
     return inserted
@@ -772,9 +779,12 @@ async def _ensure_hospital_ops_seed(
 
     now = datetime.now(timezone.utc)
     if not hospital_doc:
+        # NOTE: use a deterministic but *distinct* id — the documents table has a
+        # global PK on `id`, and hospital user ids already exist in `users`, so
+        # inserting a hospital doc with _id == user_id causes a PK collision.
         hospital_doc = await hospital_repo.insert_one(
             {
-                "_id": hospital_oid,
+                "_id": f"{hospital_oid}" if not re.fullmatch(r"[0-9a-fA-F]{24}", str(hospital_oid)) else f"hosp-{hospital_oid}",
                 "user": hospital_oid,
                 "name": "LifeLink General Hospital",
                 "location": {"city": "Bengaluru", "state": "Karnataka"},
@@ -794,6 +804,17 @@ async def _ensure_hospital_ops_seed(
         }
 
     seed_force = force or existing_version != SEED_VERSION or existing_scale != seed_scale
+    # Ops rows are addressed by BOTH keys: routes query `hospital` with the
+    # hospitalId passed by the client, while the mass-seed script writes
+    # `hospitalId`. Seeding both makes every route and every pre-seeded
+    # dataset visible regardless of which key it uses.
+    ordered_keys = [hospital_oid, hospital_doc.get("_id"), hospital_doc.get("user")]
+    hospital_scope_ids: list[str] = []
+    for key in ordered_keys:
+        if key is not None:
+            text_key = str(key)
+            if text_key not in hospital_scope_ids:
+                hospital_scope_ids.append(text_key)
     bed_total = max(260, int(seed_scale * 1.35))
     bed_occupied = int(bed_total * 0.72)
     bed_available = max(0, bed_total - bed_occupied)
@@ -936,7 +957,8 @@ async def _ensure_hospital_ops_seed(
             }
             for idx in range(patient_count)
         ],
-        force=seed_force
+        force=seed_force,
+        scope_ids=hospital_scope_ids
     )
     staff_count = int(seed_scale * 0.85)
     counts["staff"] = await _seed_collection(
@@ -958,7 +980,8 @@ async def _ensure_hospital_ops_seed(
             }
             for idx in range(staff_count)
         ],
-        force=seed_force
+        force=seed_force,
+        scope_ids=hospital_scope_ids
     )
     invoice_count = seed_scale + 120
     counts["invoices"] = await _seed_collection(
@@ -976,12 +999,15 @@ async def _ensure_hospital_ops_seed(
                 "paidAt": (now - timedelta(days=idx % 30)).isoformat() if idx % 3 == 0 else None,
                 "paidAmount": float(15000 + (idx % 18) * 2200) if idx % 3 == 0 else 0.0,
                 "refundAmount": 0.0,
-                "createdAt": now - timedelta(days=idx % 30, hours=idx % 18),
-                "updatedAt": now - timedelta(days=idx % 15),
+                # Spread across ~180 days so the 6-month revenue trend chart
+                # has meaningful history instead of 4 zero months.
+                "createdAt": now - timedelta(days=(idx * 180) // max(1, invoice_count), hours=idx % 18),
+                "updatedAt": now - timedelta(days=(idx * 180) // max(1, invoice_count) % 15),
             }
             for idx in range(invoice_count)
         ],
-        force=seed_force
+        force=seed_force,
+        scope_ids=hospital_scope_ids
     )
     emergency_count = int(seed_scale * 0.45)
     counts["emergencies"] = await _seed_collection(
@@ -1002,7 +1028,8 @@ async def _ensure_hospital_ops_seed(
             }
             for idx in range(emergency_count)
         ],
-        force=seed_force
+        force=seed_force,
+        scope_ids=hospital_scope_ids
     )
     assignment_count = int(seed_scale * 0.2)
     counts["assignments"] = await _seed_collection(
@@ -1022,7 +1049,8 @@ async def _ensure_hospital_ops_seed(
             }
             for idx in range(assignment_count)
         ],
-        force=seed_force
+        force=seed_force,
+        scope_ids=hospital_scope_ids
     )
     counts["department_logs"] = await _seed_collection(
         dept_log_repo,
@@ -1042,7 +1070,8 @@ async def _ensure_hospital_ops_seed(
             }
             for idx, dept in enumerate(departments)
         ],
-        force=seed_force
+        force=seed_force,
+        scope_ids=hospital_scope_ids
     )
     resource_catalog = [
         {"name": "IV Kits", "category": "Supplies", "unit": "kits", "base": 320},
@@ -1069,7 +1098,8 @@ async def _ensure_hospital_ops_seed(
             }
             for idx in range(resource_count)
         ],
-        force=seed_force
+        force=seed_force,
+        scope_ids=hospital_scope_ids
     )
     equipment_catalog = [
         {"name": "MRI Scanner", "category": "Imaging", "base": 4},
@@ -1096,7 +1126,8 @@ async def _ensure_hospital_ops_seed(
             }
             for idx in range(equipment_count)
         ],
-        force=seed_force
+        force=seed_force,
+        scope_ids=hospital_scope_ids
     )
     vendor_count = 15
     counts["vendors"] = await _seed_collection(
@@ -1114,7 +1145,8 @@ async def _ensure_hospital_ops_seed(
             }
             for idx in range(vendor_count)
         ],
-        force=seed_force
+        force=seed_force,
+        scope_ids=hospital_scope_ids
     )
     allocation_count = int(seed_scale * 0.35)
     bed_types = ["ICU", "Emergency", "General", "Ward"]
@@ -1133,7 +1165,8 @@ async def _ensure_hospital_ops_seed(
             }
             for idx in range(allocation_count)
         ],
-        force=seed_force
+        force=seed_force,
+        scope_ids=hospital_scope_ids
     )
     report_templates = _report_templates()
     ingested_reports = [
@@ -1176,7 +1209,8 @@ async def _ensure_hospital_ops_seed(
             }
             for idx, name in enumerate(ingested_reports)
         ],
-        force=seed_force
+        force=seed_force,
+        scope_ids=hospital_scope_ids
     )
     expense_categories = ["Supplies", "Equipment", "Staffing", "Facilities", "IT", "Logistics"]
     expense_count = int(seed_scale * 0.6)
@@ -1191,12 +1225,13 @@ async def _ensure_hospital_ops_seed(
                 "notes": "Monthly expense",
                 "vendor": f"Vendor {idx % 15 + 1}",
                 "contractRef": f"CN-{2024 + (idx % 2)}-{100 + idx}",
-                "createdAt": now - timedelta(days=idx % 60),
-                "updatedAt": now - timedelta(days=idx % 30),
+                "createdAt": now - timedelta(days=(idx * 180) // max(1, expense_count)),
+                "updatedAt": now - timedelta(days=(idx * 180) // max(1, expense_count) % 30),
             }
             for idx in range(expense_count)
         ],
-        force=seed_force
+        force=seed_force,
+        scope_ids=hospital_scope_ids
     )
     claim_count = int(seed_scale * 0.7)
     counts["claims"] = await _seed_collection(
@@ -1217,7 +1252,8 @@ async def _ensure_hospital_ops_seed(
             }
             for idx in range(claim_count)
         ],
-        force=seed_force
+        force=seed_force,
+        scope_ids=hospital_scope_ids
     )
     appointment_count = seed_scale
     appointment_types = ["New", "Follow-up", "Consultation"]
@@ -1244,7 +1280,8 @@ async def _ensure_hospital_ops_seed(
             }
             for idx in range(appointment_count)
         ],
-        force=seed_force
+        force=seed_force,
+        scope_ids=hospital_scope_ids
     )
     doctor_count = 48
     counts["opd_doctors"] = await _seed_collection(
@@ -1264,7 +1301,8 @@ async def _ensure_hospital_ops_seed(
             }
             for idx in range(doctor_count)
         ],
-        force=seed_force
+        force=seed_force,
+        scope_ids=hospital_scope_ids
     )
     queue_count = int(seed_scale * 0.6)
     queue_statuses = ["Waiting", "In Service", "Completed"]
@@ -1287,7 +1325,8 @@ async def _ensure_hospital_ops_seed(
             }
             for idx in range(queue_count)
         ],
-        force=seed_force
+        force=seed_force,
+        scope_ids=hospital_scope_ids
     )
     consult_count = int(seed_scale * 0.7)
     counts["opd_consults"] = await _seed_collection(
@@ -1311,7 +1350,8 @@ async def _ensure_hospital_ops_seed(
             }
             for idx in range(consult_count)
         ],
-        force=seed_force
+        force=seed_force,
+        scope_ids=hospital_scope_ids
     )
     icu_patient_count = int(seed_scale * 0.2)
     counts["icu_patients"] = await _seed_collection(
@@ -1330,7 +1370,8 @@ async def _ensure_hospital_ops_seed(
             }
             for idx in range(icu_patient_count)
         ],
-        force=seed_force
+        force=seed_force,
+        scope_ids=hospital_scope_ids
     )
     icu_alert_count = int(seed_scale * 0.15)
     icu_alert_levels = ["High", "Medium", "Low"]
@@ -1348,7 +1389,8 @@ async def _ensure_hospital_ops_seed(
             }
             for idx in range(icu_alert_count)
         ],
-        force=seed_force
+        force=seed_force,
+        scope_ids=hospital_scope_ids
     )
     radiology_request_count = int(seed_scale * 0.55)
     scan_types = ["CT", "MRI", "X-Ray", "Ultrasound"]
@@ -1366,7 +1408,8 @@ async def _ensure_hospital_ops_seed(
             }
             for idx in range(radiology_request_count)
         ],
-        force=seed_force
+        force=seed_force,
+        scope_ids=hospital_scope_ids
     )
     radiology_report_count = int(seed_scale * 0.4)
     counts["radiology_reports"] = await _seed_collection(
@@ -1385,7 +1428,8 @@ async def _ensure_hospital_ops_seed(
             }
             for idx in range(radiology_report_count)
         ],
-        force=seed_force
+        force=seed_force,
+        scope_ids=hospital_scope_ids
     )
     surgery_count = int(seed_scale * 0.5)
     procedures = ["Ortho Fixation", "Cardiac Cath", "Neuro Observation", "General Surgery"]
@@ -1404,7 +1448,8 @@ async def _ensure_hospital_ops_seed(
             }
             for idx in range(surgery_count)
         ],
-        force=seed_force
+        force=seed_force,
+        scope_ids=hospital_scope_ids
     )
     ot_alloc_count = int(seed_scale * 0.35)
     patient_loads = ["High", "Medium", "Low"]
@@ -1423,7 +1468,8 @@ async def _ensure_hospital_ops_seed(
             }
             for idx in range(ot_alloc_count)
         ],
-        force=seed_force
+        force=seed_force,
+        scope_ids=hospital_scope_ids
     )
     counts["benchmarks"] = await _seed_collection(
         benchmark_repo,
@@ -1434,7 +1480,8 @@ async def _ensure_hospital_ops_seed(
             {"region": "global", "metric": "staff_coverage", "value": 86.9, "source": "ops_feed", "createdAt": now - timedelta(days=7)},
             {"region": "global", "metric": "opd_utilization", "value": 72.3, "source": "ops_feed", "createdAt": now - timedelta(days=7)},
         ],
-        force=seed_force
+        force=seed_force,
+        scope_ids=hospital_scope_ids
     )
     ambulance_count = 24
     counts["ambulances"] = await _seed_collection(
@@ -1463,7 +1510,8 @@ async def _ensure_hospital_ops_seed(
             }
             for idx in range(ambulance_count)
         ],
-        force=seed_force
+        force=seed_force,
+        scope_ids=hospital_scope_ids
     )
     alert_count = 40
     counts["alerts"] = await _seed_collection(
@@ -1480,7 +1528,8 @@ async def _ensure_hospital_ops_seed(
             }
             for idx in range(alert_count)
         ],
-        force=seed_force
+        force=seed_force,
+        scope_ids=hospital_scope_ids
     )
     analytics_count = 90
     analytics_types = ["bed_forecast", "staff_load", "er_wait", "supply_risk", "opd_demand"]
@@ -1497,7 +1546,8 @@ async def _ensure_hospital_ops_seed(
             }
             for idx in range(analytics_count)
         ],
-        force=seed_force
+        force=seed_force,
+        scope_ids=hospital_scope_ids
     )
     prediction_count = 120
     prediction_models = ["icu_risk", "opd_no_show", "readmission", "supply_runout"]
@@ -1514,7 +1564,8 @@ async def _ensure_hospital_ops_seed(
             }
             for idx in range(prediction_count)
         ],
-        force=seed_force
+        force=seed_force,
+        scope_ids=hospital_scope_ids
     )
     counts["departments"] = await _seed_collection(
         dept_repo,
@@ -1528,7 +1579,8 @@ async def _ensure_hospital_ops_seed(
             }
             for idx, dept in enumerate(departments)
         ],
-        force=seed_force
+        force=seed_force,
+        scope_ids=hospital_scope_ids
     )
     message_count = 10
     counts["messages"] = await _seed_collection(
@@ -1552,7 +1604,8 @@ async def _ensure_hospital_ops_seed(
             }
             for idx in range(message_count)
         ],
-        force=seed_force
+        force=seed_force,
+        scope_ids=hospital_scope_ids
     )
     agreement_count = 6
     counts["agreements"] = await _seed_collection(
@@ -1569,7 +1622,8 @@ async def _ensure_hospital_ops_seed(
             }
             for idx in range(agreement_count)
         ],
-        force=seed_force
+        force=seed_force,
+        scope_ids=hospital_scope_ids
     )
     return {
         "seeded": True,
