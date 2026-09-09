@@ -44,6 +44,25 @@ def _empty_dashboard() -> dict:
     }
 
 
+def _require_self_or_staff(user_id: str, ctx: AuthContext) -> ObjectId:
+    """Validate a user-scoped path id and enforce access control.
+
+    - Users may only read their own scoped data (stale ids from a wiped DB
+      previously returned a silent empty 200 — now they 404, which the
+      client treats as a dead session and forces re-login).
+    - Staff/enterprise roles may read any user's scoped data.
+    """
+    oid = _as_object_id(user_id)
+    if str(oid) != str(ctx.user_id) and ctx.role not in {"hospital", "government", "ambulance", "admin"}:
+        raise HTTPException(status_code=403, detail="Access to this user's data is forbidden")
+    return oid
+
+
+def _require_known_user(user_repo: MongoRepository, oid: ObjectId) -> None:
+    """Reserved: async user-existence check lives inline in the route bodies."""
+    return None
+
+
 @router.get("/public/{user_id}/full")
 async def public_full_dashboard(user_id: str, ctx: AuthContext = Depends(get_current_user)):
     db = get_db()
@@ -58,7 +77,13 @@ async def public_full_dashboard(user_id: str, ctx: AuthContext = Depends(get_cur
     health_repo = MongoRepository(db, HEALTH_RECORDS)
     activity_repo = MongoRepository(db, ANALYTICS_EVENTS)
 
-    oid = _as_object_id(user_id)
+    # Access control: self only (staff roles excepted). A stale/nonexistent
+    # id now 404s instead of returning a silent empty dashboard.
+    oid = _require_self_or_staff(user_id, ctx)
+    if not ctx.role in {"hospital", "government", "ambulance", "admin"}:
+        user = await user_repo.find_one({"_id": oid})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found — session may be stale; please log in again")
 
     alerts = await alert_repo.find_many({"user": oid}, sort=[("createdAt", -1)])
     requests = await request_repo.find_many({"requester": oid}, sort=[("createdAt", -1)])

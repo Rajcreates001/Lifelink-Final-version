@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { apiFetch } from '../../config/api';
 import DashboardLayout from '../../layout/DashboardLayout';
@@ -34,6 +35,7 @@ import LifeTimeline from '../../components/LifeTimeline';
 
 const DesktopPublicDashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState('home');
   const [data, setData] = useState(null);
@@ -85,6 +87,17 @@ const DesktopPublicDashboard = () => {
         apiFetch('/api/donors', { method: 'GET', timeoutMs: 8000 }),
       ]);
 
+      // Stale session (user id from a wiped/other DB): force a clean re-login
+      // instead of rendering "No Data Available" forever.
+      if (dashboardRes.status === 403 || dashboardRes.status === 404) {
+        console.warn('Dashboard: stale session detected (' + dashboardRes.status + ') — clearing auth');
+        sessionStorage.removeItem('lifelink_user');
+        sessionStorage.removeItem('lifelink_token');
+        sessionStorage.removeItem('lifelink_refresh_token');
+        sessionStorage.removeItem('lifelink:public:dashboard');
+        navigate('/login', { replace: true });
+        return;
+      }
       if (!dashboardRes.ok) throw new Error(dashboardRes.data?.detail || dashboardRes.data?.error || 'Dashboard fetch failed');
 
       const dashboardData = dashboardRes.data || {};
@@ -115,7 +128,7 @@ const DesktopPublicDashboard = () => {
     } finally {
       if (isMountedRef.current) setLoading(false);
     }
-  }, [user?.id, fetchNotifications]);
+  }, [user?.id, fetchNotifications, navigate]);
 
   // Data is preloaded by PublicDashboard via preloadService; apiFetch's
   // in-flight dedup means fetchData below joins the warm requests.
