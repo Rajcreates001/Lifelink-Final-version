@@ -11,6 +11,13 @@ const HOSPITALS = [
 const HospitalAI = ({ hospital: currentHospital, incident, onAction }) => {
   const sorted = useMemo(() => [...HOSPITALS].sort((a, b) => (b.score || 0) - (a.score || 0)), []);
 
+  // Callers pass either a hospital name (string) or the hospital object.
+  // Rendering an object as a React child crashes the whole module, so
+  // normalize once here.
+  const hospitalName = typeof currentHospital === 'string'
+    ? currentHospital
+    : currentHospital?.name || currentHospital?.hospital_name || currentHospital?.label || '';
+
   return (
     <div className="space-y-5">
       {/* Hospital Readiness Summary */}
@@ -93,11 +100,11 @@ const HospitalAI = ({ hospital: currentHospital, incident, onAction }) => {
             <i className="fas fa-flag-checkered text-slate-400 text-xs" />
             <span className="text-[10px] font-bold text-slate-500 uppercase">Current Destination</span>
           </div>
-          {currentHospital ? (
+          {hospitalName ? (
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center text-white"><i className="fas fa-hospital" /></div>
               <div>
-                <p className="text-sm font-bold text-slate-800">{currentHospital}</p>
+                <p className="text-sm font-bold text-slate-800">{hospitalName}</p>
                 <p className="text-[10px] text-slate-500">Trauma team assembled · ICU ready · Blood bank cross-matching</p>
                 <span className="inline-flex items-center gap-1 mt-1 text-[9px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">Confirmed</span>
               </div>
