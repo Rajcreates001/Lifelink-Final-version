@@ -1,6 +1,6 @@
 import React from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
 // Mock modules
@@ -119,13 +119,15 @@ describe('ExportButton', () => {
 // ============================================================
 describe('useScrollIn hook', () => {
     it('returns false initially', () => {
-        let result;
+        const probe = vi.fn();
         function TestComponent() {
-            result = useScrollIn();
-            return <div ref={result[1]}>Test</div>;
+            const [entered, ref] = useScrollIn();
+            probe(entered);
+            return <div ref={ref}>Test</div>;
         }
         render(<TestComponent />);
-        expect(result[0]).toBe(false);
+        const result = probe.mock.lastCall[0];
+        expect(result).toBe(false);
     });
 });
 
@@ -134,13 +136,15 @@ describe('useScrollIn hook', () => {
 // ============================================================
 describe('useCountUp hook', () => {
     it('starts at 0', () => {
-        let result;
+        const probe = vi.fn();
         function TestComponent() {
-            result = useCountUp(100, 100, false);
-            return <div ref={result[1]}>{result[0]}</div>;
+            const [count, ref] = useCountUp(100, 100, false);
+            probe(count);
+            return <div ref={ref}>{count}</div>;
         }
         render(<TestComponent />);
-        expect(result[0]).toBe(0);
+        const result = probe.mock.lastCall[0];
+        expect(result).toBe(0);
     });
 });
 
@@ -318,27 +322,29 @@ describe('LandingPage Constants', () => {
 describe('LandingPage Hooks', () => {
     it('useCountUp increments over time', async () => {
         vi.useFakeTimers();
-        let count;
+        const probe = vi.fn();
         function TestComponent() {
-            [count] = useCountUp(10, 100, false);
-            return <div>{count}</div>;
+            const [value] = useCountUp(10, 100, false);
+            probe(value);
+            return <div>{value}</div>;
         }
         render(<TestComponent />);
-        expect(count).toBe(0);
+        expect(probe.mock.lastCall[0]).toBe(0);
         act(() => vi.advanceTimersByTime(200));
-        expect(count).toBe(10);
+        expect(probe.mock.lastCall[0]).toBe(10);
         vi.useRealTimers();
     });
 
     it('useScrollIn starts false when not intersecting', () => {
-        let entered;
+        const probe = vi.fn();
         function TestComponent() {
-            [entered] = useScrollIn();
+            const [value] = useScrollIn();
+            probe(value);
             return <div data-testid="test-el">Test</div>;
         }
         render(<TestComponent />);
         // useScrollIn returns [entered, ref] - entered should be false initially
-        expect(typeof entered).toBe('boolean');
+        expect(typeof probe.mock.lastCall[0]).toBe('boolean');
     });
 });
 
@@ -390,7 +396,8 @@ describe('App Integration', () => {
         // Verify the split files exist (can't import due to Leaflet dependency)
         const { default: fs } = await import('fs');
         const { default: path } = await import('path');
-        const dir = path.resolve(__dirname, '../components/govCommand');
+        const { fileURLToPath } = await import('url');
+        const dir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../components/govCommand');
         const files = fs.readdirSync(dir).filter((f) => f.endsWith('.jsx') || f.endsWith('.js'));
         expect(files.length).toBeGreaterThan(5);
         expect(files).toContain('helpers.js');

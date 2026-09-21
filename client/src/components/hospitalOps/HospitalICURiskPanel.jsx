@@ -6,7 +6,7 @@ import { DashboardCard, LoadingSpinner, StatusPill } from '../Common';
 export const HospitalICURiskPanel = () => {
     const { user } = useAuth();
     const hospitalId = user?._id || user?.id;
-    const [patients, setPatients] = useState([]);
+    const [_patients, setPatients] = useState([]);
     const [risks, setRisks] = useState([]);
     const [loading, setLoading] = useState(true);
 

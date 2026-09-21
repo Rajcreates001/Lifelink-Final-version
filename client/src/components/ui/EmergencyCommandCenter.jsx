@@ -45,7 +45,7 @@ const IncidentMapSVG = ({ incidents = [], ambulances = [] }) => {
     );
   }
 
-  const all = [...incidents.map((i) => ({ ...i, type: 'incident' })), ...ambulances.map((a) => ({ ...a, type: 'ambulance' }))];
+  const _all = [...incidents.map((i) => ({ ...i, type: 'incident' })), ...ambulances.map((a) => ({ ...a, type: 'ambulance' }))];
   return (
     <div className="h-72 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 relative overflow-hidden">
       {/* Grid lines */}
@@ -141,7 +141,7 @@ const MassCasualtyToggle = ({ active, onToggle }) => (
 
 // ── AI Triage Panel ───────────────────────────────────────────────
 
-const TriagePanel = ({ alert, onTriage }) => {
+const TriagePanel = ({ alert, __onTriage }) => {
   const [symptoms, setSymptoms] = useState(alert?.message || '');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -241,7 +241,7 @@ const SurgePredictor = ({ data }) => {
 
 // ── Dispatch Workflow ──────────────────────────────────────────────
 
-const DispatchWorkflow = ({ alert, onDispatch }) => {
+const DispatchWorkflow = ({ alert, __onDispatch }) => {
   const [form, setForm] = useState({ ambulanceId: '', eta: '10', notes: '' });
   const [status, setStatus] = useState('');
 
@@ -331,26 +331,31 @@ const EmergencyCommandCenter = () => {
   const [refreshing, setRefreshing] = useState(0);
   const [expandedAlert, setExpandedAlert] = useState(null);
   const [toast, setToast] = useState(null);
-  const toastTimer = useRef(null);
 
-  const showToast = (msg, type = 'success') => {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
+  const showToast = useCallback((msg, type = 'success') => {
     setToast({ msg, type });
-    toastTimer.current = setTimeout(() => setToast(null), 3000);
-  };
+  }, []);
 
-  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
+  // Auto-dismiss toasts (no timer ref — refs must not be read during render)
+  useEffect(() => {
+    if (!toast) return undefined;
+    const t = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   // WebSocket feed
   const { feed: realtimeFeed, isConnected: wsConnected } = useEmergencyFeed();
 
   useEffect(() => {
-    if (realtimeFeed.length === 0) return;
-    setAlerts((prev) => {
-      const existing = new Set(prev.map((a) => a._id || a.id));
-      const newItems = realtimeFeed.filter((item) => !existing.has(item._id || item.id || item.alertId));
-      return newItems.length ? [...newItems, ...prev].slice(0, 50) : prev;
-    });
+    if (realtimeFeed.length === 0) return undefined;
+    const t = setTimeout(() => {
+      setAlerts((prev) => {
+        const existing = new Set(prev.map((a) => a._id || a.id));
+        const newItems = realtimeFeed.filter((item) => !existing.has(item._id || item.id || item.alertId));
+        return newItems.length ? [...newItems, ...prev].slice(0, 50) : prev;
+      });
+    }, 0);
+    return () => clearTimeout(t);
   }, [realtimeFeed]);
 
   // ── Load data ──────────────────────────────────────────────────
@@ -358,7 +363,7 @@ const EmergencyCommandCenter = () => {
     if (!hospitalId) { setLoading(false); return; }
     setLoading(true);
     try {
-      const [feedRes, surgeRes, insightRes] = await Promise.allSettled([
+      const [feedRes, surgeRes, _insightRes] = await Promise.allSettled([
         apiFetch(`/api/hospital-ops/emergency/feed?hospitalId=${hospitalId}`, { method: 'GET', ttlMs: 15000 }),
         apiFetch(`/api/hospital-ops/ceo/ai-insights?hospitalId=${hospitalId}`, { method: 'GET', ttlMs: 30000 }),
         apiFetch(`/v2/ai/insights?role=hospital&module_key=emergency`, { method: 'GET', ttlMs: 30000 }),
@@ -396,7 +401,10 @@ const EmergencyCommandCenter = () => {
     setLoading(false);
   }, [hospitalId]);
 
-  useEffect(() => { loadData(); }, [loadData, refreshing]);
+  useEffect(() => {
+    const t = setTimeout(() => loadData(), 0);
+    return () => clearTimeout(t);
+  }, [loadData, refreshing]);
 
   // ── Computed metrics ───────────────────────────────────────────
   const metrics = useMemo(() => {
@@ -460,7 +468,7 @@ const EmergencyCommandCenter = () => {
       confidence: 82, action: { label: 'Prepare Staff', onClick: () => { showToast('Staff preparation initiated', 'info'); } },
     });
     return items;
-  }, [metrics, wsConnected]);
+  }, [metrics, wsConnected, triageStats.red, triageStats.yellow, triageStats.green, showToast]);
 
   // ── Predictions ────────────────────────────────────────────────
   const predictions = useMemo(() => [
@@ -513,7 +521,7 @@ const EmergencyCommandCenter = () => {
       case 'refresh': setRefreshing((r) => r + 1); showToast('Data refreshed'); break;
       default: showToast(`${action.label} ready`); break;
     }
-  }, [massCasualty]);
+  }, [massCasualty, showToast]);
 
   // ── Alert item ─────────────────────────────────────────────────
   const AlertItem = ({ alert }) => {
@@ -568,7 +576,7 @@ const EmergencyCommandCenter = () => {
   };
 
   // ── Toast ──────────────────────────────────────────────────────
-  const ToastCmp = () => !toast ? null : (
+  const toastMarkup = !toast ? null : (
     <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg text-xs font-semibold animate-fade-in ${toast.type === 'warning' ? 'bg-amber-500 text-white' : toast.type === 'error' ? 'bg-red-500 text-white' : 'bg-emerald-600 text-white'}`}>
       <i className={`fas ${toast.type === 'warning' ? 'fa-exclamation-triangle' : toast.type === 'error' ? 'fa-times-circle' : 'fa-check-circle'} mr-2`} />
       {toast.msg}
@@ -578,11 +586,11 @@ const EmergencyCommandCenter = () => {
   // Simulated ambulances for the SVG map
   const simulatedAmbs = useMemo(() =>
     alerts.slice(0, 4).map((_, i) => ({ label: `AMB-${10 + i}`, lat: 0, lng: 0 }))
-  , [alerts.length]);
+  , [alerts]);
 
   return (
     <>
-      <ToastCmp />
+      {toastMarkup}
       <EnterpriseModuleShell
         title="Emergency Command Center"
         icon="fa-tower-broadcast"

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 
 const NavBar = ({ navigate }) => {
-    const { user, logout } = useAuth();
+    const { _user, _logout } = useAuth();
     const [scrolled, setScrolled] = useState(false);
     const [mobileMenu, setMobileMenu] = useState(false);
 

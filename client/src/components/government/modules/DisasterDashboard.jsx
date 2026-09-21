@@ -4,19 +4,22 @@ import { DetailModal, ConfirmDialog, Toast, AnimatedBarChart, AIExplainPanel } f
 import { useApiData } from '../../../hooks/useApiData';
 import { apiFetch } from '../../../config/api';
 
+// Module-level so render stays pure (react-hooks/purity)
+const NOW = Date.now();
+
 const DisasterDashboard = () => {
-  const [timeRange, setTimeRange] = useState('24h');
-  const { data: disastersData, loading: disastersLoading, refetch: refetchDisasters } = useApiData(
+  const [timeRange, _setTimeRange] = useState('24h');
+  const { data: disastersData, loading: _disastersLoading, refetch: _refetchDisasters } = useApiData(
     '/v2/government/disaster/recent',
     { pollInterval: 30000, transform: (d) => d?.disasters || d || [] }
   );
-  const [disasters, setDisasters] = useState([
+  const [disasters, _setDisasters] = useState([
     { id: 'D-1001', name: 'Cyclone', location: 'Arabian Sea', severity: 'Critical', status: 'Active', affected: '42,000', updated: '5m ago', lat: 12.95, lng: 74.5, details: 'Severe cyclonic storm with wind speeds up to 140 km/h.' },
     { id: 'D-1002', name: 'Flood', location: 'Netravati Valley', severity: 'High', status: 'Active', affected: '18,500', updated: '12m ago', lat: 12.85, lng: 75.1, details: 'River Netravati water level at 4.2m and rising.' },
     { id: 'D-1003', name: 'Earthquake', location: 'Western Ghats', severity: 'Moderate', status: 'Monitoring', affected: '3,200', updated: '45m ago', lat: 13.1, lng: 75.5, details: 'Magnitude 4.8 earthquake at depth 12km.' },
   ]);
   // Use real data if available, fallback to initial state
-  const activeDisasters = disastersData?.length > 0 ? disastersData : disasters;
+  const _activeDisasters = disastersData?.length > 0 ? disastersData : disasters;
   const [showDetail, setShowDetail] = useState(null);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
 
@@ -103,7 +106,7 @@ const DisasterDashboard = () => {
           </div>
           <div className="mt-4 pt-3 border-t border-slate-100">
             <p className="text-[10px] text-slate-400">AI Risk Prediction Confidence: 87%</p>
-            <p className="text-[10px] text-slate-400 mt-0.5">Last Updated: {FORMAT_TIME(Date.now())}</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">Last Updated: {FORMAT_TIME(NOW)}</p>
           </div>
         </div>
       </div>

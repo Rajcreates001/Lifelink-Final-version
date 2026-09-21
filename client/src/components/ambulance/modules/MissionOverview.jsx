@@ -1,7 +1,7 @@
 import React from 'react';
 import { KPICard, StatusBadge, FORMAT_TIME, severityColor } from '../shared/AmbulanceShared';
 
-const MissionOverview = ({ vehicle, incident, hospital, toIncident, toHospital, missionStart, patientStatus, goldenHour, onAction, onOpenTriage }) => {
+const MissionOverview = ({ vehicle, incident, _hospital, toIncident, toHospital, _missionStart, patientStatus, _goldenHour, onAction, onOpenTriage }) => {
   const kpis = [
     { label: 'ETA to Pickup', value: `${toIncident?.etaMinutes || 0} min`, icon: 'fa-clock', color: 'sky', subtitle: `${toIncident?.distanceKm || 0} km` },
     { label: 'ETA to Hospital', value: `${toHospital?.etaMinutes || 0} min`, icon: 'fa-hospital', color: 'amber', subtitle: `${toHospital?.distanceKm || 0} km` },

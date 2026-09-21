@@ -5,7 +5,7 @@ import { apiFetch } from '../../../config/api';
 
 const Resources = () => {
   const [inventory, setInventory] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
 
   const showToast = useCallback((msg, type = 'success') => setToast({ visible: true, message: msg, type }), []);

@@ -63,7 +63,7 @@ const GraphDetailModal = ({ isOpen, onClose, item }) => {
                                     </span>
                                 </div>
                                 <div className="flex items-end gap-6 h-48">
-                                    {item.bars.map((b, bi) => {
+                                    {item.bars.map((b) => {
                                         const maxVal = Math.max(...item.bars.map(x => x.val));
                                         const h = (b.val / maxVal) * 100;
                                         const isAI = b.label === 'LifeLink' || b.label === 'LifeLink Cost Index';
@@ -321,7 +321,7 @@ const GraphDetailModal = ({ isOpen, onClose, item }) => {
                                         { label: 'Total Records', value: '680K+', detail: '911 calls, EMRs, donor registries', icon: 'fa-database', color: '#7C3AED' },
                                         { label: 'Connected Hospitals', value: '286+', detail: 'Across 48 cities nationwide', icon: 'fa-hospital', color: '#059669' },
                                         { label: 'Cities Live', value: '48+', detail: 'Expanding to 200+ by 2027', icon: 'fa-city', color: '#2563EB' },
-                                    ].map((c, ci) => (
+                                    ].map((c) => (
                                         <div key={c.label} className="flex flex-col items-center p-4 rounded-xl text-center"
                                             style={{ background: `${c.color}08` }}>
                                             <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg mb-2"

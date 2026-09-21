@@ -146,9 +146,10 @@ describe('AuthContext logout revocation', () => {
 
         const { AuthProvider, useAuth } = await import('../context/AuthContext');
 
-        let contextValue;
+        const probe = vi.fn();
         const Probe = () => {
-            contextValue = useAuth();
+            const value = useAuth();
+            probe(value);
             return <div>probe</div>;
         };
         render(
@@ -160,7 +161,7 @@ describe('AuthContext logout revocation', () => {
         await waitFor(() => expect(screen.getByText('probe')).toBeInTheDocument());
 
         act(() => {
-            contextValue.clearAuth();
+            probe.mock.lastCall[0].clearAuth();
         });
 
         await waitFor(() => {

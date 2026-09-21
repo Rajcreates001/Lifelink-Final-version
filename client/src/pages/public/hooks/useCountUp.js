@@ -11,10 +11,11 @@ import { useEffect, useRef, useState } from 'react';
 export function useCountUp(target, duration = 1500, startOnView = true) {
   const [count, setCount] = useState(0);
   const [visible, setVisible] = useState(!startOnView);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    if (!startOnView) { setVisible(true); return; }
+  const ref = useRef(null);    useEffect(() => {
+        if (!startOnView) {
+            const t = setTimeout(() => setVisible(true), 0);
+            return () => clearTimeout(t);
+        }
     const el = ref.current;
     if (!el) return;
     const obs = new IntersectionObserver(

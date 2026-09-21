@@ -65,7 +65,7 @@ const UptimeBar = ({ dailyData = {} }) => {
     // Fallback to simulated data
     const fallback = Array.from({ length: 30 }, (_, i) => ({
       date: `day-${i}`,
-      uptime: 99.5 + Math.random() * 0.5,
+      uptime: 99.5 + (i % 5) * 0.1,
       status: 'up',
     }));
     return (
@@ -104,7 +104,7 @@ const StatusPage = () => {
   const [status, setStatus] = useState(null);
   const [history, setHistory] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, _setError] = useState('');
   const [lastChecked, setLastChecked] = useState(null);
 
   const fetchStatus = async () => {
@@ -147,8 +147,11 @@ const StatusPage = () => {
   };
 
   useEffect(() => {
-    fetchStatus();
-    fetchHistory();
+    const run = async () => {
+      await fetchStatus();
+      await fetchHistory();
+    };
+    run();
     const interval = setInterval(() => {
       fetchStatus();
       fetchHistory();

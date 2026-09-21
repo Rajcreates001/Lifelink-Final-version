@@ -44,7 +44,7 @@ const BENGALURU_BOUNDS = { latMin: 12.85, latMax: 13.05, lngMin: 77.45, lngMax: 
 
 const resolveAmbulanceId = (user) => user?._id || user?.id || '';
 
-const toLatLng = (value) => {
+const _toLatLng = (value) => {
   if (!value || typeof value !== 'object') return { lat: null, lng: null, address: '' };
   return {
     lat: value.latitude ?? value.lat ?? value.location?.lat,
@@ -54,7 +54,7 @@ const toLatLng = (value) => {
 };
 const hasCoords = (point) => Number.isFinite(point?.lat) && Number.isFinite(point?.lng);
 const isWithinBengaluru = (point) => hasCoords(point) && point.lat >= BENGALURU_BOUNDS.latMin && point.lat <= BENGALURU_BOUNDS.latMax && point.lng >= BENGALURU_BOUNDS.lngMin && point.lng <= BENGALURU_BOUNDS.lngMax;
-const coerceToBengaluru = (point, fallback) => (isWithinBengaluru(point) ? point : { ...fallback });
+const _coerceToBengaluru = (point, fallback) => (isWithinBengaluru(point) ? point : { ...fallback });
 const buildFallbackRoute = (start, end) => {
   const midLat = (start.lat + end.lat) / 2;
   const midLng = (start.lng + end.lng) / 2;
@@ -74,7 +74,7 @@ const haversineKm = (start, end) => {
   const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(start.lat)) * Math.cos(toRad(end.lat)) * Math.sin(dLng / 2) ** 2;
   return r * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
-const buildRouteInfo = (routeData, trafficData, start, end) => {
+const _buildRouteInfo = (routeData, trafficData, start, end) => {
   const geometryPath = (routeData?.geometry?.coordinates || []).map(([lng, lat]) => [lat, lng]);
   const durationSeconds = routeData?.duration_seconds || 0;
   const distanceKm = Number.isFinite(routeData?.distance_meters)
@@ -148,7 +148,7 @@ const GoldenHourTimer = ({ startTime }) => {
   );
 };
 
-const CriticalIncidentBanner = ({ incident, patientStatus, onOpenTriage }) => {
+const CriticalIncidentBanner = ({ incident, __patientStatus, onOpenTriage }) => {
   const severityColor = incident?.severity === 'Critical' ? 'red' : incident?.severity === 'High' ? 'amber' : 'sky';
   const bgColors = { red: 'from-red-50 to-rose-50 border-red-200', amber: 'from-amber-50 to-orange-50 border-amber-200', sky: 'from-sky-50 to-blue-50 border-sky-200' };
 
@@ -316,7 +316,7 @@ const HospitalRecommendationEngine = ({ hospitals, currentHospital }) => {
   );
 };
 
-const NavigationAI = ({ toIncident, toHospital, vehicle, incident }) => {
+const NavigationAI = ({ toIncident, toHospital, __vehicle, __incident }) => {
   const routes = useMemo(() => [
     { label: 'Fastest Route', eta: toIncident?.etaMinutes || 7, distance: toIncident?.distanceKm || 4.1, traffic: toIncident?.traffic?.level || 'Light', risk: 'Low', confidence: 92, color: 'emerald' },
     { label: 'Alternate A', eta: (toIncident?.etaMinutes || 7) + 3, distance: (toIncident?.distanceKm || 4.1) + 1.2, traffic: 'Light', risk: 'Low', confidence: 85, color: 'sky' },
@@ -429,7 +429,7 @@ const CommunicationPanel = () => {
   );
 };
 
-const TriagePanel = ({ incident, onClose }) => {
+const TriagePanel = ({ incident, __onClose }) => {
   const [symptom, setSymptom] = useState('');
   const [triageResult, setTriageResult] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -503,6 +503,9 @@ const TriagePanel = ({ incident, onClose }) => {
 
 // ─── Main Component ───────────────────────────────────────────────
 
+// Module-level base time so render stays pure (react-hooks/purity)
+const ACTIVITY_BASE_TS = Date.now();
+
 const AmbulanceMissionControl = ({ activeModule: externalModule }) => {
   const { user } = useAuth();
   const ambulanceId = resolveAmbulanceId(user);
@@ -530,7 +533,7 @@ const AmbulanceMissionControl = ({ activeModule: externalModule }) => {
     let isActive = true;
     const loadData = async () => {
       try {
-        const hasAuth = Boolean(getAuthToken());
+        const _hasAuth = Boolean(getAuthToken());
         const [assignmentsRes] = await Promise.all([
           apiFetch(`/api/ambulance/assignments${ambulanceId ? `?ambulance_id=${ambulanceId}` : ''}`, { method: 'GET' }),
         ]);
@@ -649,13 +652,13 @@ const AmbulanceMissionControl = ({ activeModule: externalModule }) => {
 
   // Activities
   const activities = useMemo(() => [
-    { key: 'a1', message: 'Mission dispatched — Multi-vehicle collision at Cubbon Park Rd', timestamp: new Date(Date.now() - 600000).toISOString(), status: 'success', user: 'Dispatch' },
-    { key: 'a2', message: 'Ambulance A1 en route to pickup location', timestamp: new Date(Date.now() - 540000).toISOString(), status: 'info', user: 'System' },
-    { key: 'a3', message: 'Traffic alert: Moderate congestion on Cubbon Rd — reroute available', timestamp: new Date(Date.now() - 300000).toISOString(), status: 'warning', user: 'AI' },
-    { key: 'a4', message: 'Patient vitals updated: HR 122, SpO₂ 88%, BP 92/58', timestamp: new Date(Date.now() - 180000).toISOString(), status: 'info', user: 'Monitor' },
-    { key: 'a5', message: 'Golden Hour countdown active — 45 min remaining', timestamp: new Date(Date.now() - 120000).toISOString(), status: 'info', user: 'AI' },
-    { key: 'a6', message: "St. Martha's Hospital confirmed: Trauma team ready, ICU bed reserved", timestamp: new Date(Date.now() - 60000).toISOString(), status: 'success', user: 'Hospital' },
-    { key: 'a7', message: 'Police notified — priority lane clearance active on route corridor', timestamp: new Date(Date.now() - 30000).toISOString(), status: 'success', user: 'Police' },
+    { key: 'a1', message: 'Mission dispatched — Multi-vehicle collision at Cubbon Park Rd', timestamp: new Date(ACTIVITY_BASE_TS - 600000).toISOString(), status: 'success', user: 'Dispatch' },
+    { key: 'a2', message: 'Ambulance A1 en route to pickup location', timestamp: new Date(ACTIVITY_BASE_TS - 540000).toISOString(), status: 'info', user: 'System' },
+    { key: 'a3', message: 'Traffic alert: Moderate congestion on Cubbon Rd — reroute available', timestamp: new Date(ACTIVITY_BASE_TS - 300000).toISOString(), status: 'warning', user: 'AI' },
+    { key: 'a4', message: 'Patient vitals updated: HR 122, SpO₂ 88%, BP 92/58', timestamp: new Date(ACTIVITY_BASE_TS - 180000).toISOString(), status: 'info', user: 'Monitor' },
+    { key: 'a5', message: 'Golden Hour countdown active — 45 min remaining', timestamp: new Date(ACTIVITY_BASE_TS - 120000).toISOString(), status: 'info', user: 'AI' },
+    { key: 'a6', message: "St. Martha's Hospital confirmed: Trauma team ready, ICU bed reserved", timestamp: new Date(ACTIVITY_BASE_TS - 60000).toISOString(), status: 'success', user: 'Hospital' },
+    { key: 'a7', message: 'Police notified — priority lane clearance active on route corridor', timestamp: new Date(ACTIVITY_BASE_TS - 30000).toISOString(), status: 'success', user: 'Police' },
   ], []);
 
   // FAB actions

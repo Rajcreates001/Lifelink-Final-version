@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, _useEffect } from 'react';
 import { GovKPICard, GovStatusBadge, GovSectionHeader, GovModuleHero } from '../shared/GovernmentShared';
 import { DetailModal, Toast, AnimatedBarChart, AIExplainPanel } from '../shared/InteractiveComponents';
 import { apiFetch } from '../../../config/api';
@@ -13,7 +13,7 @@ const AIMLLab = () => {
     { id: 'M-006', name: 'Traffic Flow Optimizer', accuracy: 91, status: 'Training', type: 'Reinforcement', lastRun: '5m ago', desc: 'Optimizes traffic flow during emergencies. Currently training on new real-time data.', predictions: 2340 },
   ]);
   const [selectedModel, setSelectedModel] = useState(null);
-  const [trainingJobs, setTrainingJobs] = useState([
+  const [trainingJobs, _setTrainingJobs] = useState([
     { model: 'Earthquake Early Warning', progress: 72, eta: '1h 20m', dataset: 'seismic_2026', loss: 0.034, accuracy: 88 },
     { model: 'Landslide Predictor v3', progress: 45, eta: '2h 15m', dataset: 'landslide_history', loss: 0.052, accuracy: 82 },
     { model: 'Urban Flood Model', progress: 18, eta: '4h 30m', dataset: 'urban_drainage', loss: 0.078, accuracy: 76 },

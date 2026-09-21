@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
-import { severityColor, formatNumber, buildSeverityData, normalizeFeed, normalizeHospitals, pickCenter } from './helpers';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { apiFetch } from '../../config/api';
+import { useEmergencyFeed } from '../../hooks/useWebSocket';
+import { severityColor, formatNumber, buildSeverityData, normalizeFeed, normalizeHospitals, pickCenter,
+  FEED_LIMIT, FEED_WINDOW_MINUTES, HOSPITAL_LIMIT, MAX_MAP_POINTS } from './helpers';
 
 export const GovernmentLiveMonitoring = () => {
     const [summary, setSummary] = useState(null);
@@ -133,7 +136,7 @@ export const GovernmentLiveMonitoring = () => {
             mountedRef.current = false;
             if (interval) clearInterval(interval);
         };
-    }, []);
+    }, [disableLiveRefresh]);
 
     return (
         <div className="space-y-6">

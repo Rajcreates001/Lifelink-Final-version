@@ -97,9 +97,9 @@ const AiAgentsPanel = () => {
                   <div className="flex items-center gap-2 text-[9px] text-slate-500">
                     <span className="px-1.5 py-0.5 rounded bg-white text-indigo-500 font-semibold border border-indigo-100">
                       <i className="fas fa-brain text-[7px] mr-0.5"></i>
-                      Last task: {Math.floor(Math.random() * 10)}s ago
+                      Last task: {selected.tasks % 10}s ago
                     </span>
-                    <span>Accuracy: {88 + Math.floor(Math.random() * 8)}%</span>
+                    <span>Accuracy: {88 + (selected.tasks % 8)}%</span>
                   </div>
                 </div>
               )}

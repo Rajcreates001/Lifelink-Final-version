@@ -248,7 +248,7 @@ const NotificationDetailModal = ({ item, onClose, onDismiss, onMarkAsRead, onArc
                   </span>
                 </div>
                 <p className="text-xs text-white/80 mt-0.5">
-                  {item.severity || 'Info'} Priority · {new Date(item.time || Date.now()).toLocaleString()}
+                  {item.severity || 'Info'} Priority · {item.time ? new Date(item.time).toLocaleString() : 'Just now'}
                 </p>
               </div>
             </div>

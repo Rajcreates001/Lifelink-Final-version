@@ -22,7 +22,7 @@ const createSession = (title = 'New chat') => ({
   messages: [],
 });
 
-const normalizeMessage = (message) => ({
+const _normalizeMessage = (message) => ({
   id: message.id || createId(),
   role: message.role || 'assistant',
   content: message.content || '',
@@ -170,14 +170,14 @@ const getQuickSuggestions = (moduleKey) => {
   return BASE_SUGGESTIONS;
 };
 
-const LifelinkAiChat = ({ variant = 'panel', onClose, location, moduleKey = 'general' }) => {
+const LifelinkAiChat = ({ variant = 'panel', __onClose, location, moduleKey = 'general' }) => {
   const { user, loading: authLoading } = useAuth();
   const { apiBase, isEnterpriseUser, normalizeMessage, normalizeConversation } = useEnterpriseAI();
   const [sessions, setSessions] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
   const [isRemote, setIsRemote] = useState(false);
-  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [_loadingHistory, setLoadingHistory] = useState(false);
   const [suggestionsVisible, setSuggestionsVisible] = useState(true);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -286,7 +286,7 @@ const LifelinkAiChat = ({ variant = 'panel', onClose, location, moduleKey = 'gen
       return;
     }
     initLocalSessions();
-  }, [isRemote, isEnterpriseUser, apiBase]);
+  }, [isRemote, isEnterpriseUser, apiBase, mode, moduleKey, normalizeConversation]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -336,7 +336,7 @@ const LifelinkAiChat = ({ variant = 'panel', onClose, location, moduleKey = 'gen
       setLoadingHistory(false);
     };
     loadMessages();
-  }, [activeId, isRemote, isEnterpriseUser, apiBase]);
+  }, [activeId, isRemote, isEnterpriseUser, apiBase, normalizeMessage]);
 
   const updateSession = (sessionId, updater) => {
     setSessions((prev) => prev.map((session) => (

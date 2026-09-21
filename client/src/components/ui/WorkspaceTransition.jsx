@@ -17,8 +17,7 @@ const WorkspaceTransition = ({ department, onComplete }) => {
 
   useEffect(() => {
     if (!department) return;
-    setCurrentStep(0);
-    setProgress(0);
+    const resetT = setTimeout(() => { setCurrentStep(0); setProgress(0); }, 0);
 
     const totalDuration = 3500;
     const interval = 80;
@@ -37,10 +36,11 @@ const WorkspaceTransition = ({ department, onComplete }) => {
     }, interval);
 
     return () => {
+      clearTimeout(resetT);
       clearInterval(timer);
       if (completeRef.current) clearTimeout(completeRef.current);
     };
-  }, [department?.key]);
+  }, [department?.key, department, onComplete]);
 
   if (!department) return null;
 

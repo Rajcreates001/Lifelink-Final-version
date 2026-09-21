@@ -130,7 +130,7 @@ const HospitalMap = () => {
         return () => {
             isActive = false;
         };
-    }, [userPos.lat, userPos.lng]);
+    }, [userPos.lat, userPos.lng, hospitalMetaMap]);
 
     const fallbackHospitals = useMemo(() => {
         return [...mockHospitals]

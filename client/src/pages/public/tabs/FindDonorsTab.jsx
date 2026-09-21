@@ -6,7 +6,7 @@
  * /v2/public/donors/notify. Adds premium 3-column workspace, live AI status,
  * animated match score rings, donor detail panel, compatibility timeline.
  */
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { apiFetch } from '../../../config/api';
 import { DashboardCard } from '../../../components/Common';
 import DonorIntelligenceModal from '../../../components/DonorIntelligenceModal';
@@ -40,8 +40,8 @@ const RECIPIENT_COMPAT = {
 function useCountUp(target, duration = 1200) {
   const [count, setCount] = useState(0);
   useEffect(() => {
-    if (target === 0) { setCount(0); return; }
-    if (!target) return;
+    if (target === 0) { const t = setTimeout(() => setCount(0), 0); return () => clearTimeout(t); }
+    if (!target) return undefined;
     let start = 0;
     const step = Math.max(1, Math.ceil(target / (duration / 16)));
     const timer = setInterval(() => {
@@ -150,7 +150,7 @@ const FindDonorsTab = ({ user, data }) => {
   }, [donorMatches, data?.allDonors, donorSearch, donorGroupFilter, donorAvailabilityFilter, donorSortBy]);
 
   // ─── Compatibility Check ───────────────────────────────
-  const checkCompat = async (donorId) => {
+  const checkCompat = useCallback(async (donorId) => {
     const cacheKey = donorId ? String(donorId) : 'unknown';
     setCompatResults((prev) => ({ ...prev, [cacheKey]: { loading: true } }));
     try {
@@ -166,7 +166,7 @@ const FindDonorsTab = ({ user, data }) => {
     } catch {
       setCompatResults((prev) => ({ ...prev, [cacheKey]: { loading: false, error: true } }));
     }
-  };
+  }, [user?.id]);
 
   // ─── Fetch Donor Profile (real data for modal) ────────
   const fetchDonorProfile = async (donorId) => {
@@ -210,7 +210,7 @@ const FindDonorsTab = ({ user, data }) => {
   const userCompatibleGroups = RECIPIENT_COMPAT[userBloodGroup] || ['O+', 'O-'];
 
   const animatedDonorCount = useCountUp(visibleDonors.length);
-  const animatedVerifiedCount = useCountUp(visibleDonors.filter((d) => d.verified || d.isVerified).length);
+  const _animatedVerifiedCount = useCountUp(visibleDonors.filter((d) => d.verified || d.isVerified).length);
 
   // ─── Score Color Helper ────────────────────────────────
   const scoreColor = (score) => {
@@ -225,7 +225,7 @@ const FindDonorsTab = ({ user, data }) => {
     if (visibleDonors.length > 0 && Object.keys(compatResults).length === 0) {
       visibleDonors.slice(0, 3).forEach((d) => { const id = d.id || d.user_id || d._id; if (id) checkCompat(id); });
     }
-  }, [visibleDonors]);
+  }, [visibleDonors, checkCompat, compatResults]);
 
   // ─── Selected donor compat for sidebar ────────────────
   const selectedDonorId = selectedDonor ? (selectedDonor.id || selectedDonor.user_id || selectedDonor._id) : null;

@@ -49,7 +49,6 @@ export const useIsDesktop = () => {
       media.addListener(handler);
     }
 
-    setIsDesktop(media.matches);
     return () => {
       if (media.removeEventListener) {
         media.removeEventListener('change', handler);

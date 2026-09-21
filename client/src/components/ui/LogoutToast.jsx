@@ -22,8 +22,8 @@ const LogoutToast = ({ open, onClose }) => {
 
   useEffect(() => {
     if (!open) {
-      setVisible(false);
-      return;
+      const t = setTimeout(() => setVisible(false), 0);
+      return () => clearTimeout(t);
     }
     // Small delay for mount animation
     requestAnimationFrame(() => {

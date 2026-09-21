@@ -74,6 +74,9 @@ export function useWebSocket(channel, options = {}) {
   const reconnectAttemptRef = useRef(0);
   const reconnectTimerRef = useRef(null);
   const mountedRef = useRef(true);
+  // Latest connect impl — lets reconnect timers self-reschedule without the
+  // useCallback referencing itself before declaration.
+  const connectRef = useRef(null);
 
   const connect = useCallback(() => {
     if (!enabled || !CHANNELS[channel]) return;
@@ -115,13 +118,13 @@ export function useWebSocket(channel, options = {}) {
         }
       };
 
-      ws.onerror = (err) => {
+      ws.onerror = () => {
         if (!mountedRef.current) return;
         setError('WebSocket error');
         onStatusChange?.('error');
       };
 
-      ws.onclose = (event) => {
+      ws.onclose = () => {
         if (!mountedRef.current) return;
         setIsConnected(false);
         onStatusChange?.('disconnected');
@@ -130,9 +133,8 @@ export function useWebSocket(channel, options = {}) {
         if (reconnectAttemptRef.current < MAX_RECONNECT_ATTEMPTS) {
           reconnectAttemptRef.current += 1;
           const delay = calculateBackoff(reconnectAttemptRef.current);
-          const maxAttempts = MAX_RECONNECT_ATTEMPTS;
 
-          reconnectTimerRef.current = setTimeout(connect, delay);
+          reconnectTimerRef.current = setTimeout(() => connectRef.current?.(), delay);
         } else {
           console.error(`[WS] Max reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Giving up.`);
           setError('Max reconnection attempts reached');
@@ -147,10 +149,12 @@ export function useWebSocket(channel, options = {}) {
 
   useEffect(() => {
     mountedRef.current = true;
-    connect();
+    connectRef.current = connect;
+    const startT = setTimeout(() => connect(), 0);
 
     return () => {
       mountedRef.current = false;
+      clearTimeout(startT);
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;

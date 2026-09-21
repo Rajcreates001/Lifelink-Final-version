@@ -125,7 +125,7 @@ const AiExecutiveSummary = () => {
     { text: 'Potential blood shortage for O Negative within 12 hours. Staff fatigue in Radiology. Revenue forecast upgraded to $320K based on current run rate.', confidence: 92, color: 'from-amber-500/10 to-orange-500/10' },
   ], []);
   const [idx, setIdx] = useState(0);
-  useEffect(() => { const t = setInterval(() => setIdx((p) => (p + 1) % summaries.length), 8000); return () => clearInterval(t); }, []);
+  useEffect(() => { const t = setInterval(() => setIdx((p) => (p + 1) % summaries.length), 8000); return () => clearInterval(t); }, [summaries.length]);
   const s = summaries[idx];
   return (
     <div className={'relative overflow-hidden rounded-2xl bg-gradient-to-r ' + s.color + ' backdrop-blur-sm border border-white/40 animate-fade-in-up'}>
@@ -415,14 +415,30 @@ const HospitalAnalytics = () => {
   const cacheKey = hospitalId ? 'hospital_ai_' + hospitalId : 'hospital_ai';
 
   useEffect(() => {
-    if (!hospitalId) { setInsights(null); setLoading(false); return; }
-    let cached = false;
-    try { const c = localStorage.getItem(cacheKey); if (c) { setInsights(JSON.parse(c)); setLoading(false); cached = true; } } catch (_) {}
-    if (!cached) setLoading(true);
-    apiFetch('/api/hospital-ops/ceo/ai-insights?hospitalId=' + hospitalId, { method: 'GET' }).then((res) => {
+    if (!hospitalId) {
+      const t = setTimeout(() => { setInsights(null); setLoading(false); }, 0);
+      return () => clearTimeout(t);
+    }
+    let on = true;
+    (async () => {
+      await Promise.resolve(); // yield so state updates never run in the effect body
+      let cached = false;
+      try {
+        const c = localStorage.getItem(cacheKey);
+        if (c) {
+          setInsights(JSON.parse(c));
+          setLoading(false);
+          cached = true;
+        }
+      } catch (_) { /* corrupt cache — refetch */ }
+      if (!cached) setLoading(true);
+      const res = await apiFetch('/api/hospital-ops/ceo/ai-insights?hospitalId=' + hospitalId, { method: 'GET' });
+      if (!on) return;
       if (res.ok) { setInsights(res.data); localStorage.setItem(cacheKey, JSON.stringify(res.data || {})); }
-    }).finally(() => setLoading(false));
-  }, [hospitalId]);
+      setLoading(false);
+    })();
+    return () => { on = false; };
+  }, [hospitalId, cacheKey]);
 
   if (loading && !insights) return <LoadingSpinner />;
 

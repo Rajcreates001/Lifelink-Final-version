@@ -373,6 +373,7 @@ const GovernmentRoleSelect = () => {
         navigate('/government', { replace: true });
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run only on mount
   }, []); // Run only on mount
 
   // ─── Restore session memory ───────────────────────────

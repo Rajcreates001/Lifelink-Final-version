@@ -104,7 +104,7 @@ const InsightCard = ({ insight, index }) => {
   );
 };
 
-const PredictionCard = ({ prediction, index }) => {
+const PredictionCard = ({ prediction, __index }) => {
   const directions = ['fa-arrow-trend-up', 'fa-arrow-trend-down', 'fa-minus'];
   const dirColors = ['text-emerald-500', 'text-red-500', 'text-slate-400'];
   const dirIdx = prediction.trend === 'up' ? 0 : prediction.trend === 'down' ? 1 : 2;
@@ -160,17 +160,23 @@ const RecommendationCard = ({ rec, index, onExecute }) => {
   );
 };
 
+// Module-level anchor so relative-time labels don't call Date.now() during render
+const SHELL_MOUNT_TS = Date.now();
+
+function formatRelativeTime(ts) {
+  if (!ts) return '';
+  const diff = SHELL_MOUNT_TS - new Date(ts).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
 const ActivityItem = ({ activity }) => {
-  const timeAgo = useMemo(() => {
-    if (!activity.timestamp) return '';
-    const diff = Date.now() - new Date(activity.timestamp).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) return 'Just now';
-    if (mins < 60) return `${mins}m ago`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs}h ago`;
-    return `${Math.floor(hrs / 24)}d ago`;
-  }, [activity.timestamp]);
+  // Relative label via module helper — no Date.now() memoized in render
+  const timeAgo = formatRelativeTime(activity.timestamp);
 
   const statusDot = activity.status === 'success' ? 'bg-emerald-500' :
     activity.status === 'warning' ? 'bg-amber-500' :

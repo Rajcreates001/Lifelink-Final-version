@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { buildQuery } from './helpers';
 import { useAuth } from '../../context/AuthContext';
 import { apiFetch, getAuthToken, API_BASE_URL } from '../../config/api';
@@ -18,7 +18,7 @@ export const HospitalReports = () => {
     const [ingestSortBy, setIngestSortBy] = useState('generatedAt');
     const [ingestSortDir, setIngestSortDir] = useState('desc');
 
-    const load = async () => {
+    const load = useCallback(async () => {
         if (!hospitalId) {
             setReports([]);
             setIngestedReports([]);
@@ -42,11 +42,14 @@ export const HospitalReports = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [hospitalId, ingestSearch, ingestSortBy, ingestSortDir]);
 
     useEffect(() => {
-        load();
-    }, [hospitalId, ingestSearch, ingestSortBy, ingestSortDir]);
+        const run = async () => {
+          await load();
+        };
+        run();
+        }, [hospitalId, ingestSearch, ingestSortBy, ingestSortDir, load]);
 
     const handleGenerate = async (reportKey) => {
         if (!hospitalId || !reportKey) return;

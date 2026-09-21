@@ -18,8 +18,8 @@ import GlobalSearchModal from '../components/ui/GlobalSearchModal';
 import { LanguageSwitcherCompact } from '../components/ui/LanguageSwitcher';
 import { useTranslation } from 'react-i18next';
 
-const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, onRefresh, refreshLabel = 'Refresh', onAiChat, ...rest }) => {
-    const { user, logout, performLogout } = useAuth();
+const DashboardLayout = ({ children, sidebarItems = [], activeItem, onSelect, onRefresh, refreshLabel = 'Refresh', onAiChat, ..._rest }) => {
+    const { user, _logout, performLogout } = useAuth();
     const navigate = useNavigate();
     const { t } = useTranslation();
 

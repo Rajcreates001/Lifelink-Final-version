@@ -605,7 +605,7 @@ const RevenueIntelligence = () => {
         return 0;
       });
       return items;
-    }, [invoices, search, sortBy, sortDir]);
+    }, [search, sortBy, sortDir]);
 
     const sortIcon = (key) => sortBy === key ? (sortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort';
 
@@ -680,8 +680,8 @@ const RevenueIntelligence = () => {
   // ── Claims table ───────────────────────────────────────────────
   const ClaimsTable = () => {
     const [search, setSearch] = useState('');
-    const [sortBy, setSortBy] = useState('createdAt');
-    const [sortDir, setSortDir] = useState('desc');
+    const [sortBy, _setSortBy] = useState('createdAt');
+    const [sortDir, _setSortDir] = useState('desc');
 
     const filtered = useMemo(() => {
       let items = [...claims];
@@ -704,7 +704,7 @@ const RevenueIntelligence = () => {
         return 0;
       });
       return items;
-    }, [claims, search, sortBy, sortDir]);
+    }, [search, sortBy, sortDir]);
 
     return (
       <div>
@@ -883,7 +883,7 @@ const RevenueIntelligence = () => {
   // ── Mission Control Top Bar ────────────────────────────────────
   const MissionControlBar = () => {
     const [timeStr, setTimeStr] = useState(new Date().toLocaleTimeString('en-IN', { hour12: false }));
-    const [scanPulse, setScanPulse] = useState(0);
+    const [_scanPulse, setScanPulse] = useState(0);
 
     useEffect(() => {
       const t = setInterval(() => {
@@ -893,13 +893,14 @@ const RevenueIntelligence = () => {
       return () => clearInterval(t);
     }, []);
 
+    const { totalRevenue: animatedRevenue } = metrics;
     const totalRevenueAnimated = useMemo(() => {
-      const val = metrics.totalRevenue;
+      const val = animatedRevenue;
       if (val === 0) return '₹0';
       if (val >= 10000000) return `₹${(val / 10000000).toFixed(2)}Cr`;
       if (val >= 100000) return `₹${(val / 100000).toFixed(2)}L`;
       return `₹${val.toLocaleString('en-IN')}`;
-    }, [metrics.totalRevenue]);
+    }, [animatedRevenue]);
 
     return (
       <div className="rounded-xl bg-slate-900 border border-slate-700/60 p-3 overflow-hidden relative">

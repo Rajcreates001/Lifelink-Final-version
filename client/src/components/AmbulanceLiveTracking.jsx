@@ -135,8 +135,8 @@ const AmbulanceLiveTracking = () => {
 
     useEffect(() => {
         if (!wsUrl) {
-            setConnectionStatus('error');
-            return undefined;
+            const t = setTimeout(() => setConnectionStatus('error'), 0);
+            return () => clearTimeout(t);
         }
 
         const connect = () => {

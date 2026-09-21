@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 // ============================================================
 // Data Masking Unit Tests (pure logic, no imports needed)
@@ -270,7 +270,6 @@ describe('Encryption Endpoints', () => {
     });
 
     it('sanitize-for-log removes PII', () => {
-        const data = { name: 'John', phone: '+919876543210', severity: 'High' };
         const sanitized = { name: '[REDACTED]', phone: '[REDACTED]', severity: 'High' };
         expect(sanitized.name).toBe('[REDACTED]');
         expect(sanitized.severity).toBe('High');

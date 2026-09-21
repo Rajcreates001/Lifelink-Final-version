@@ -28,9 +28,9 @@ const HeroSection = ({ entered }) => {
                 {[...Array(12)].map((_, i) => (
                     <div key={i} className="absolute rounded-full bg-white/30 blur-[1px] animate-float-slow"
                         style={{
-                            width: `${2 + Math.random() * 3}px`, height: `${2 + Math.random() * 3}px`,
-                            top: `${10 + Math.random() * 80}%`, left: `${5 + Math.random() * 90}%`,
-                            animationDelay: `-${Math.random() * 8}s`, animationDuration: `${6 + Math.random() * 6}s`,
+                            width: `${2 + ((i * 7) % 4)}px`, height: `${2 + ((i * 7) % 4)}px`,
+                            top: `${10 + ((i * 37) % 80)}%`, left: `${5 + ((i * 53) % 90)}%`,
+                            animationDelay: `-${i % 8}s`, animationDuration: `${6 + (i % 6)}s`,
                         }} />
                 ))}
             </div>

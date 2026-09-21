@@ -13,7 +13,7 @@
  * - 10-step animated login sequence
  * - Enterprise RBAC-driven workspace entry
  */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../../config/api';
 
 // ─── Login Animation Steps ─────────────────────────────────
@@ -56,7 +56,14 @@ const WorkspaceAuthModal = ({ department, onClose, onLogin, loading }) => {
   const [devCreds, setDevCreds] = useState(null);
   const [devMode, setDevMode] = useState(false);
 
-  // Fetch development credentials on mount
+  // Find ALL dev credentials for this department (support multiple users per department)
+  const devCredsForDept = useMemo(() => devCreds?.filter(c => c.department === department?.key) || [], [devCreds, department?.key]);
+  const [selectedCredIndex, setSelectedCredIndex] = useState(0);
+  const devCred = devCredsForDept.length > 0 ? devCredsForDept[selectedCredIndex] : null;
+  const isDevMode = devMode && devCredsForDept.length > 0;
+
+  // Fetch development credentials on mount; auto-fill first credential for
+  // this department as soon as the data arrives (post-await, not in effect body)
   useEffect(() => {
     const fetchDevCreds = async () => {
       try {
@@ -64,17 +71,17 @@ const WorkspaceAuthModal = ({ department, onClose, onLogin, loading }) => {
         if (res.ok && res.data?.development_mode && Array.isArray(res.data?.credentials)) {
           setDevCreds(res.data.credentials);
           setDevMode(true);
+          const creds = res.data.credentials.filter((c) => c.department === department?.key);
+          if (creds.length > 0) {
+            setEmail(creds[0].email);
+            setPassword(creds[0].password);
+            setSelectedCredIndex(0);
+          }
         }
       } catch { /* non-critical */ }
     };
     fetchDevCreds();
-  }, []);
-
-  // Find ALL dev credentials for this department (support multiple users per department)
-  const devCredsForDept = devCreds?.filter(c => c.department === department?.key) || [];
-  const [selectedCredIndex, setSelectedCredIndex] = useState(0);
-  const devCred = devCredsForDept.length > 0 ? devCredsForDept[selectedCredIndex] : null;
-  const isDevMode = devMode && devCredsForDept.length > 0;
+  }, [department?.key]);
 
   // Auto-fill dev credentials by index
   const handleAutoFill = useCallback((index) => {
@@ -83,15 +90,6 @@ const WorkspaceAuthModal = ({ department, onClose, onLogin, loading }) => {
       setSelectedCredIndex(index);
       setEmail(cred.email);
       setPassword(cred.password);
-    }
-  }, [devCredsForDept]);
-
-  // Auto-fill first credential on mount
-  useEffect(() => {
-    if (devCredsForDept.length > 0) {
-      setEmail(devCredsForDept[0].email);
-      setPassword(devCredsForDept[0].password);
-      setSelectedCredIndex(0);
     }
   }, [devCredsForDept]);
 

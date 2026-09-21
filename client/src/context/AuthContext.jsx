@@ -191,23 +191,21 @@ export function getWorkspaceRoute(user) {
 }
 
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
+    const [user, setUser] = useState(() => {
+        try { return JSON.parse(sessionStorage.getItem('lifelink_user') || 'null'); }
+        catch { sessionStorage.removeItem('lifelink_user'); return null; }
+    });
     const [loading, setLoading] = useState(true);
-    const [selectedOrg, setSelectedOrgRaw] = useState(null);
+    const [selectedOrg, setSelectedOrgRaw] = useState(() => {
+        try { return JSON.parse(localStorage.getItem(WORKSPACE_KEY) || 'null'); }
+        catch { return null; }
+    });
 
-    // Restore user from sessionStorage on mount
+    // Complete hydration after first paint (lazy initializers above restore
+    // synchronously; this just clears the loading flag without cascading)
     useEffect(() => {
-        const storedUser = sessionStorage.getItem('lifelink_user');
-        if (storedUser) {
-            try { setUser(JSON.parse(storedUser)); }
-            catch { sessionStorage.removeItem('lifelink_user'); }
-        }
-        // Restore selected org
-        try {
-            const stored = localStorage.getItem(WORKSPACE_KEY);
-            if (stored) setSelectedOrgRaw(JSON.parse(stored));
-        } catch { /* ignore */ }
-        setLoading(false);
+        const t = setTimeout(() => setLoading(false), 0);
+        return () => clearTimeout(t);
     }, []);
 
     // Persist selectedOrg to localStorage whenever it changes
@@ -293,7 +291,7 @@ export const AuthProvider = ({ children }) => {
         setUser((prev) => {
             if (!prev) return prev;
             // Preserve portal identity but clear workspace context
-            const { subRole, department_name: _deptName, organization: _org, workspaceId: _wsId, ...rest } = prev;
+            const { _subRole, department_name: _deptName, organization: _org, workspaceId: _wsId, ...rest } = prev;
             // Persist cleaned user (still authenticated at portal level)
             sessionStorage.setItem('lifelink_user', JSON.stringify(rest));
             return rest;
@@ -330,7 +328,7 @@ export const AuthProvider = ({ children }) => {
         } catch { /* non-critical */ }
 
         return getLoginRoute(normalized);
-    }, []);
+    }, [login]);
 
     /**
      * performLogout — Context-aware centralized logout.

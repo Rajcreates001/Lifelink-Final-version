@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { apiFetch } from '../../config/api';
 import { DashboardCard, LoadingSpinner } from '../Common';
@@ -11,7 +11,7 @@ export const HospitalRevenueAnalytics = () => {
     const [loading, setLoading] = useState(true);
     const [expense, setExpense] = useState({ category: 'Supplies', amount: '' });
 
-    const load = async () => {
+    const load = useCallback(async () => {
         if (!hospitalId) return;
         setLoading(true);
         try {
@@ -20,11 +20,14 @@ export const HospitalRevenueAnalytics = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [hospitalId]);
 
     useEffect(() => {
-        load();
-    }, [hospitalId]);
+        const run = async () => {
+          await load();
+        };
+        run();
+        }, [hospitalId, load]);
 
     const addExpense = async () => {
         if (!hospitalId || !expense.amount) return;

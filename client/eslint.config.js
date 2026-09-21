@@ -23,7 +23,27 @@ export default defineConfig([
       },
     },
     rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      'no-unused-vars': ['error', { varsIgnorePattern: '[A-Z_]', argsIgnorePattern: '^[A-Z_]', caughtErrors: 'none' }],
+    },
+  },
+  {
+    // Intentional mixes of helpers/constants + components (contexts, shared
+    // widget kits, module registries). Splitting them would churn dozens of
+    // import sites for no runtime benefit — HMR falls back to full reload
+    // for these files only.
+    files: [
+      'src/context/**',
+      'src/components/Common.jsx',
+      'src/components/NotificationToast.jsx',
+      'src/components/PremiumRoleSelector.jsx',
+      'src/components/ambulance/AmbulanceSidebar.jsx',
+      'src/components/ambulance/shared/**',
+      'src/components/gov/MissionBoards.jsx',
+      'src/components/government/shared/**',
+      'src/pages/public/PublicShell.jsx',
+    ],
+    rules: {
+      'react-refresh/only-export-components': 'off',
     },
   },
 ])

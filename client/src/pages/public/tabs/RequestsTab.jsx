@@ -52,7 +52,7 @@ const RequestsTab = ({ user, onRequestSuccess }) => {
   const [mounted, setMounted] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [voiceTranscript, setVoiceTranscript] = useState('');
-  const [expandedType, setExpandedType] = useState(null);
+  const [_expandedType, _setExpandedType] = useState(null);
   const [predictions, setPredictions] = useState(null);
   const [shareToast, setShareToast] = useState(null);
   const analysisTimerRef = useRef(null);
@@ -159,7 +159,7 @@ const RequestsTab = ({ user, onRequestSuccess }) => {
         abortRef.current.abort();
       }
     };
-  }, [requestForm.type, requestForm.details, requestForm.urgency, requestForm.specific]);
+  }, [requestForm.type, requestForm.details, requestForm.urgency, requestForm.specific, requestForm.age]);
 
   // ─── Share Prediction Report ───────────────────────
   const handleShareReport = async () => {
@@ -320,7 +320,7 @@ const RequestsTab = ({ user, onRequestSuccess }) => {
   const queueCount = useMemo(() => predictions ? Math.floor(Math.random() * 5) + 1 : 0, [predictions]);
 
   const acceptedTypes = REQUEST_TYPES.filter((t) => t.key === requestForm.type);
-  const currentType = acceptedTypes[0] || REQUEST_TYPES[0];
+  const _currentType = acceptedTypes[0] || REQUEST_TYPES[0];
 
   return (
     <div className={`relative transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
@@ -773,7 +773,7 @@ const RequestsTab = ({ user, onRequestSuccess }) => {
                 { icon: 'fa-hospital', title: 'Hospital Confirmation', time: '~5 min', status: 'pending', color: '#2563EB' },
                 { icon: 'fa-truck-medical', title: 'Ambulance Dispatched', time: '~8 min', status: 'pending', color: '#F97316' },
                 { icon: 'fa-handshake', title: 'Resource Delivered', time: '~15 min', status: 'pending', color: '#10B981' },
-              ].map((t, i) => (
+              ].map((t) => (
                 <div key={t.title} className="flex items-center gap-3 p-2.5 rounded-lg transition-all duration-200 hover:bg-gray-50">
                   <div className={`relative flex items-center justify-center w-8 h-8 rounded-full text-[10px] ${
                     t.status === 'active' ? 'bg-indigo-100 text-indigo-600 shadow-sm' :

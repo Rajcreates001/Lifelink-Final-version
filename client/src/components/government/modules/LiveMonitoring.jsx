@@ -4,20 +4,20 @@ import { DetailModal, Toast, AnimatedLineChart } from '../shared/InteractiveComp
 import { useApiData } from '../../../hooks/useApiData';
 
 const LiveMonitoring = () => {
-  const [timeRefresh, setTimeRefresh] = useState(Date.now());
-  const [wsConnected, setWsConnected] = useState(true);
+  const [timeRefresh, setTimeRefresh] = useState(() => Date.now());
+  const [wsConnected, _setWsConnected] = useState(true);
   const [selectedSensor, setSelectedSensor] = useState(null);
   const [selectedCamera, setSelectedCamera] = useState(null);
   const [timeWindow, setTimeWindow] = useState('1m');
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
 
   // Fetch real monitoring data from API
-  const { data: monitoringData, loading } = useApiData(
+  const { data: _monitoringData, _loading } = useApiData(
     '/v2/government/command/monitoring/summary',
     { pollInterval: 15000 }
   );
 
-  const { data: feedData } = useApiData(
+  const { data: _feedData } = useApiData(
     '/v2/government/command/monitoring/feed',
     { pollInterval: 10000, transform: (d) => d?.data || [] }
   );

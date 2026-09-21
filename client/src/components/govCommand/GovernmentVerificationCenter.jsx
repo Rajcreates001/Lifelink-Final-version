@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { apiFetch } from '../../config/api';
+import { VERIFICATION_FETCH_LIMIT, VERIFICATION_PAGE_SIZE, VERIFICATION_RENDER_LIMIT } from './helpers';
 
 export const GovernmentVerificationCenter = ({ subRole }) => {
     const [pending, setPending] = useState([]);
@@ -14,7 +16,7 @@ export const GovernmentVerificationCenter = ({ subRole }) => {
     const isDistrict = String(subRole || '').toLowerCase() === 'district_admin';
     const cacheKey = 'gov_verification_cache';
 
-    const loadAll = async (withSpinner = false) => {
+    const loadAll = useCallback(async (withSpinner = false) => {
         if (withSpinner) setLoading(true);
         try {
             const [hospitalRes, ambulanceRes, pendingRes] = await Promise.all([
@@ -33,7 +35,7 @@ export const GovernmentVerificationCenter = ({ subRole }) => {
         } finally {
             if (withSpinner) setLoading(false);
         }
-    };
+    }, [isDistrict, cacheKey]);
 
     useEffect(() => {
         let hasCache = false;
@@ -56,7 +58,7 @@ export const GovernmentVerificationCenter = ({ subRole }) => {
         setVerifiedAmbulancePage(1);
         setWaitingAmbulancePage(1);
         loadAll(!hasCache);
-    }, [isDistrict]);
+    }, [isDistrict, cacheKey, loadAll]);
 
     const approveRequest = async (id) => {
         const res = await apiFetch(`/v2/government/verification/${id}/approve`, { method: 'POST' });

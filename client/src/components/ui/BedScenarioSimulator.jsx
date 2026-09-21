@@ -3,6 +3,7 @@ import React, { useEffect, useState, useRef } from 'react';
 const BedScenarioSimulator = () => {
   const [params, setParams] = useState({ extraBeds: 20, extraStaff: 5, redirectPercent: 15, delayElective: false });
   const [results, setResults] = useState(null);
+  const [isRunning, setIsRunning] = useState(false);
   const timeoutRef = useRef(null);
   const running = useRef(false);
 
@@ -15,6 +16,7 @@ const BedScenarioSimulator = () => {
   const runSim = () => {
     if (running.current) return;
     running.current = true;
+    setIsRunning(true);
     setResults({ waiting: 'Simulating...', revenue: 0, mortality: 0, occupancy: 0, cost: 0, readiness: 0, confidence: 0 });
     timeoutRef.current = setTimeout(() => {
       const baseWait = 24;
@@ -29,6 +31,7 @@ const BedScenarioSimulator = () => {
         confidence: 87 + Math.round(Math.random() * 8),
       });
       running.current = false;
+      setIsRunning(false);
     }, 1200);
   };
 
@@ -61,7 +64,7 @@ const BedScenarioSimulator = () => {
             </label>
           </div>
         </div>
-        <button onClick={runSim} disabled={timeoutRef.current !== null}
+        <button onClick={runSim} disabled={isRunning}
           className="w-full text-[10px] font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 py-2 rounded-xl hover:shadow-lg active:scale-95 transition-all disabled:opacity-50">
           <i className="fas fa-play mr-1" /> Run Simulation
         </button>

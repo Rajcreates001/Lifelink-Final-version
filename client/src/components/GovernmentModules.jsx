@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { apiFetch } from '../config/api';
 import { DashboardCard, LoadingSpinner, StatusPill } from './Common';
 import ExportButton from './ExportButton';
@@ -13,7 +13,7 @@ export const GovernmentReports = () => {
     const [sortBy, setSortBy] = useState('createdAt');
     const [sortDir, setSortDir] = useState('desc');
 
-    const load = async () => {
+    const load = useCallback(async () => {
         setLoading(true);
         try {
             const params = new URLSearchParams();
@@ -29,11 +29,14 @@ export const GovernmentReports = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [search, statusFilter, sortBy, sortDir]);
 
     useEffect(() => {
-        load();
-    }, []);
+        const run = async () => {
+            await load();
+        };
+        run();
+    }, [load]);
 
     const handleCreate = async () => {
         if (!form.title || !form.scope) return;
@@ -124,7 +127,7 @@ export const GovernmentComplianceMonitoring = () => {
     const [sortBy, setSortBy] = useState('createdAt');
     const [sortDir, setSortDir] = useState('desc');
 
-    const load = async () => {
+    const load = useCallback(async () => {
         setLoading(true);
         try {
             const params = new URLSearchParams();
@@ -141,11 +144,14 @@ export const GovernmentComplianceMonitoring = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [search, statusFilter, ownerFilter, sortBy, sortDir]);
 
     useEffect(() => {
-        load();
-    }, []);
+        const run = async () => {
+            await load();
+        };
+        run();
+    }, [load]);
 
     const handleCreate = async () => {
         if (!form.hospitalId || !form.status) return;

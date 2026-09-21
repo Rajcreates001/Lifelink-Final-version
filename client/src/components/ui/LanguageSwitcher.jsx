@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
 /**
@@ -17,10 +17,14 @@ export const LanguageSwitcherInline = () => {
   const [isOpen, setIsOpen] = useState(false);
   const currentLang = LANGUAGES.find((l) => l.code === i18n.language) || LANGUAGES[0];
 
+  // Keep <html lang> in sync via effect (no global writes in handlers)
+  useEffect(() => {
+    document.documentElement.lang = i18n.language;
+  }, [i18n.language]);
+
   const handleSwitch = (code) => {
     i18n.changeLanguage(code);
     localStorage.setItem('lifelink_language', code);
-    document.documentElement.lang = code;
     setIsOpen(false);
   };
 

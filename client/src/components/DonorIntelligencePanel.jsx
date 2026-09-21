@@ -28,8 +28,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 function useCountUp(target, duration = 1200) {
   const [count, setCount] = useState(0);
   useEffect(() => {
-    if (target === 0) { setCount(0); return; }
-    if (!target) return;
+    if (target === 0) { const t = setTimeout(() => setCount(0), 0); return () => clearTimeout(t); }
+    if (!target) return undefined;
     let start = 0;
     const step = Math.max(1, Math.ceil(target / (duration / 16)));
     const timer = setInterval(() => {
@@ -112,12 +112,13 @@ const PanelSection = ({ index, children, className = '' }) => {
 };
 
 // ─── Skeleton shimmer block ─────────────────────────────
+const SKELETON_WIDTHS = [78, 64, 88, 71, 82, 60, 75, 85];
 const SkeletonBlock = ({ lines = 3 }) => (
   <div className="space-y-2.5">
     {Array.from({ length: lines }).map((_, i) => (
       <div key={i} className="flex items-center gap-3">
         <div className="w-5 h-5 rounded-full bg-gray-100 animate-pulse" />
-        <div className="flex-1 h-2.5 rounded-full bg-gray-100 animate-pulse" style={{ width: `${60 + Math.random() * 30}%` }} />
+        <div className="flex-1 h-2.5 rounded-full bg-gray-100 animate-pulse" style={{ width: `${SKELETON_WIDTHS[i % SKELETON_WIDTHS.length]}%` }} />
       </div>
     ))}
   </div>
@@ -162,7 +163,7 @@ const DonorIntelligencePanel = ({
     _id: mongoId,
   } = donor || {};
 
-  const donorId = id || userId || mongoId;
+  const _donorId = id || userId || mongoId;
   const locationStr = typeof location === 'string' ? location : location?.city || location?.address || 'Location unknown';
   const score = compatScore || donor?.score;
   const level = overallLevel(score);

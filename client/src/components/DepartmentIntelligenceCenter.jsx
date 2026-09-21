@@ -28,7 +28,7 @@ const HeroSummary = () => {
     { text: 'Surgery delays detected (18 min avg). Blood bank O Negative critical. Staff fatigue detected in Radiology. Three departments require intervention.', confidence: 94, efficiency: 87 },
   ], []);
   const [idx, setIdx] = useState(0);
-  useEffect(() => { const t = setInterval(() => setIdx(p => (p + 1) % summaries.length), 8000); return () => clearInterval(t); }, []);
+  useEffect(() => { const t = setInterval(() => setIdx(p => (p + 1) % summaries.length), 8000); return () => clearInterval(t); }, [summaries.length]);
   const s = summaries[idx];
   return (
     <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-cyan-950 to-slate-900 shadow-2xl animate-fade-in-up">
@@ -157,7 +157,7 @@ const DepartmentIntelligenceCenter = () => {
             <span className="text-[9px] text-slate-400"><i className="fas fa-sync-alt text-[8px] mr-1"></i>Live</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-            {departmentData.map((dept, idx) => (
+            {departmentData.map((dept) => (
               <DeptDigitalTwinCard key={dept.id} dept={dept} onClick={() => setSelectedDept(dept)} />
             ))}
           </div>

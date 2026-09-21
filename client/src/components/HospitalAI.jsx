@@ -1,9 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useCallback, useState, _useRef, _useEffect } from 'react';
 import { DashboardCard, ExplainabilityPanel, Input, LoadingSpinner, ProgressBar, GradientAreaChart, DonutChart, ChartDrillDown } from './Common';
 import { apiFetch } from '../config/api';
 
 // --- 1. Ambulance ETA Predictor ---
-export const AmbulanceETAPredictor = ({ hospitalName }) => {
+export const AmbulanceETAPredictor = ({ _hospitalName }) => {
     const [formData, setFormData] = useState({ start_node: 'Downtown', end_node: 'Central City General', hour: '12' });
     const [result, setResult] = useState(null);
     const [meta, setMeta] = useState(null);
@@ -90,7 +90,7 @@ export const AmbulanceETAPredictor = ({ hospitalName }) => {
 };
 
 // --- 2. Bed Forecast Predictor ---
-export const BedForecastPredictor = ({ hospitalId }) => {
+export const BedForecastPredictor = ({ _hospitalId }) => {
     const [formData, setFormData] = useState({ emergency_count: 50, disease_case_count: 30, current_bed_occupancy: 85 });
     const [result, setResult] = useState(null);
     const [meta, setMeta] = useState(null);
@@ -274,7 +274,7 @@ export const HospitalDiseaseForecast = ({ hospitalId }) => {
     const [meta, setMeta] = useState(null);
     const [drillDown, setDrillDown] = useState({ open: false, title: '', data: [] });
 
-    const fetchForecast = async (disease = selectedDisease, days = daysForecast) => {
+    const fetchForecast = useCallback(async (disease = selectedDisease, days = daysForecast) => {
         setLoading(true);
         setError(null);
         try {
@@ -309,13 +309,15 @@ export const HospitalDiseaseForecast = ({ hospitalId }) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [selectedDisease, daysForecast, hospitalId]);
 
     React.useEffect(() => {
-        if (hospitalId) {
-            fetchForecast();
-        }
-    }, [hospitalId]);
+        if (!hospitalId) return;
+        const run = async () => {
+            await fetchForecast();
+        };
+        run();
+    }, [hospitalId, fetchForecast]);
 
     const handlePointClick = (item, index) => {
         const raw = chartData?.raw?.[index];

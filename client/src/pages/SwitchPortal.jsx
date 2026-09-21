@@ -13,7 +13,7 @@ const portals = [
 
 const SwitchPortal = () => {
     const navigate = useNavigate();
-    const { user, login } = useAuth();
+    const { user, _login } = useAuth();
     const currentRole = user?.role?.toLowerCase();
 
     if (currentRole) {

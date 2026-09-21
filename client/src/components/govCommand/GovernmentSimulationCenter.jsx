@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { apiFetch } from '../../config/api';
 import { impactColor, buildSimulationGraph } from './helpers';
 
 export const GovernmentSimulationCenter = () => {

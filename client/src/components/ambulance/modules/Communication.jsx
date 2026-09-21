@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const Communication = ({ incident, onAction }) => {
+const Communication = ({ _incident, onAction }) => {
   const [activeChannel, setActiveChannel] = useState('hospital');
   const [messageText, setMessageText] = useState('');
   const [micActive, setMicActive] = useState(false);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { buildQuery } from './helpers';
 import { useAuth } from '../../context/AuthContext';
 import { apiFetch } from '../../config/api';
@@ -18,7 +18,7 @@ export const HospitalStaffManagement = () => {
     const [staffSortBy, setStaffSortBy] = useState('createdAt');
     const [staffSortDir, setStaffSortDir] = useState('desc');
 
-    const fetchStaff = async () => {
+    const fetchStaff = useCallback(async () => {
         if (!hospitalId) {
             setStaff([]);
             setLoading(false);
@@ -52,11 +52,14 @@ export const HospitalStaffManagement = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [hospitalId, staffSearch, staffSortBy, staffSortDir]);
 
     useEffect(() => {
-        fetchStaff();
-    }, [hospitalId, staffSearch, staffSortBy, staffSortDir]);
+        const run = async () => {
+          await fetchStaff();
+        };
+        run();
+        }, [hospitalId, staffSearch, staffSortBy, staffSortDir, fetchStaff]);
 
     const handleAdd = () => {
         if (!newStaff.name) return;

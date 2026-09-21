@@ -16,7 +16,7 @@
  *   Health Timeline
  */
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../config/api';
 import { DashboardCard, ProgressBar, GradientAreaChart } from './Common';
@@ -100,8 +100,8 @@ const LabeledInput = ({ label, name, type, placeholder, icon, value, onChange, h
 function useCountUp(target, duration = 1200) {
   const [count, setCount] = useState(0);
   useEffect(() => {
-    if (target === 0) { setCount(0); return; }
-    if (!target) return;
+    if (target === 0) { const t = setTimeout(() => setCount(0), 0); return () => clearTimeout(t); }
+    if (!target) return undefined;
     let start = 0;
     const step = Math.max(1, Math.ceil(target / (duration / 16)));
     const timer = setInterval(() => {
@@ -160,8 +160,8 @@ const computeEvidenceBasedRisk = (fd) => {
 
 const extractClinicalDataFromText = (text) => {
   const t = String(text || '');
-  const bpMatch = t.match(/(?:bp|blood pressure)?\s*[:\-]?\s*(\d{2,3})\s*\/\s*(\d{2,3})/i);
-  const hrMatch = t.match(/(?:hr|pulse|heart rate)\s*[:\-]?\s*(\d{2,3})/i);
+  const bpMatch = t.match(/(?:bp|blood pressure)?\s*[:-]?\s*(\d{2,3})\s*\/\s*(\d{2,3})/i);
+  const hrMatch = t.match(/(?:hr|pulse|heart rate)\s*[:-]?\s*(\d{2,3})/i);
   const bmiMatch = t.match(/\bbmi\s*[:-]?\s*(\d{1,2}(?:\.\d+)?)/i);
   const ageMatch = t.match(/\bage\s*[:-]?\s*(\d{1,3})/i);
   const glucoseMatch = t.match(/(?:glucose|sugar)\s*[:-]?\s*(\d{2,3})/i);
@@ -259,7 +259,7 @@ const HealthRiskCalculator = () => {
   // ─── History Loading ──────────────────────────────────
   const historyKey = useMemo(() => (user?.id ? `lifelink:health-risk:${user.id}` : 'lifelink:health-risk'), [user?.id]);
 
-  const loadHistory = async () => {
+  const loadHistory = useCallback(async () => {
     if (!user?.id) return;
     try {
       // apiFetch dedupes/shares the preload request warmed by PublicDashboard.
@@ -278,9 +278,14 @@ const HealthRiskCalculator = () => {
       const parsed = stored ? JSON.parse(stored) : [];
       setHistory(Array.isArray(parsed) ? parsed : []);
     } catch { setHistory([]); }
-  };
+  }, [historyKey, user?.id]);
 
-  useEffect(() => { loadHistory(); }, [historyKey]);
+  useEffect(() => {
+    const run = async () => {
+      await loadHistory();
+    };
+    run();
+  }, [historyKey, loadHistory]);
 
   // ─── Helpers ──────────────────────────────────────────
   const numeric = (val, fallback = 0) => { const p = Number(val); return Number.isFinite(p) ? p : fallback; };

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { apiFetch, getAuthToken } from '../config/api';
+import { apiFetch, _getAuthToken } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -171,7 +171,10 @@ const ThinkingPanel = ({ steps, visible }) => {
   const [currentStep, setCurrentStep] = useState(0);
 
   useEffect(() => {
-    if (!visible) { setCurrentStep(0); return; }
+    if (!visible) {
+      const t = setTimeout(() => setCurrentStep(0), 0);
+      return () => clearTimeout(t);
+    }
     const timer = setInterval(() => {
       setCurrentStep((prev) => {
         if (prev >= steps.length - 1) return prev;
@@ -371,7 +374,10 @@ const MiniBarChart = ({ title, data }) => {
    MAIN COMPONENT — LifeLink AI Copilot
    ═══════════════════════════════════════════════════════════════════════ */
 
-const LifeLinkAICopilot = ({ variant = 'panel', onClose, location, moduleKey = 'general' }) => {
+// Module-level keyword list (static; hoisted for hook deps)
+const govKeywords = ['government', 'police', 'fire', 'ndma', 'ndrf', 'sdrf', 'state_', 'district_', 'national_', 'ministry', 'municipal', 'disaster', 'ambulance_authority', 'ambulance_dispatch', 'public_health', 'central_'];
+
+const LifeLinkAICopilot = ({ __variant = 'panel', onClose, __location, moduleKey = 'general' }) => {
   const { user, loading: authLoading } = useAuth();
   const [conversations, setConversations] = useState([]);
   const [activeId, setActiveId] = useState(null);
@@ -389,7 +395,6 @@ const LifeLinkAICopilot = ({ variant = 'panel', onClose, location, moduleKey = '
   const inputRef = useRef(null);
 
   // ── Shared government role keyword detection ──
-  const govKeywords = ['government', 'police', 'fire', 'ndma', 'ndrf', 'sdrf', 'state_', 'district_', 'national_', 'ministry', 'municipal', 'disaster', 'ambulance_authority', 'ambulance_dispatch', 'public_health', 'central_'];
   const isGovernment = useMemo(() => {
     const role = (user?.role || '').toLowerCase();
     const subRole = (user?.subRole || '').toLowerCase();
@@ -402,7 +407,7 @@ const LifeLinkAICopilot = ({ variant = 'panel', onClose, location, moduleKey = '
   const activeConversation = useMemo(() => conversations.find((c) => c.id === activeId), [conversations, activeId]);
 
   // ── Derive AI context from backend role context ──
-  const aiContext = useMemo(() => {
+  const _aiContext = useMemo(() => {
     const roleCtx = roleContext?.user || {};
     const base = {
       currentModule: roleContext?.current_module || moduleConfig.title,
@@ -414,7 +419,7 @@ const LifeLinkAICopilot = ({ variant = 'panel', onClose, location, moduleKey = '
       focus: roleContext?.role?.description || moduleConfig.description,
     };
     return base;
-  }, [moduleKey, user, roleContext, activeConversation, moduleConfig]);
+  }, [user, roleContext, activeConversation, moduleConfig]);
 
   // ── Role-aware dynamic suggestions ──
   const dynamicSuggestions = useMemo(() => {
@@ -474,7 +479,7 @@ const LifeLinkAICopilot = ({ variant = 'panel', onClose, location, moduleKey = '
       );
     }
     return suggestions;
-  }, [roleContext, activeConversation, loadingContext]);
+  }, [roleContext, activeConversation, loadingContext, isGovernment]);
 
   // ── Load enterprise AI context from isolated backend ──
   useEffect(() => {
@@ -534,7 +539,7 @@ const LifeLinkAICopilot = ({ variant = 'panel', onClose, location, moduleKey = '
     if (!current || current.messages.length === 0) {
       loadMessages();
     }
-  }, [activeId, user?.id, conversations.length]);
+  }, [activeId, user?.id, conversations.length, conversations]);
 
   // ── Auto-scroll on new messages ──
   useEffect(() => {
@@ -624,7 +629,7 @@ const LifeLinkAICopilot = ({ variant = 'panel', onClose, location, moduleKey = '
     } finally {
       setLoading(false);
     }
-  }, [input, attachments, activeId, moduleKey, conversations]);
+  }, [input, attachments, activeId, moduleKey, conversations, updateConversation]);
 
   // ── New conversation ──
   const handleNewConversation = useCallback(async () => {

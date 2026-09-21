@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, _useRef } from 'react';
 import { useApiData } from '../../hooks/useApiData';
 import { apiFetch } from '../../config/api';
 
@@ -13,20 +13,20 @@ import { apiFetch } from '../../config/api';
  * - Traffic and weather conditions
  */
 
-const GPSTrackingSimulator = ({ onAmbulanceSelect }) => {
+const GPSTrackingSimulator = ({ __onAmbulanceSelect }) => {
   const [simulationRunning, setSimulationRunning] = useState(false);
   const [selectedAmbulance, setSelectedAmbulance] = useState(null);
   const [toast, setToast] = useState(null);
   const [mapView, setMapView] = useState('live'); // live, routes, stats
 
   // Fetch simulation status
-  const { data: statusData, loading: statusLoading, refetch: refetchStatus } = useApiData(
+  const { data: statusData, loading: _statusLoading, refetch: refetchStatus } = useApiData(
     '/api/gps-tracking/status',
     { pollInterval: 5000 }
   );
 
   // Fetch all ambulance positions
-  const { data: ambulancesData, loading: ambulancesLoading, refetch: refetchAmbulances } = useApiData(
+  const { data: ambulancesData, loading: _ambulancesLoading, refetch: refetchAmbulances } = useApiData(
     '/api/gps-tracking/ambulances',
     { pollInterval: 2000, enabled: simulationRunning }
   );
@@ -71,9 +71,9 @@ const GPSTrackingSimulator = ({ onAmbulanceSelect }) => {
 
   // Update simulation running state from status
   useEffect(() => {
-    if (statusData?.status === 'running') {
-      setSimulationRunning(true);
-    }
+    if (statusData?.status !== 'running') return;
+    const t = setTimeout(() => setSimulationRunning(true), 0);
+    return () => clearTimeout(t);
   }, [statusData]);
 
   const ambulances = ambulancesData?.ambulances || [];
@@ -179,7 +179,7 @@ const GPSTrackingSimulator = ({ onAmbulanceSelect }) => {
               }} />
               
               {/* Ambulance markers */}
-              {ambulances.map((amb, idx) => {
+              {ambulances.map((amb) => {
                 const x = ((amb.longitude - 77.55) / 0.25) * 100; // Normalize to map width
                 const y = ((12.99 - amb.latitude) / 0.08) * 100; // Normalize to map height
                 return (

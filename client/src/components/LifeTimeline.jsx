@@ -55,7 +55,10 @@ const ActivityDetailModal = ({ activity, onClose }) => {
   const [detailLoading, setDetailLoading] = useState(true);
 
   useEffect(() => {
-    if (!activity?.id) { setDetailLoading(false); return; }
+    if (!activity?.id) {
+      const t = setTimeout(() => setDetailLoading(false), 0);
+      return () => clearTimeout(t);
+    }
     const fetchDetail = async () => {
       try {
         const res = await apiFetch(`/v2/history/${activity.user}/${activity.id}`);
@@ -80,10 +83,15 @@ const ActivityDetailModal = ({ activity, onClose }) => {
   }, [closing]);
 
   useEffect(() => {
-    const handleEsc = (e) => { if (e.key === 'Escape') handleClose(); };
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') {
+        setClosing(true);
+        setTimeout(() => onClose(), 200);
+      }
+    };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, []);
+  }, [onClose]);
 
   const handleClose = () => {
     setClosing(true);

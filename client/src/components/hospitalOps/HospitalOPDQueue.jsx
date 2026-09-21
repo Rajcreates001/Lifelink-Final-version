@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { buildQuery } from './helpers';
 import { useAuth } from '../../context/AuthContext';
 import { apiFetch } from '../../config/api';
@@ -17,7 +17,7 @@ export const HospitalOPDQueue = () => {
     const [queueSortBy, setQueueSortBy] = useState('createdAt');
     const [queueSortDir, setQueueSortDir] = useState('asc');
 
-    const loadQueue = async (isActive) => {
+    const loadQueue = useCallback(async (isActive) => {
         if (!hospitalId) {
             if (isActive) setLoading(false);
             return;
@@ -39,13 +39,16 @@ export const HospitalOPDQueue = () => {
         } finally {
             if (isActive) setLoading(false);
         }
-    };
+    }, [hospitalId, queueSearch, queueSortBy, queueSortDir]);
 
     useEffect(() => {
         let isActive = true;
-        loadQueue(isActive);
+        const run = async () => {
+            await loadQueue(isActive);
+        };
+        run();
         return () => { isActive = false; };
-    }, [hospitalId, queueSearch, queueSortBy, queueSortDir]);
+    }, [hospitalId, queueSearch, queueSortBy, queueSortDir, loadQueue]);
 
     const handleAdd = async () => {
         if (!hospitalId || !form.patientName) return;

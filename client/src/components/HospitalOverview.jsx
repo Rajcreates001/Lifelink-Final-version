@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../config/api';
 import { LoadingSpinner, StatusPill } from './Common';
@@ -204,7 +204,7 @@ const InsightsEngine = () => {
                 <div className="flex items-start gap-2">
                   <i className="fas fa-robot text-indigo-400 text-[10px] mt-0.5"></i>
                   <div>
-                    <p className="text-[10px] text-slate-600 leading-relaxed"><strong>AI Analysis:</strong> {ins.desc}. Confidence: {85 + Math.round(Math.random() * 12)}%.</p>
+                    <p className="text-[10px] text-slate-600 leading-relaxed"><strong>AI Analysis:</strong> {ins.desc}. Confidence: {ins.confidence || 90}%.</p>
                     <div className="flex items-center gap-2 mt-1.5 text-[9px] text-slate-400"><span>Source: Operational analytics</span><span>\u2022</span><span>Updated 2 min ago</span></div>
                   </div>
                 </div>
@@ -402,9 +402,9 @@ const HospitalOverview = () => {
   const [loading, setLoading] = useState(true);
   const cacheKey = hospitalId ? `hospital_overview_${hospitalId}` : 'hospital_overview';
 
-  const load = async (withSpinner) => {
+  const load = useCallback(async (withSpinner) => {
     if (!hospitalId) { setMetrics(null); setAlerts([]); setLoading(false); return; }
-    const show = withSpinner === true && !metrics;
+    const show = withSpinner === true;
     if (show) setLoading(true);
     try {
       const [mr, fr] = await Promise.all([
@@ -415,16 +415,16 @@ const HospitalOverview = () => {
       if (fr.ok) setAlerts(fr.data?.data || []);
       if (mr.ok || fr.ok) localStorage.setItem(cacheKey, JSON.stringify({ metrics: mr.ok ? mr.data : null, alerts: fr.ok ? (fr.data?.data || []) : [] }));
     } finally { if (show) setLoading(false); }
-  };
+  }, [hospitalId, cacheKey]);
 
   useEffect(() => {
     let cached = false;
     try {
       const c = localStorage.getItem(cacheKey);
       if (c) { const p = JSON.parse(c); setMetrics(p.metrics || null); setAlerts(p.alerts || []); setLoading(false); cached = true; }
-    } catch (_) {}
+    } catch (_) { /* corrupt cache — refetch */ }
     load(!cached);
-  }, [hospitalId]);
+  }, [hospitalId, cacheKey, load]);
 
   const { feed: realtimeFeed, isConnected: wsConnected } = useEmergencyFeed({ enabled: !!hospitalId });
 

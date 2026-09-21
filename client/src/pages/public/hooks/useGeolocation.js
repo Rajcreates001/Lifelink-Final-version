@@ -14,8 +14,8 @@ export function useGeolocation() {
 
   useEffect(() => {
     if (!navigator.geolocation) {
-      setStatus('Location not supported');
-      return;
+      const t = setTimeout(() => setStatus('Location not supported'), 0);
+      return () => clearTimeout(t);
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => {

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Circle, MapContainer, Polyline, Popup, TileLayer } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../context/AuthContext';
@@ -231,7 +231,7 @@ export const AmbulanceEmergencyResponse = () => {
     const ambulanceId = resolveAmbulanceId(user);
 
     // Real-time updates via WebSocket
-    const { lastMessage: wsMessage } = useWebSocket('ambulance', {
+    const { lastMessage: _wsMessage } = useWebSocket('ambulance', {
         onMessage: (data) => {
             // Handle real-time ambulance location/status updates
             if (data.type === 'ambulance_update' || data.type === 'location_update') {
@@ -261,14 +261,14 @@ export const AmbulanceEmergencyResponse = () => {
 
     useEffect(() => {
         let isActive = true;
-        let hasCache = false;
+        let _hasCache = false;
         try {
             const cached = localStorage.getItem(cacheKey);
             if (cached) {
                 const parsed = JSON.parse(cached);
                 if (parsed?.data) {
                     setState({ loading: false, error: '', data: parsed.data, lastUpdated: parsed.lastUpdated || parsed.data?.lastUpdated });
-                    hasCache = true;
+                    _hasCache = true;
                 }
             }
         } catch (error) {
@@ -576,8 +576,8 @@ export const AmbulanceAssignments = () => {
     const [saving, setSaving] = useState(false);
     const cacheKey = ambulanceId ? `ambulance_assignments_${ambulanceId}` : 'ambulance_assignments';
 
-    const loadAssignments = async (withSpinner = false) => {
-        const showSpinner = withSpinner === true && assignments.length === 0;
+    const loadAssignments = useCallback(async (withSpinner = false) => {
+        const showSpinner = withSpinner === true;
         if (showSpinner) setLoading(true);
         try {
             const res = await apiFetch(`/api/ambulance/assignments${ambulanceId ? `?ambulance_id=${ambulanceId}` : ''}`, { method: 'GET' });
@@ -593,7 +593,7 @@ export const AmbulanceAssignments = () => {
         } finally {
             if (showSpinner) setLoading(false);
         }
-    };
+    }, [ambulanceId, cacheKey]);
 
     useEffect(() => {
         let hasCache = false;
@@ -609,7 +609,7 @@ export const AmbulanceAssignments = () => {
             // ignore cache errors
         }
         loadAssignments(!hasCache);
-    }, [ambulanceId]);
+    }, [ambulanceId, cacheKey, loadAssignments]);
 
     const handleCreate = async () => {
         if (!form.patient || !form.emergencyType) return;
@@ -714,7 +714,7 @@ export const AmbulancePatientInfo = () => {
             // ignore cache errors
         }
         load(!hasCache);
-    }, [ambulanceId]);
+    }, [ambulanceId, cacheKey]);
 
     return (
         <DashboardCard>
@@ -933,7 +933,7 @@ export const AmbulanceHistory = () => {
             // ignore cache errors
         }
         load(!hasCache);
-    }, [ambulanceId]);
+    }, [ambulanceId, cacheKey]);
 
     return (
         <DashboardCard>

@@ -188,7 +188,7 @@ function _hexToRgb(hex) {
   return { r: 99, g: 102, b: 241 };
 }
 
-export const StandardHero = ({ icon, title, subtitle, statusItems, gradient = 'from-indigo-600 to-purple-700', accentColor = '#6366F1' }) => {
+export const StandardHero = ({ icon, title, subtitle, statusItems, __gradient = 'from-indigo-600 to-purple-700', accentColor = '#6366F1' }) => {
   const rgb = _hexToRgb(accentColor);
   return (
   <div className="relative rounded-2xl p-6 sm:p-8 mb-6 overflow-hidden"

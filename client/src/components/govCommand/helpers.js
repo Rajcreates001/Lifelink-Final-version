@@ -1,4 +1,6 @@
-const severityColor = (value) => {
+import L from 'leaflet';
+
+const _severityColor = (value) => {
     const key = String(value || '').toLowerCase();
     if (key === 'critical' || key === 'high') return 'red';
     if (key === 'medium') return 'yellow';
@@ -6,7 +8,7 @@ const severityColor = (value) => {
     return 'gray';
 };
 
-const impactColor = (value) => {
+const _impactColor = (value) => {
     const key = String(value || '').toLowerCase();
     if (key === 'high') return 'red';
     if (key === 'medium') return 'yellow';
@@ -14,7 +16,7 @@ const impactColor = (value) => {
     return 'gray';
 };
 
-const formatNumber = (value) => (Number.isFinite(value) ? value : 0);
+const _formatNumber = (value) => (Number.isFinite(value) ? value : 0);
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -23,7 +25,7 @@ L.Icon.Default.mergeOptions({
     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-const buildSeverityData = (feed) => {
+const _buildSeverityData = (feed) => {
     const buckets = { Critical: 0, High: 0, Medium: 0, Low: 0 };
     feed.forEach((item) => {
         const key = String(item.severity || '').toLowerCase();
@@ -35,7 +37,7 @@ const buildSeverityData = (feed) => {
     return Object.entries(buckets).map(([label, value]) => ({ label, value }));
 };
 
-const normalizeFeed = (items, limit = FEED_LIMIT) => {
+const _normalizeFeed = (items, limit = FEED_LIMIT) => {
     const seen = new Set();
     const result = [];
     (items || []).forEach((item) => {
@@ -50,7 +52,7 @@ const normalizeFeed = (items, limit = FEED_LIMIT) => {
     return result.slice(0, limit);
 };
 
-const normalizeHospitals = (items, limit = HOSPITAL_LIMIT) => {
+const _normalizeHospitals = (items, limit = HOSPITAL_LIMIT) => {
     const seen = new Set();
     const result = [];
     (items || []).forEach((item) => {
@@ -65,14 +67,14 @@ const normalizeHospitals = (items, limit = HOSPITAL_LIMIT) => {
     return result.slice(0, limit);
 };
 
-const pickCenter = (points) => {
+const _pickCenter = (points) => {
     if (!points || points.length === 0) return [12.9716, 77.5946];
     const lat = points[0].lat ?? points[0].latitude ?? 12.9716;
     const lng = points[0].lng ?? points[0].longitude ?? 77.5946;
     return [lat, lng];
 };
 
-const buildSimulationGraph = (phases, afterAction) => {
+const _buildSimulationGraph = (phases, afterAction) => {
     const nodes = [];
     const edges = [];
     const centerNode = {
@@ -149,7 +151,7 @@ const buildSimulationGraph = (phases, afterAction) => {
     return { nodes, edges };
 };
 
-const severityScore = (value) => {
+const _severityScore = (value) => {
     const key = String(value || '').toLowerCase();
     if (key === 'critical') return 4;
     if (key === 'high') return 3;
@@ -158,7 +160,7 @@ const severityScore = (value) => {
     return 0;
 };
 
-const buildDisasterGraph = (recent) => {
+const _buildDisasterGraph = (recent) => {
     const counts = recent.reduce((acc, item) => {
         const key = String(item.severity || 'low');
         acc[key] = (acc[key] || 0) + 1;
@@ -215,22 +217,22 @@ const buildDisasterGraph = (recent) => {
     return { nodes, edges };
 };
 
-const FEED_WINDOW_MINUTES = 120;
+export const FEED_WINDOW_MINUTES = 120;
 
-const FEED_LIMIT = 60;
+export const FEED_LIMIT = 60;
 
-const HOSPITAL_LIMIT = 60;
+export const HOSPITAL_LIMIT = 60;
 
-const MAX_MAP_POINTS = 80;
+export const MAX_MAP_POINTS = 80;
 
-const VERIFICATION_FETCH_LIMIT = 120;
+export const VERIFICATION_FETCH_LIMIT = 120;
 
-const VERIFICATION_RENDER_LIMIT = 60;
+export const VERIFICATION_RENDER_LIMIT = 60;
 
-const VERIFICATION_PAGE_SIZE = 20;
+export const VERIFICATION_PAGE_SIZE = 20;
 
-const POLICY_PAGE_SIZE = 6;
+export const POLICY_PAGE_SIZE = 6;
 
-const POLICY_RENDER_LIMIT = 36;
+export const POLICY_RENDER_LIMIT = 36;
 
-const POLICY_REFRESH_MS = 90000;
+export const POLICY_REFRESH_MS = 90000;

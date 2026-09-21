@@ -10,7 +10,7 @@ const ALL_RECOMMENDATIONS = [
   { id: 'r7', title: 'Prepare CT Scanner', description: 'Notify radiology to prepare CT scanner for immediate trauma series upon arrival.', impact: 'medium', icon: 'fa-cube', category: 'immediate', reasoning: 'Whole body CT is standard for multi-trauma. Pre-notification reduces door-to-CT time.', evidence: 'Advanced notification reduces door-to-CT time by an average of 12 min.', timeSave: '~12 min' },
 ];
 
-const Recommendations = ({ incident, onAction }) => {
+const Recommendations = ({ __incident, onAction }) => {
   const [activeCategory, setActiveCategory] = useState('all');
   const [acceptedIds, setAcceptedIds] = useState([]);
   const [rejectedIds, setRejectedIds] = useState([]);

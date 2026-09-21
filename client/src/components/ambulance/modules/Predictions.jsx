@@ -20,7 +20,7 @@ const timelineForecasts = [
   { time: '+60 min', event: 'Surgery window closes', eta: '60 min', confidence: 65 },
 ];
 
-const Predictions = ({ toHospital, onAction }) => {
+const Predictions = ({ __toHospital, onAction }) => {
   return (
     <div className="space-y-5">
       {/* Prediction Cards */}

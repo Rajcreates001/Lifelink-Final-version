@@ -17,7 +17,10 @@ const STATUS_ITEMS = [
 
 const AiHealthTab = () => {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   return (
     <div className="relative animate-fade-in">

@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { apiFetch } from '../config/api';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 
 /* ═══════════════════════════════════════════════════════════════════════
    CONSTANTS
@@ -122,7 +121,7 @@ const SearchProgress = ({ mode, visible }) => {
   const stages = mode?.stages || SEARCH_MODES[0].stages;
 
   useEffect(() => {
-    if (!visible) { setCurrentStage(0); return; }
+    if (!visible) return;
     const timer = setInterval(() => {
       setCurrentStage((prev) => Math.min(prev + 1, stages.length - 1));
     }, 800);
@@ -228,10 +227,8 @@ const ConfidenceGauge = ({ value, label = 'AI Confidence', size = 'sm' }) => {
    EVIDENCE CARD COMPONENT
    ═══════════════════════════════════════════════════════════════════════ */
 
-const EvidenceCard = ({ evidence, index }) => {
-  const trust = getTrustInfo(evidence.source);
-  return (
-    <div className="p-3 rounded-xl bg-white border border-slate-200 hover:border-indigo-200 hover:shadow-sm transition-all duration-200">
+const EvidenceCard = ({ evidence, index }) => (
+  <div className="p-3 rounded-xl bg-white border border-slate-200 hover:border-indigo-200 hover:shadow-sm transition-all duration-200">
       <div className="flex items-start justify-between mb-1.5">
         <div className="flex items-center gap-1.5">
           <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[9px] font-bold">{index + 1}</span>
@@ -251,15 +248,13 @@ const EvidenceCard = ({ evidence, index }) => {
         </a>
       )}
     </div>
-  );
-};
+);
 
 /* ═══════════════════════════════════════════════════════════════════════
    MAIN SEARCH ENGINE COMPONENT
    ═══════════════════════════════════════════════════════════════════════ */
 
 const SearchEngine = ({
-  query = '',
   result = null,
   loading = false,
   error = '',
@@ -267,7 +262,6 @@ const SearchEngine = ({
   onModeChange,
   onClear,
   onFollowUp,
-  moduleKey = 'general',
 }) => {
   const [searchMode, setSearchModeInternal] = useState('quick');
   const [showSources, setShowSources] = useState(false);
@@ -291,11 +285,8 @@ const SearchEngine = ({
   // New backend returns HybridSearchResponse directly as the result
   const summary = result?.summary || {};
   const resultDataIntents = result?.intent || {};
-  const resultItems = result?.results || [];
   const citations = result?.citations || [];
   const relatedQueries = result?.related_queries || [];
-  const progressTrace = result?.progress_trace || [];
-  const analytics = result?.analytics || {};
 
   // Extract structured fields from the new HybridSearchResponse format
   const executiveSummary = summary.executive_summary || summary.answer || '';
@@ -533,13 +524,13 @@ const SearchEngine = ({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  Database Results · {Object.values(resultData.results || {}).reduce((sum, items) => sum + (items?.length || 0), 0)} matches
+                  Database Results · {Object.values(result?.results || {}).reduce((sum, items) => sum + (items?.length || 0), 0)} matches
                 </h3>
                 <button onClick={onClear} className="text-[10px] text-indigo-600 hover:text-indigo-800 font-medium">Clear</button>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {Object.entries(resultData.results || {}).map(([key, items]) => (
+                {Object.entries(result?.results || {}).map(([key, items]) => (
                   <div key={key} className="p-3 rounded-xl bg-white border border-slate-200">
                     <h4 className="text-[11px] font-bold text-slate-600 capitalize mb-2 flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-indigo-500" />

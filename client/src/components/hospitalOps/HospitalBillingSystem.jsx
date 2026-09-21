@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { buildQuery } from './helpers';
 import { useAuth } from '../../context/AuthContext';
 import { apiFetch } from '../../config/api';
@@ -16,7 +16,7 @@ export const HospitalBillingSystem = () => {
     const [invoiceSortBy, setInvoiceSortBy] = useState('createdAt');
     const [invoiceSortDir, setInvoiceSortDir] = useState('desc');
 
-    const load = async () => {
+    const load = useCallback(async () => {
         if (!hospitalId) return;
         setLoading(true);
         try {
@@ -35,11 +35,14 @@ export const HospitalBillingSystem = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [hospitalId, invoiceSearch, invoiceSortBy, invoiceSortDir]);
 
     useEffect(() => {
-        load();
-    }, [hospitalId, invoiceSearch, invoiceSortBy, invoiceSortDir]);
+        const run = async () => {
+          await load();
+        };
+        run();
+        }, [hospitalId, invoiceSearch, invoiceSortBy, invoiceSortDir, load]);
 
     const handleCreate = async () => {
         if (!hospitalId || !form.patientName || !form.amount) return;

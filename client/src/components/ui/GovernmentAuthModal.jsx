@@ -11,7 +11,7 @@
  * - Remember Me, Forgot Password, Emergency Access
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../../config/api';
 
 // ─── Login Animation Steps ─────────────────────────────────
@@ -155,6 +155,7 @@ const GovernmentAuthModal = ({ department, onClose, onLogin, loading }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [govCreds, setGovCreds] = useState(null);
   const [devMode, setDevMode] = useState(false);
+  const [selectedCredIndex, setSelectedCredIndex] = useState(0);
 
   // Fetch government credentials on mount
   useEffect(() => {
@@ -167,6 +168,11 @@ const GovernmentAuthModal = ({ department, onClose, onLogin, loading }) => {
           if (orgCreds.length > 0) {
             setGovCreds(orgCreds);
             setDevMode(true);
+            // Auto-fill the first credential as soon as creds arrive (replaces
+            // a setState-in-effect, which the React compiler flags).
+            setEmail(orgCreds[0].email);
+            setPassword(orgCreds[0].password);
+            setSelectedCredIndex(0);
           }
         }
       } catch { /* non-critical */ }
@@ -175,18 +181,8 @@ const GovernmentAuthModal = ({ department, onClose, onLogin, loading }) => {
   }, [department?.key]);
 
   // Find credentials for this department
-  const credsForDept = govCreds || [];
-  const [selectedCredIndex, setSelectedCredIndex] = useState(0);
+  const credsForDept = useMemo(() => govCreds || [], [govCreds]);
   const selectedCred = credsForDept.length > 0 ? credsForDept[selectedCredIndex] : null;
-
-  // Auto-fill first credential on mount
-  useEffect(() => {
-    if (credsForDept.length > 0) {
-      setEmail(credsForDept[0].email);
-      setPassword(credsForDept[0].password);
-      setSelectedCredIndex(0);
-    }
-  }, [credsForDept]);
 
   // Handle user selection from the dropdown
   const handleUserSelect = useCallback((index) => {
@@ -209,7 +205,7 @@ const GovernmentAuthModal = ({ department, onClose, onLogin, loading }) => {
       await new Promise(r => setTimeout(r, stepInterval));
       setCurrentStep(i + 1);
     }
-  }, []);
+  }, [setLoginPhase, setCurrentStep]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

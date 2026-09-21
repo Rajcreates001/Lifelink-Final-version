@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../config/api';
 import { DashboardCard, LoadingSpinner, StatusPill } from './Common';
@@ -60,7 +60,7 @@ const FamilyMonitoring = () => {
 
     const storageKey = getStorageKey(user?.id);
 
-    const loadInsights = async () => {
+    const loadInsights = useCallback(async () => {
         if (!user?.id) return;
         try {
             const res = await apiFetch(`/api/family/insights/${user.id}`, { method: 'GET' });
@@ -68,9 +68,9 @@ const FamilyMonitoring = () => {
         } catch (err) {
             setInsights(null);
         }
-    };
+    }, [user?.id]);
 
-    const loadMembers = async () => {
+    const loadMembers = useCallback(async () => {
         if (!user?.id) return;
         setLoading(true);
         try {
@@ -94,11 +94,14 @@ const FamilyMonitoring = () => {
         localStorage.setItem(storageKey, JSON.stringify(fallback));
         await loadInsights();
         setLoading(false);
-    };
+    }, [user?.id, storageKey, loadInsights]);
 
     useEffect(() => {
-        loadMembers();
-    }, [user?.id]);
+        const run = async () => {
+            await loadMembers();
+        };
+        run();
+    }, [user?.id, loadMembers]);
 
     const handleAdd = async () => {
         if (!form.name || !form.relation || !user?.id) return;

@@ -46,7 +46,7 @@ const ROLE_META = {
 
 const Signup = () => {
     const navigate = useNavigate();
-    const { login } = useAuth();
+    const { _login } = useAuth();
     const [formData, setFormData] = useState({
         name: '', email: '', password: '', phone: '', location: '',
         role: 'public', subRole: '', regNumber: '', hospitalType: 'General',

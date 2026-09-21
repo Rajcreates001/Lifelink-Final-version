@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { apiFetch } from '../../config/api';
 import { severityColor, severityScore, buildDisasterGraph } from './helpers';
 
 export const GovernmentDisasterCenter = () => {
@@ -51,7 +52,10 @@ export const GovernmentDisasterCenter = () => {
     };
 
     useEffect(() => {
-        loadRecent();
+        const run = async () => {
+            await loadRecent();
+        };
+        run();
         navigator.geolocation.getCurrentPosition(
             (pos) => setCenter([pos.coords.latitude, pos.coords.longitude]),
             () => null,

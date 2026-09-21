@@ -17,7 +17,14 @@ const AmbulanceApprovalPanel = () => {
         setLoading(false);
     };
 
-    useEffect(() => { fetchPending(); }, []);
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            await fetchPending();
+            if (cancelled) return;
+        })();
+        return () => { cancelled = true; };
+    }, []);
 
     const handleApprove = async (id) => {
         if (!window.confirm('Approve this ambulance account?')) return;

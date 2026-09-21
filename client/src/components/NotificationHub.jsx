@@ -141,7 +141,7 @@ const groupByDate = (items) => {
     return groups;
 };
 
-const generateTimeline = (item) => {
+const _generateTimeline = (item) => {
     const now = Date.now();
     const eventTime = new Date(item.time || now).getTime();
     const type = normalizeType(item.type);
@@ -345,8 +345,8 @@ const NotificationTimeline = ({ steps }) => (
 
 // ─── Main NotificationHub Component ────────────────────────────────────
 
-const NotificationHub = ({ onClose, onMarkRead, variant = 'panel' }) => {
-    const navigate = useNavigate();
+const NotificationHub = ({ onClose, onMarkRead, __variant = 'panel' }) => {
+    const _navigate = useNavigate();
     const { user } = useAuth();
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);

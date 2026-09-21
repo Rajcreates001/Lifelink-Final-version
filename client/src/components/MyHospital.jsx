@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../config/api';
 import './MyHospital.css';
 
 const MyHospital = () => {
   const { user } = useAuth();
-  const [hospital, setHospital] = useState(null);
+  const [_hospital, setHospital] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editMode, setEditMode] = useState(false);
@@ -19,10 +19,13 @@ const MyHospital = () => {
 
   // Fetch hospital details
   useEffect(() => {
-    fetchHospitalDetails();
-  }, [user]);
+    const run = async () => {
+      await fetchHospitalDetails();
+    };
+    run();
+  }, [user, fetchHospitalDetails]);
 
-  const fetchHospitalDetails = async () => {
+  const fetchHospitalDetails = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -45,7 +48,7 @@ const MyHospital = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   const handleBedsChange = (e) => {
     const { name, value } = e.target;

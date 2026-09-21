@@ -26,8 +26,8 @@ import { createPortal } from 'react-dom';
 function useCountUp(target, duration = 1200) {
   const [count, setCount] = useState(0);
   useEffect(() => {
-    if (target === 0) { setCount(0); return; }
-    if (!target) return;
+    if (target === 0) { const t = setTimeout(() => setCount(0), 0); return () => clearTimeout(t); }
+    if (!target) return undefined;
     let start = 0;
     const step = Math.max(1, Math.ceil(target / (duration / 16)));
     const timer = setInterval(() => {
@@ -106,12 +106,13 @@ const PanelSection = ({ index, children, className = '' }) => {
 };
 
 // ─── Skeleton shimmer ──────────────────────────────────
+const SKELETON_WIDTHS = [78, 64, 88, 71, 82, 60, 75, 85];
 const SkeletonBlock = ({ lines = 3 }) => (
   <div className="space-y-2.5">
     {Array.from({ length: lines }).map((_, i) => (
       <div key={i} className="flex items-center gap-3">
         <div className="w-5 h-5 rounded-full bg-gray-100 animate-pulse" />
-        <div className="flex-1 h-2.5 rounded-full bg-gray-100 animate-pulse" style={{ width: `${60 + Math.random() * 30}%` }} />
+        <div className="flex-1 h-2.5 rounded-full bg-gray-100 animate-pulse" style={{ width: `${SKELETON_WIDTHS[i % SKELETON_WIDTHS.length]}%` }} />
       </div>
     ))}
   </div>
@@ -123,7 +124,7 @@ const SkeletonBlock = ({ lines = 3 }) => (
 const DonorIntelligenceModal = ({
   donor,
   donorProfile,
-  donorProfileLoading,
+  __donorProfileLoading,
   userBloodGroup,
   compatScore,
   compatLoading,
@@ -211,13 +212,13 @@ const DonorIntelligenceModal = ({
 
   // ── Real metrics from donorProfile (when available) ──
   const respMetrics = donorProfile?.response_metrics || {};
-  const healthData = donorProfile?.health || {};
+  const healthData = useMemo(() => donorProfile?.health || {}, [donorProfile]);
   const eligibilityData = donorProfile?.eligibility || {};
   const realVerified = donorProfile?.verified ?? verified;
   const realDonationCount = donorProfile?.donation_count ?? 0;
-  const realChronicConditions = healthData?.chronic_conditions || [];
+  const realChronicConditions = useMemo(() => healthData?.chronic_conditions || [], [healthData]);
   const realMedications = healthData?.medications || [];
-  const realMedicalRestrictions = healthData?.medical_restrictions || [];
+  const realMedicalRestrictions = useMemo(() => healthData?.medical_restrictions || [], [healthData]);
   const realScreeningPassed = healthData?.screening_passed ?? !!verified;
   const realHasBloodTests = healthData?.has_blood_tests ?? !!verified;
   const realHasRecentScreening = healthData?.has_recent_screening ?? !!verified;
@@ -291,7 +292,7 @@ const DonorIntelligenceModal = ({
       });
     }
     return risks;
-  }, [lastDonationDays, distanceKm, realVerified, effectiveIsEligible, travelMin, donorProfile, realResponseRate, hasMedicalConcerns, realMedicalRestrictions, lastDonationDays]);
+  }, [lastDonationDays, distanceKm, realVerified, effectiveIsEligible, travelMin, donorProfile, realResponseRate, hasMedicalConcerns, realMedicalRestrictions]);
 
   // ── Quick Message handler ──
   const handleQuickMessage = useCallback((msg) => {

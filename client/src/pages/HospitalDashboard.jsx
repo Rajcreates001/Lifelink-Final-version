@@ -134,7 +134,6 @@ const useIsDesktop = () => {
         const media = window.matchMedia('(min-width: 1024px)');
         const handler = (event) => setIsDesktop(event.matches);
         media.addEventListener?.('change', handler);
-        setIsDesktop(media.matches);
         return () => media.removeEventListener?.('change', handler);
     }, []);
 
@@ -168,17 +167,16 @@ const DesktopHospitalDashboard = () => {
     useEffect(() => {
         if (!module) {
             navigate(`/dashboard/hospital/${defaultTab}`, { replace: true });
-            setActiveTab(defaultTab);
             return;
         }
 
         if (!allowedTabs.includes(moduleKey)) {
             navigate(`/dashboard/hospital/${defaultTab}`, { replace: true });
-            setActiveTab(defaultTab);
             return;
         }
 
-        setActiveTab(moduleKey);
+        const t = setTimeout(() => setActiveTab(moduleKey), 0);
+        return () => clearTimeout(t);
     }, [module, moduleKey, allowedTabs, defaultTab, navigate]);
 
     useEffect(() => {
@@ -270,7 +268,7 @@ const MobileHospitalDashboard = () => {
     const [showChat, setShowChat] = useState(false);
 
     // Real-time WebSocket for hospital updates
-    const { isConnected: wsConnected, lastMessage: wsMessage } = useWebSocket('hospital', {
+    const { isConnected: _wsConnected, lastMessage: _wsMessage } = useWebSocket('hospital', {
         onMessage: (data) => {
             if (data?.type === 'alert' || data?.type === 'update') {
                 setRefreshKeys((prev) => ({ ...prev, [data.module || 'overview']: Date.now() }));
@@ -296,17 +294,16 @@ const MobileHospitalDashboard = () => {
     useEffect(() => {
         if (!module) {
             navigate(`/dashboard/hospital/${defaultTab}`, { replace: true });
-            setActiveTab(defaultTab);
             return;
         }
 
         if (!allowedTabs.includes(moduleKey)) {
             navigate(`/dashboard/hospital/${defaultTab}`, { replace: true });
-            setActiveTab(defaultTab);
             return;
         }
 
-        setActiveTab(moduleKey);
+        const t = setTimeout(() => setActiveTab(moduleKey), 0);
+        return () => clearTimeout(t);
     }, [module, moduleKey, allowedTabs, defaultTab, navigate]);
 
     useEffect(() => {

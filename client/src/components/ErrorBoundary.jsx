@@ -14,7 +14,7 @@ export default class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    // eslint-disable-next-line no-console
+     
     console.error('[LifeLink] UI error caught by boundary:', error, errorInfo);
   }
 

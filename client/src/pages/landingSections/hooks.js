@@ -7,7 +7,10 @@ export function useCountUp(target, duration = 2000, startOnView = true) {
     const ref = useRef(null);
 
     useEffect(() => {
-        if (!startOnView) { setVisible(true); return; }
+        if (!startOnView) {
+            const t = setTimeout(() => setVisible(true), 0);
+            return () => clearTimeout(t);
+        }
         const el = ref.current;
         if (!el) return;
         const obs = new IntersectionObserver(

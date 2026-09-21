@@ -5,7 +5,7 @@ import { useApiData } from '../../../hooks/useApiData';
 import { apiFetch } from '../../../config/api';
 
 const Reports = () => {
-  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
+  const [_toast, setToast] = useState({ visible: false, message: '', type: 'success' });
   const showToast = useCallback((msg, type = 'success') => setToast({ visible: true, message: msg, type }), []);
   const [generating, setGenerating] = useState(false);
   const [reportType, setReportType] = useState('Situation Report');
@@ -13,7 +13,7 @@ const Reports = () => {
   const [reportFormat, setReportFormat] = useState('PDF');
 
   // Fetch real reports from API
-  const { data: reportsData, loading } = useApiData(
+  const { data: reportsData, _loading } = useApiData(
     '/api/government-ops/reports',
     { transform: (d) => d?.data || [] }
   );

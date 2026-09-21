@@ -38,7 +38,7 @@ const HospitalPatients = () => {
     // State
     const [patients, setPatients] = useState([]);
     const [intakeQueue, setIntakeQueue] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [_loading, _setLoading] = useState(false);
     const [intakeSearch, setIntakeSearch] = useState('');
     const [intakeSortBy, setIntakeSortBy] = useState('createdAt');
     const [intakeSortDir, setIntakeSortDir] = useState('desc');

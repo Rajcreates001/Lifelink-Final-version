@@ -81,7 +81,7 @@ const Login = () => {
                 setFormData((prev) => ({ ...prev, role: storedRole }));
                 sessionStorage.removeItem('lifelink_login_role');
             }
-        } catch (error) {}
+        } catch (error) { /* no stored role — keep default */ }
     }, []);
 
     useEffect(() => {

@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState, useEffect, _useRef, _useCallback } from 'react';
+import { _createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { _useAuth } from '../context/AuthContext';
 import {
     NavBar, HeroSection, SafetySection, LiveStatsBar, EmergencyFeed,
     FeaturesSection, PortalSection, AiShowcase, ImpactShowcase, Architecture,

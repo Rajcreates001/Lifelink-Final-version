@@ -41,8 +41,10 @@ const PdfViewer = ({ file, label, color, isVisible, onLoaded }) => {
 
   useEffect(() => {
     if (!isVisible || !file) return;
-    setViewState('loading');
-    setProgress(0);
+    const initT = setTimeout(() => {
+      setViewState('loading');
+      setProgress(0);
+    }, 0);
 
     intervalRef.current = setInterval(() => {
       setProgress(prev => {
@@ -60,6 +62,7 @@ const PdfViewer = ({ file, label, color, isVisible, onLoaded }) => {
     }, loadTime);
 
     return () => {
+      clearTimeout(initT);
       clearInterval(intervalRef.current);
       clearTimeout(timerRef.current);
     };
@@ -227,11 +230,12 @@ const ResearchPaperModal = ({ isOpen, onClose, item }) => {
   // ─── Modal open/close animation ─────────────────────
   useEffect(() => {
     if (isOpen) {
-      setMounted(true);
+      const mountT = setTimeout(() => setMounted(true), 0);
       animTimerRef.current = setTimeout(() => setAnimState('open'), 20);
       setTimeout(() => prevBtnRef.current?.focus(), 150);
+      return () => clearTimeout(mountT);
     } else {
-      setAnimState('closing');
+      const closeT = setTimeout(() => setAnimState('closing'), 0);
       closeTimerRef.current = setTimeout(() => {
         setMounted(false);
         setPreviewDoc(false);
@@ -240,6 +244,7 @@ const ResearchPaperModal = ({ isOpen, onClose, item }) => {
         setSwitching(false);
         setAnimState('closed');
       }, 300 + ANIMATION_DURATION);
+      return () => clearTimeout(closeT);
     }
   }, [isOpen]);
 

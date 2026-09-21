@@ -20,13 +20,18 @@ const Architecture = () => {
     // Generate traveling particles when active step changes
     useEffect(() => {
         if (!entered) return;
-        const newParticles = [
-            { id: Date.now() + Math.random(), x1: 10, y1: 50, x2: 90, y2: 50, delay: 0 },
-            { id: Date.now() + Math.random() + 1, x1: 20, y1: 30, x2: 80, y2: 70, delay: 0.3 },
-        ];
-        setParticles(newParticles);
+        const burstT = setTimeout(() => {
+            const newParticles = [
+                { id: Date.now() + Math.random(), x1: 10, y1: 50, x2: 90, y2: 50, delay: 0 },
+                { id: Date.now() + Math.random() + 1, x1: 20, y1: 30, x2: 80, y2: 70, delay: 0.3 },
+            ];
+            setParticles(newParticles);
+        }, 0);
         const timer = setTimeout(() => setParticles([]), 1200);
-        return () => clearTimeout(timer);
+        return () => {
+            clearTimeout(burstT);
+            clearTimeout(timer);
+        };
     }, [activeStep, entered]);
 
     return (

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { apiFetch } from '../../config/api';
 import MobileCard from '../../components/ui/MobileCard';
 import LifelinkAiChat from '../../components/LifelinkAiChat';
@@ -17,19 +17,22 @@ const FamilyMonitoringScreen = ({ user, onBack, rightSlot }) => {
   const [form, setForm] = useState({ name: '', relation: '', phone: '' });
   const [loading, setLoading] = useState(true);
 
-  const fetchMembers = async () => {
+  const fetchMembers = useCallback(async (withSpinner = false) => {
     if (!user?.id) return;
-    setLoading(true);
+    if (withSpinner) setLoading(true);
     const res = await apiFetch(`/api/family/members/${user.id}`, { method: 'GET' });
     if (res.ok) {
       setMembers(res.data?.data || []);
     }
     setLoading(false);
-  };
+  }, [user]);
 
   useEffect(() => {
-    fetchMembers();
-  }, [user?.id]);
+    const run = async () => {
+      await fetchMembers();
+    };
+    run();
+  }, [fetchMembers]);
 
   const handleAdd = async () => {
     if (!form.name || !form.relation || !user?.id) return;

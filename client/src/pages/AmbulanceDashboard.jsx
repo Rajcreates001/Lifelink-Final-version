@@ -226,7 +226,6 @@ const useIsDesktop = () => {
     const media = window.matchMedia('(min-width: 1024px)');
     const handler = (event) => setIsDesktop(event.matches);
     media.addEventListener?.('change', handler);
-    setIsDesktop(media.matches);
     return () => media.removeEventListener?.('change', handler);
   }, []);
   return isDesktop;
@@ -236,7 +235,7 @@ const useIsDesktop = () => {
 const DesktopAmbulanceDashboard = () => {
   const navigate = useNavigate();
   const { module: urlModule } = useParams();
-  const { vehicle, incident, hospital, toIncident, toHospital, loading } = useAmbulanceMissionData();
+  const { vehicle, incident, hospital, toIncident, toHospital, _loading } = useAmbulanceMissionData();
   const activeModule = urlModule && moduleLabels[urlModule] ? urlModule : 'mission-overview';
   const [triageOpen, setTriageOpen] = useState(false);
   const [triageInput, setTriageInput] = useState('');

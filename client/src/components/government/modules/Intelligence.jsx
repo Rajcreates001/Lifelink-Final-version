@@ -5,8 +5,8 @@ import { apiFetch } from '../../../config/api';
 
 const Intelligence = () => {
   const [threats, setThreats] = useState([]);
-  const [anomalies, setAnomalies] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [_anomalies, setAnomalies] = useState([]);
+  const [_loading, setLoading] = useState(true);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
   const [stats, setStats] = useState({ monitored: 0, active: 0, sources: 0, confidence: 0 });
 

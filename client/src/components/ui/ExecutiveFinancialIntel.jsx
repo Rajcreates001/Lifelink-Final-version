@@ -157,7 +157,7 @@ const ExecutiveFinancialIntel = () => {
                       </div>
                       <div className="mt-1.5 flex items-center gap-2 text-[9px] text-slate-500">
                         <span className="px-1.5 py-0.5 rounded bg-white text-indigo-500 font-semibold border border-indigo-100">
-                          Confidence: {75 + Math.round(Math.random() * 20)}%
+                          Confidence: {75 + (idx % 21)}%
                         </span>
                         <span>Suggested: {dept.dept === 'Radiology' ? 'Negotiate equipment lease' : 'Review staffing ratios'}</span>
                       </div>

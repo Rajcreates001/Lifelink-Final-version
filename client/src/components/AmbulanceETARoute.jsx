@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { apiFetch, API_BASE_URL } from '../config/api';
@@ -37,11 +37,11 @@ const AmbulanceETARoute = ({ currentHospitalId, currentHospitalName, hospitalLoc
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
-    const [mapReady, setMapReady] = useState(false);
+    const [_mapReady, setMapReady] = useState(false);
 
     // Location Input States
     const [pickupLocation, setPickupLocation] = useState('');
-    const [destinationLocation, setDestinationLocation] = useState(KMC_HOSPITAL_NAME);
+    const [destinationLocation, _setDestinationLocation] = useState(KMC_HOSPITAL_NAME);
     const [latitude, setLatitude] = useState(null);
     const [longitude, setLongitude] = useState(null);
 
@@ -51,7 +51,7 @@ const AmbulanceETARoute = ({ currentHospitalId, currentHospitalName, hospitalLoc
     const markersRef = useRef({});
     const [routePath, setRoutePath] = useState([]);
     const [etaData, setEtaData] = useState(null);
-    const [alternateRoutes, setAlternateRoutes] = useState([]);
+    const [_alternateRoutes, _setAlternateRoutes] = useState([]);
     const [coordination, setCoordination] = useState(null);
 
     // ETA Timer State
@@ -68,7 +68,7 @@ const AmbulanceETARoute = ({ currentHospitalId, currentHospitalName, hospitalLoc
     });
 
     // State to track all ambulance markers
-    const ambulanceMarkersRef = useRef({});
+    const _ambulanceMarkersRef = useRef({});
 
     // Reinitialize map when tab changes
     useEffect(() => {
@@ -140,7 +140,7 @@ const AmbulanceETARoute = ({ currentHospitalId, currentHospitalName, hospitalLoc
         return () => {
             // Cleanup on unmount
         };
-    }, [activeTab]);
+    }, [activeTab, resolvedHospital.lat, resolvedHospital.lng, resolvedHospital.name]);
 
     // Update ambulance markers when ambulances list changes
     useEffect(() => {
@@ -183,10 +183,13 @@ const AmbulanceETARoute = ({ currentHospitalId, currentHospitalName, hospitalLoc
     }, [ambulances]);
     // Fetch ambulances on mount and set up refresh interval
     useEffect(() => {
-        fetchAmbulances();
+        const run = async () => {
+            await fetchAmbulances();
+        };
+        run();
         const interval = setInterval(fetchAmbulances, 15000); // Refresh every 15 seconds
         return () => clearInterval(interval);
-    }, []);
+    }, [fetchAmbulances]);
 
     useEffect(() => {
         if (!currentHospitalId) return;
@@ -228,7 +231,7 @@ const AmbulanceETARoute = ({ currentHospitalId, currentHospitalName, hospitalLoc
         }
     }, [etaData, selectedAmbulance]);
 
-    const fetchAmbulances = async () => {
+    const fetchAmbulances = useCallback(async () => {
         try {
             // Always fetch all ambulances (hospital filter handled on backend)
             const response = await apiFetch('/api/ambulance', { method: 'GET' });
@@ -269,7 +272,7 @@ const AmbulanceETARoute = ({ currentHospitalId, currentHospitalName, hospitalLoc
             // Silently fail - don't show error on every fetch
             console.error('Fetch error:', err.message);
         }
-    };
+    }, [autoSelectedAmbulance]);
 
     const handleAutoDetectLocation = () => {
         setLoading(true);
@@ -284,7 +287,7 @@ const AmbulanceETARoute = ({ currentHospitalId, currentHospitalName, hospitalLoc
                     // Automatically calculate route after getting location
                     setTimeout(() => handleGetRoute(), 500);
                 },
-                (error) => {
+                () => {
                     setError('Unable to get location. Using Mangalore as default.');
                     setLatitude(MANGALORE_LAT);
                     setLongitude(MANGALORE_LNG);
@@ -420,7 +423,7 @@ const AmbulanceETARoute = ({ currentHospitalId, currentHospitalName, hospitalLoc
         }
     };
 
-    const calculateDistance = (lat1, lng1, lat2, lng2) => {
+    const _calculateDistance = (lat1, lng1, lat2, lng2) => {
         const R = 6371; // Earth's radius in km
         const dLat = (lat2 - lat1) * Math.PI / 180;
         const dLng = (lng2 - lng1) * Math.PI / 180;
@@ -431,7 +434,7 @@ const AmbulanceETARoute = ({ currentHospitalId, currentHospitalName, hospitalLoc
         return R * c;
     };
 
-    const handleStartTracking = async () => {
+    const _handleStartTracking = async () => {
         if (!selectedAmbulance) {
             setError('Please select an ambulance first');
             return;

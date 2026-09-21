@@ -56,7 +56,7 @@ function BedBar({ value, total, color }) {
     const timer = setTimeout(() => setWidth(occPercent(value, total)), 300);
     return () => clearTimeout(timer);
   }, [value, total]);
-  const pct = occPercent(value, total);
+  const _pct = occPercent(value, total);
   return (
     <div className="flex items-center gap-2 text-[9px]">
       <span className="w-12 text-gray-400 shrink-0">{total} total</span>
@@ -75,8 +75,8 @@ function BedBar({ value, total, color }) {
 function useCountUpValue(target) {
   const [count, setCount] = useState(0);
   useEffect(() => {
-    if (!target) { setCount(0); return; }
-    if (target === 0) { setCount(0); return; }
+    if (!target) { const t = setTimeout(() => setCount(0), 0); return () => clearTimeout(t); }
+    if (target === 0) { const t0 = setTimeout(() => setCount(0), 0); return () => clearTimeout(t0); }
     const step = Math.max(1, Math.ceil(target / (1000 / 16)));
     let start = 0;
     const timer = setInterval(() => {

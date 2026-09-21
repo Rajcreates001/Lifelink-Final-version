@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, _useEffect } from 'react';
 
 const decisionActions = [
   { icon: 'fa-bed', label: 'Reallocate beds', desc: 'Optimize bed distribution across departments', confidence: 0.92 },
@@ -20,7 +20,7 @@ const ExecutiveDecisionCenter = () => {
   const [query, setQuery] = useState('');
   const [response, setResponse] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [activeQuestion, setActiveQuestion] = useState(null);
+  const [_activeQuestion, setActiveQuestion] = useState(null);
   const inputRef = useRef(null);
 
   const handleAsk = (question) => {

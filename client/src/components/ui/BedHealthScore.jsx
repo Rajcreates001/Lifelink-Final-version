@@ -26,7 +26,7 @@ const BedHealthScore = () => {
           </thead>
           <tbody>
             {wards.map((w) => {
-              const avg = Math.round((w.operational + w.clinical + w.cleaning + w.utilization + w.safety) / 5);
+              const _avg = Math.round((w.operational + w.clinical + w.cleaning + w.utilization + w.safety) / 5);
               return (
                 <tr key={w.name} className="border-t border-slate-100">
                   <td className="py-2 font-bold text-slate-700">{w.name}</td>

@@ -6,7 +6,7 @@ import { apiFetch } from '../../../config/api';
 
 const ResponseCenter = () => {
   // Fetch real emergency data from API
-  const { data: emergencyData, loading } = useApiData(
+  const { data: emergencyData, _loading } = useApiData(
     '/v2/government/command/monitoring/feed',
     { pollInterval: 30000, transform: (d) => d?.data || [] }
   );
@@ -36,7 +36,7 @@ const ResponseCenter = () => {
   const [agencyStatus, setAgencyStatus] = useState({ NDRF: 'Deployed', Police: 'Active', Fire: 'Active', Ambulance: 'Deployed', SDRF: 'Active', Navy: 'Standing' });
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
 
-  const showToast = useCallback((msg, type = 'success') => setToast({ visible: true, message: msg, type }), []);
+  const showToast = useCallback((msg, type = 'success') => setToast({ visible: true, message: msg, type }), [setToast]);
   const dispatchAgency = useCallback(async (agency) => {
     setAgencyStatus(s => ({ ...s, [agency]: 'Deployed' }));
     try {
@@ -60,7 +60,7 @@ const ResponseCenter = () => {
       confirmLabel: 'Escalate Mission',
     });
     setSelectedMission(mission);
-  }, []);
+  }, [setShowConfirm, setSelectedMission]);
 
   return (
     <div className="space-y-5">

@@ -136,25 +136,33 @@ const EnterpriseModal = ({
   // ── Mount / Unmount animation using CLOSE_DURATION constant ──
   useEffect(() => {
     if (open) {
-      setMounted(true);
+      const mountT = setTimeout(() => setMounted(true), 0);
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           setClosing(false);
         });
       });
+      return () => clearTimeout(mountT);
     } else {
-      setClosing(true);
+      const closingT = setTimeout(() => setClosing(true), 0);
       const timer = setTimeout(() => {
         setMounted(false);
         setClosing(false);
       }, CLOSE_DURATION);
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(closingT);
+        clearTimeout(timer);
+      };
     }
   }, [open]);
 
-  // ── onOpen callback ──
+  // ── onOpen callback (called once per open; latest callback kept in a ref) ──
+  const onOpenRef = useRef(onOpen);
   useEffect(() => {
-    if (open && onOpen) onOpen();
+    onOpenRef.current = onOpen;
+  }, [onOpen]);
+  useEffect(() => {
+    if (open && onOpenRef.current) onOpenRef.current();
   }, [open]);
 
   // ── Lock body scroll + set padding for scrollbar ──
@@ -192,12 +200,20 @@ const EnterpriseModal = ({
   }, [mounted]);
 
   // ── Keyboard handling ──
+  const handleKeyEsc = useCallback((e) => {
+    if (closeOnEsc && onClose && !loading) {
+      e?.stopPropagation?.();
+      setClosing(true);
+      setTimeout(() => onClose?.(), 50);
+    }
+  }, [closeOnEsc, onClose, loading]);
+
   useEffect(() => {
     if (!mounted) return;
     const handleKeyDown = (e) => {
       // ESC close
       if (e.key === 'Escape' && closeOnEsc && onClose && !loading) {
-        handleClose(e);
+        handleKeyEsc(e);
       }
       // Tab trap
       if (e.key === 'Tab' && modalRef.current) {
@@ -218,7 +234,7 @@ const EnterpriseModal = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [mounted, closeOnEsc, loading, onClose]);
+  }, [mounted, closeOnEsc, onClose, loading, handleKeyEsc]);
 
   // ── Close handler (after 50ms the parent receives onClose, triggering the
   //     open-prop effect which uses CLOSE_DURATION to complete the animation) ──
@@ -463,7 +479,7 @@ export const SideSheet = ({ open, onClose, ...props }) => {
 
   useEffect(() => {
     if (open) {
-      setVisible(true);
+      const visT = setTimeout(() => setVisible(true), 0);
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           if (sheetRef.current) sheetRef.current.style.transform = 'translateX(0)';
@@ -474,6 +490,7 @@ export const SideSheet = ({ open, onClose, ...props }) => {
       document.body.style.overflow = 'hidden';
       document.body.style.paddingRight = `${scrollbarWidth}px`;
       return () => {
+        clearTimeout(visT);
         document.body.style.overflow = prevOverflow;
         document.body.style.paddingRight = '';
       };
@@ -553,8 +570,9 @@ export const FullscreenModal = ({ open, onClose, title, children, className = ''
 
   useEffect(() => {
     if (open) {
-      setVisible(true);
+      const visT = setTimeout(() => setVisible(true), 0);
       document.body.style.overflow = 'hidden';
+      return () => clearTimeout(visT);
     } else {
       const timer = setTimeout(() => setVisible(false), 250);
       document.body.style.overflow = '';

@@ -6,7 +6,7 @@ import ResearchPaperModal from '../../components/ResearchPaperModal';
 const ResearchSection = () => {
     const [entered, ref] = useScrollIn();
     const [modalItem, setModalItem] = useState(null);
-    const researchData = RESEARCH.map((item, i) => ({ ...item }));
+    const researchData = RESEARCH.map((item) => ({ ...item }));
     return (
         <section ref={ref} className="py-20 sm:py-28">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">

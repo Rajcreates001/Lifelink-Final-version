@@ -121,7 +121,7 @@ const QuickHealthCheckScreen = ({ user, onBack, rightSlot }) => {
 
       if (text) {
         setDocText(text);
-        const bpMatch = text.match(/(?:bp|blood pressure)?\s*[:\-]?\s*(\d{2,3}\s*\/\s*\d{2,3})/i);
+        const bpMatch = text.match(/(?:bp|blood pressure)?\s*[:-]?\s*(\d{2,3}\s*\/\s*\d{2,3})/i);
         const hrMatch = text.match(/(?:hr|pulse|heart rate)\s*[:-]?\s*(\d{2,3})/i);
         const o2Match = text.match(/(?:spo2|oxygen|o2)\s*[:-]?\s*(\d{2,3})/i);
         setForm((prev) => ({

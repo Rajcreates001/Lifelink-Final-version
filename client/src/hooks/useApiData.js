@@ -22,7 +22,7 @@ export function useApiData(url, options = {}) {
         body = null,
         enabled = true,
         pollInterval = 0,
-        cacheKey = null,
+        _cacheKey = null,
         transform = null,
         deps = [],
     } = options;
@@ -71,6 +71,7 @@ export function useApiData(url, options = {}) {
         } finally {
             if (mountedRef.current) setLoading(false);
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- caller-provided dep list is spread by design
     }, [url, method, body, enabled, transform, ...deps]);
 
     // Initial fetch

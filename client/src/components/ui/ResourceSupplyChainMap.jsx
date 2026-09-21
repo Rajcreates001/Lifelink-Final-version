@@ -26,7 +26,7 @@ const ResourceSupplyChainMap = () => {
               <line key={a + '-' + b} x1={stages[a].x} y1={stages[a].y + 3} x2={stages[b].x} y2={stages[b].y - 3}
                 stroke="rgba(148,163,184,0.2)" strokeWidth={0.5} />
             ))}
-            {stages.map((s, i) => (
+            {stages.map((s) => (
               <g key={s.label}>
                 <rect x={s.x - 14} y={s.y} width={28} height={10} rx={5} fill="white" stroke="rgba(148,163,184,0.3)" strokeWidth={0.8} className="hover:stroke-indigo-400 transition-all cursor-pointer" />
                 <text x={s.x} y={s.y + 4} textAnchor="middle" fontSize="3" fontWeight="700" fill="#475569">{s.label}</text>

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { apiFetch, API_BASE_URL } from '../config/api';
 import { DashboardCard, ExplainabilityPanel, LoadingSpinner, StatusPill } from './Common';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
@@ -48,7 +48,7 @@ const ModuleWorkbench = ({ moduleKey, title, description, realtimeChannel }) => 
         return `${base.replace(/^http/, 'ws')}/v2/realtime/ws/${channel}`;
     }, [channel]);
 
-    const loadItems = async () => {
+    const loadItems = useCallback(async () => {
         const params = new URLSearchParams();
         if (search) params.set('search', search);
         if (statusFilter) params.set('status', statusFilter);
@@ -58,9 +58,9 @@ const ModuleWorkbench = ({ moduleKey, title, description, realtimeChannel }) => 
         const qs = params.toString();
         const res = await apiFetch(`/v2/modules/${moduleKey}/items${qs ? `?${qs}` : ''}`, { method: 'GET' });
         setItems(res.ok ? (res.data?.data || []) : []);
-    };
+    }, [moduleKey, search, statusFilter, priorityFilter, itemSortBy, itemSortDir]);
 
-    const loadAlerts = async () => {
+    const loadAlerts = useCallback(async () => {
         const params = new URLSearchParams();
         if (alertSearch) params.set('search', alertSearch);
         if (alertStatusFilter) params.set('status', alertStatusFilter);
@@ -70,9 +70,9 @@ const ModuleWorkbench = ({ moduleKey, title, description, realtimeChannel }) => 
         const qs = params.toString();
         const res = await apiFetch(`/v2/modules/${moduleKey}/alerts${qs ? `?${qs}` : ''}`, { method: 'GET' });
         setAlerts(res.ok ? (res.data?.data || []) : []);
-    };
+    }, [moduleKey, alertSearch, alertStatusFilter, alertSeverityFilter, alertSortBy, alertSortDir]);
 
-    const loadAutomations = async () => {
+    const loadAutomations = useCallback(async () => {
         const params = new URLSearchParams();
         if (automationSearch) params.set('search', automationSearch);
         if (automationEnabledFilter) params.set('enabled', automationEnabledFilter);
@@ -81,25 +81,28 @@ const ModuleWorkbench = ({ moduleKey, title, description, realtimeChannel }) => 
         const qs = params.toString();
         const res = await apiFetch(`/v2/modules/${moduleKey}/automations${qs ? `?${qs}` : ''}`, { method: 'GET' });
         setAutomations(res.ok ? (res.data?.data || []) : []);
-    };
+    }, [moduleKey, automationSearch, automationEnabledFilter, automationSortBy, automationSortDir]);
 
-    const loadAnalytics = async () => {
+    const loadAnalytics = useCallback(async () => {
         const res = await apiFetch(`/v2/modules/${moduleKey}/analytics`, { method: 'GET' });
         setAnalytics(res.ok ? res.data : null);
-    };
+    }, [moduleKey]);
 
-    const loadAll = async () => {
+    const loadAll = useCallback(async () => {
         setLoading(true);
         try {
             await Promise.all([loadItems(), loadAlerts(), loadAutomations(), loadAnalytics()]);
         } finally {
             setLoading(false);
         }
-    };
+    }, [loadItems, loadAlerts, loadAutomations, loadAnalytics]);
 
     useEffect(() => {
-        loadAll();
-    }, [moduleKey]);
+        const run = async () => {
+            await loadAll();
+        };
+        run();
+    }, [moduleKey, loadAll]);
 
     useEffect(() => {
         if (!wsUrl) return undefined;
@@ -113,7 +116,7 @@ const ModuleWorkbench = ({ moduleKey, title, description, realtimeChannel }) => 
         return () => {
             socket.close();
         };
-    }, [wsUrl]);
+    }, [wsUrl, loadAll]);
 
     const handleCreateItem = async () => {
         if (!itemForm.title) return;

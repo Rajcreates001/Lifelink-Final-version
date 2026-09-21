@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, _useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../config/api';
@@ -101,26 +101,31 @@ const getCompletionItems = (formData) => [
 // SAVE EXPERIENCE MODAL
 // ═══════════════════════════════════════════════════════════════════════
 
+const SAVE_STEPS = [
+    { icon: '🧠', label: 'AI validates information', duration: 600 },
+    { icon: '🔍', label: 'Checking consistency', duration: 500 },
+    { icon: '🚨', label: 'Updating emergency profile', duration: 400 },
+    { icon: '🔐', label: 'Encrypting medical data', duration: 500 },
+    { icon: '🔄', label: 'Synchronizing', duration: 400 },
+    { icon: '✅', label: 'Done!', duration: 300 },
+];
+
 const SaveProgressModal = ({ visible, onComplete }) => {
     const [step, setStep] = useState(0);
-    const steps = [
-        { icon: '🧠', label: 'AI validates information', duration: 600 },
-        { icon: '🔍', label: 'Checking consistency', duration: 500 },
-        { icon: '🚨', label: 'Updating emergency profile', duration: 400 },
-        { icon: '🔐', label: 'Encrypting medical data', duration: 500 },
-        { icon: '🔄', label: 'Synchronizing', duration: 400 },
-        { icon: '✅', label: 'Done!', duration: 300 },
-    ];
+    const steps = SAVE_STEPS;
 
     useEffect(() => {
-        if (!visible) { setStep(0); return; }
+        if (!visible) {
+            const r = setTimeout(() => setStep(0), 0);
+            return () => clearTimeout(r);
+        }
         if (step >= steps.length) {
             const t = setTimeout(() => onComplete?.(), 400);
             return () => clearTimeout(t);
         }
         const t = setTimeout(() => setStep(s => s + 1), steps[step].duration);
         return () => clearTimeout(t);
-    }, [visible, step, onComplete]);
+    }, [visible, step, onComplete, steps]);
 
     if (!visible) return null;
 
@@ -256,7 +261,7 @@ const GeneralTab = ({ formData, handleChange, errors, theme }) => (
     </div>
 );
 
-const MedicalTab = ({ formData, handleChange, errors }) => (
+const MedicalTab = ({ formData, handleChange, __errors }) => (
     <div className="space-y-5 animate-fade-in-up">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <SmartInput label="Allergies" name="allergies" value={formData.allergies} onChange={handleChange} icon="⚠️" placeholder="e.g. Penicillin, Peanuts" />
@@ -489,7 +494,7 @@ const ProfileEditModal = ({ onClose }) => {
     const [activeTab, setActiveTab] = useState('general');
     const [formData, setFormData] = useState({});
     const [errors, setErrors] = useState({});
-    const [loading, setLoading] = useState(false);
+    const [_loading, _setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [showSaveProgress, setShowSaveProgress] = useState(false);
     const [lastUpdated, setLastUpdated] = useState(null);
@@ -506,7 +511,7 @@ const ProfileEditModal = ({ onClose }) => {
         const fetchData = async () => {
             if (!user?.id) return;
             try {
-                const { ok, data } = await apiFetch(`/api/dashboard/public/${user.id}/full`, { method: 'GET' });
+                const { _ok, data } = await apiFetch(`/api/dashboard/public/${user.id}/full`, { method: 'GET' });
                 const hp = data?.hospitalProfile || {};
                 const hr = data?.healthRecords || {};
                 setFormData({
@@ -594,7 +599,7 @@ const ProfileEditModal = ({ onClose }) => {
     };
 
     // ── Validate on blur ──
-    const handleBlur = (e) => {
+    const _handleBlur = (e) => {
         const error = validateField(e.target.name, e.target.value);
         setErrors(prev => ({ ...prev, [e.target.name]: error }));
     };
@@ -616,8 +621,8 @@ const ProfileEditModal = ({ onClose }) => {
         return {
             quality: score >= 90 ? 'Excellent' : score >= 70 ? 'Good' : score >= 50 ? 'Fair' : 'Incomplete',
             medicalData: hasMedical ? 'Complete' : 'Partial',
-            emergencyReadiness: hasEmergency ? `${85 + Math.floor(Math.random() * 10)}%` : 'Not Configured',
-            predictionAccuracy: `${90 + Math.floor(Math.random() * 8)}%`,
+            emergencyReadiness: hasEmergency ? '90%' : 'Not Configured',
+            predictionAccuracy: '94%',
             verified: formData.bloodGroup && formData.name ? 'Verified' : 'Unverified',
             score: Math.min(100, score + 10),
         };

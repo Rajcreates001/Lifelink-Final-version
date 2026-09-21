@@ -24,7 +24,7 @@ const CATEGORIES = [
   { key: 'supplies', label: 'Supplies', icon: 'fa-box' },
 ];
 
-const Resources = ({ vehicle, onAction }) => {
+const Resources = ({ __vehicle, onAction }) => {
   const [category, setCategory] = React.useState('all');
 
   const filtered = category === 'all' ? EQUIPMENT_ITEMS : EQUIPMENT_ITEMS.filter(e => e.category === category);

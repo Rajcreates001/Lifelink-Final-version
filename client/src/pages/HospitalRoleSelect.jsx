@@ -139,7 +139,7 @@ const HospitalRoleSelect = () => {
       setError('Connection error. Please try again.');
       setLoading(false);
     }
-  }, [login, navigate]);
+  }, [login]);
 
   const handleTransitionComplete = useCallback(() => {
     setTransitionDept(null);

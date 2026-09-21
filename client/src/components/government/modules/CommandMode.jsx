@@ -3,8 +3,16 @@ import { GovStatusBadge, GovSectionHeader, FORMAT_TIME } from '../shared/Governm
 import { DetailModal, Toast, ConfirmDialog, AIExplainPanel } from '../shared/InteractiveComponents';
 import { apiFetch } from '../../../config/api';
 
+// Module-level so render stays pure (react-hooks/purity)
+const NOW = Date.now();
+
 const CommandMode = () => {
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState([
+    { from: 'NDMA Director', msg: 'Cyclone update: Path shifted 50km south. Adjust evacuation zones.', time: '2m ago', direct: true },
+    { from: 'Air Force', msg: '2× C-130J on standby at Mangaluru airbase. Ready for airlift.', time: '5m ago', direct: true },
+    { from: 'Navy', msg: 'INS Sahyadri deployed to coastal zone. Rescue teams ready.', time: '8m ago', direct: true },
+    { from: 'State Control', msg: 'Evacuation of coastal villages 60% complete. ETA 4 hours.', time: '12m ago', direct: true },
+  ]);
 
   useEffect(() => {
     const loadMessages = async () => {
@@ -21,12 +29,6 @@ const CommandMode = () => {
       } catch (err) { /* use defaults */ }
     };
     loadMessages();
-    setMessages([
-      { from: 'NDMA Director', msg: 'Cyclone update: Path shifted 50km south. Adjust evacuation zones.', time: '2m ago', direct: true },
-      { from: 'Air Force', msg: '2× C-130J on standby at Mangaluru airbase. Ready for airlift.', time: '5m ago', direct: true },
-      { from: 'Navy', msg: 'INS Sahyadri deployed to coastal zone. Rescue teams ready.', time: '8m ago', direct: true },
-      { from: 'State Control', msg: 'Evacuation of coastal villages 60% complete. ETA 4 hours.', time: '12m ago', direct: true },
-    ]);
   }, []);
   const [chatInput, setChatInput] = useState('');
   const [showConfirm, setShowConfirm] = useState(null);
@@ -94,7 +96,7 @@ const CommandMode = () => {
             <div><p className="text-[10px] font-semibold text-white/50 uppercase">Critical Incidents</p><p className="text-lg font-bold mt-0.5 text-red-400">3</p></div>
             <div><p className="text-[10px] font-semibold text-white/50 uppercase">Agencies Online</p><p className="text-lg font-bold mt-0.5 text-emerald-400">12/12</p></div>
             <div><p className="text-[10px] font-semibold text-white/50 uppercase">Personnel Standby</p><p className="text-lg font-bold mt-0.5 text-blue-400">5,200</p></div>
-            <div><p className="text-[10px] font-semibold text-white/50 uppercase">Last Updated</p><p className="text-lg font-bold mt-0.5 text-slate-400">{FORMAT_TIME(Date.now())}</p></div>
+            <div><p className="text-[10px] font-semibold text-white/50 uppercase">Last Updated</p><p className="text-lg font-bold mt-0.5 text-slate-400">{FORMAT_TIME(NOW)}</p></div>
           </div>
         </div>
       </div>

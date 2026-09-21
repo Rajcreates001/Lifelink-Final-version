@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, _useMemo } from 'react';
 
 const departments = [
   { id: 'emergency', label: 'Emergency', x: 15, y: 15, w: 30, h: 18, color: 'from-red-500 to-rose-600', load: 94, risk: 'high', beds: 18, wait: 12 },
@@ -34,7 +34,7 @@ const DigitalTwinMap = () => {
     return () => clearInterval(t);
   }, []);
 
-  const glowIntensity = (load) => {
+  const _glowIntensity = (load) => {
     if (load >= 85) return 'shadow-[0_0_20px_rgba(239,68,68,0.5)]';
     if (load >= 70) return 'shadow-[0_0_15px_rgba(245,158,11,0.4)]';
     return 'shadow-[0_0_10px_rgba(34,197,94,0.3)]';

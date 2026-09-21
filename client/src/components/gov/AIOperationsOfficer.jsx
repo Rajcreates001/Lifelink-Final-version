@@ -85,7 +85,7 @@ const QUICK_REPLIES = [
   { label: 'Generate situation report', icon: 'fa-file-alt' },
 ];
 
-const AIOperationsOfficer = ({ role = 'default', orgName = '', onCommand }) => {
+const AIOperationsOfficer = ({ role = 'default', orgName = '', __onCommand }) => {
   const persona = AI_PERSONAS[role] || AI_PERSONAS.default;
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');

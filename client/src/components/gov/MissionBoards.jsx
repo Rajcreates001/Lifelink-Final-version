@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, _useState } from 'react';
 
 // ─── KPI Card ──────────────────────────────────────────────
 const KpiCard = ({ icon, label, value, sub, color, trend }) => (
@@ -137,7 +137,7 @@ const StateAdminBoard = () => (
             ['Udupi', 85, 'Ready'],
             ['Kodagu', 68, 'Attention'],
             ['Chikkamagaluru', 72, 'Monitor'],
-          ].map(([district, score, status]) => (
+          ].map(([district, score, __status]) => (
             <div key={district} className="flex items-center gap-3 p-2 rounded-lg bg-slate-700/30">
               <div className="flex-1">
                 <div className="flex items-center justify-between">

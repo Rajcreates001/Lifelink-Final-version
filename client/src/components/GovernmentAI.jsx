@@ -33,6 +33,51 @@ const savePreload = (key, data) => {
 };
 
 // --- 1. Outbreak Forecast Chart ---
+// Module-level fallback explainability payloads (static; hoisted for hook deps)
+const OUTBREAK_FALLBACK_META = {
+    confidence: 0.84,
+    command: 'Outbreak forecast model',
+    reasoning: ['Seasonality signals detected', 'Hospital intake trend aligns with historical baselines'],
+    references: [
+        { title: 'Monitoring feed', detail: 'Live incident registry' },
+        { title: 'Hospital census', detail: 'Bed occupancy and intake trends' },
+    ],
+};
+const ALLOCATION_FALLBACK_META = {
+    confidence: 0.79,
+    command: 'Allocation optimizer',
+    reasoning: ['Capacity pressure above threshold', 'Emergency volume trending upward'],
+    references: [
+        { title: 'Emergency feed', detail: 'Incident counts by zone' },
+        { title: 'Hospital capacity', detail: 'Occupancy baseline' },
+    ],
+};
+const POLICY_SEGMENT_FALLBACK_META = {
+    confidence: 0.76,
+    command: 'Policy segmentation',
+    reasoning: ['Emergency intensity above seasonal baseline', 'Response-time variance detected'],
+    references: [
+        { title: 'Policy index', detail: 'Historical outcomes by region' },
+    ],
+};
+const POLICY_PERF_FALLBACK_META = {
+    confidence: 0.81,
+    command: 'Performance scoring',
+    reasoning: ['Occupancy trending above 80%', 'Response time drifting upward'],
+    references: [
+        { title: 'Performance scorecard', detail: 'Hospitals and response KPIs' },
+    ],
+};
+const AVAILABILITY_FALLBACK_META = {
+    confidence: 0.8,
+    command: 'Availability forecast',
+    reasoning: ['Donation frequency signals stable', 'Hospital stock within normal band'],
+    references: [
+        { title: 'Inventory feed', detail: 'Hospital stock ledger' },
+        { title: 'Donor forecast', detail: 'Donation frequency inputs' },
+    ],
+};
+
 export const OutbreakForecast = () => {
     const [formData, setFormData] = useState({ disease_name: 'Influenza', region: 'Central City', days_to_predict: 30 });
     const [chartData, setChartData] = useState(null);
@@ -40,15 +85,7 @@ export const OutbreakForecast = () => {
     const [loading, setLoading] = useState(false);
     const [drillDown, setDrillDown] = useState({ open: false, title: '', data: [] });
 
-    const fallbackMeta = {
-        confidence: 0.84,
-        command: 'Outbreak forecast model',
-        reasoning: ['Seasonality signals detected', 'Hospital intake trend aligns with historical baselines'],
-        references: [
-            { title: 'Monitoring feed', detail: 'Live incident registry' },
-            { title: 'Hospital census', detail: 'Bed occupancy and intake trends' },
-        ],
-    };
+
 
     useEffect(() => {
         const preload = readPreload('gov_preload_outbreak');
@@ -58,7 +95,7 @@ export const OutbreakForecast = () => {
                 values: preload.forecast.map(d => d.predicted_cases),
                 raw: preload.forecast
             });
-            setMeta(mergeMeta(preload.meta, fallbackMeta));
+            setMeta(mergeMeta(preload.meta, OUTBREAK_FALLBACK_META));
         }
     }, [chartData]);
 
@@ -78,7 +115,7 @@ export const OutbreakForecast = () => {
                     raw: data.forecast
                 });
             }
-            setMeta(mergeMeta(data.meta, fallbackMeta));
+            setMeta(mergeMeta(data.meta, OUTBREAK_FALLBACK_META));
             savePreload('gov_preload_outbreak', data);
         } catch (err) { alert('Forecast failed'); } finally { setLoading(false); }
     };
@@ -147,21 +184,13 @@ export const AllocationPredictor = () => {
     const [meta, setMeta] = useState(null);
     const [loading, setLoading] = useState(false);
 
-    const fallbackMeta = {
-        confidence: 0.79,
-        command: 'Allocation optimizer',
-        reasoning: ['Capacity pressure above threshold', 'Emergency volume trending upward'],
-        references: [
-            { title: 'Emergency feed', detail: 'Incident counts by zone' },
-            { title: 'Hospital capacity', detail: 'Occupancy baseline' },
-        ],
-    };
+
 
     useEffect(() => {
         const preload = readPreload('gov_preload_allocation');
         if (preload && !result) {
             setResult(preload);
-            setMeta(mergeMeta(preload.meta, fallbackMeta));
+            setMeta(mergeMeta(preload.meta, ALLOCATION_FALLBACK_META));
         }
     }, [result]);
 
@@ -172,7 +201,7 @@ export const AllocationPredictor = () => {
             const res = await apiFetch('/api/gov/predict_allocation', { method: 'POST', body: JSON.stringify(formData) });
             const data = res.ok ? res.data : {};
             setResult(data);
-            setMeta(mergeMeta(data.meta, fallbackMeta));
+            setMeta(mergeMeta(data.meta, ALLOCATION_FALLBACK_META));
             savePreload('gov_preload_allocation', data);
         } catch (err) { console.error(err); } finally { setLoading(false); }
     };
@@ -226,22 +255,7 @@ export const PolicyAdvisor = () => {
     const [meta, setMeta] = useState({});
     const [loading, setLoading] = useState(false);
 
-    const fallbackSegmentMeta = {
-        confidence: 0.76,
-        command: 'Policy segmentation',
-        reasoning: ['Emergency intensity above seasonal baseline', 'Response-time variance detected'],
-        references: [
-            { title: 'Policy index', detail: 'Historical outcomes by region' },
-        ],
-    };
-    const fallbackPerfMeta = {
-        confidence: 0.81,
-        command: 'Performance scoring',
-        reasoning: ['Occupancy trending above 80%', 'Response time drifting upward'],
-        references: [
-            { title: 'Performance scorecard', detail: 'Hospitals and response KPIs' },
-        ],
-    };
+
 
     useEffect(() => {
         const segment = readPreload('gov_preload_policy_segment');
@@ -249,8 +263,8 @@ export const PolicyAdvisor = () => {
         if (segment && performance && !result) {
             setResult({ segment, performance });
             setMeta({
-                segment: mergeMeta(segment.meta, fallbackSegmentMeta),
-                performance: mergeMeta(performance.meta, fallbackPerfMeta),
+                segment: mergeMeta(segment.meta, POLICY_SEGMENT_FALLBACK_META),
+                performance: mergeMeta(performance.meta, POLICY_PERF_FALLBACK_META),
             });
         }
     }, [result]);
@@ -267,8 +281,8 @@ export const PolicyAdvisor = () => {
             const performance = perfRes.ok ? perfRes.data : {};
             setResult({ segment, performance });
             setMeta({
-                segment: mergeMeta(segment.meta, fallbackSegmentMeta),
-                performance: mergeMeta(performance.meta, fallbackPerfMeta),
+                segment: mergeMeta(segment.meta, POLICY_SEGMENT_FALLBACK_META),
+                performance: mergeMeta(performance.meta, POLICY_PERF_FALLBACK_META),
             });
             savePreload('gov_preload_policy_segment', segment);
             savePreload('gov_preload_policy_performance', performance);
@@ -320,21 +334,13 @@ export const AvailabilityPredictor = () => {
     const [meta, setMeta] = useState(null);
     const [loading, setLoading] = useState(false);
 
-    const fallbackMeta = {
-        confidence: 0.8,
-        command: 'Availability forecast',
-        reasoning: ['Donation frequency signals stable', 'Hospital stock within normal band'],
-        references: [
-            { title: 'Inventory feed', detail: 'Hospital stock ledger' },
-            { title: 'Donor forecast', detail: 'Donation frequency inputs' },
-        ],
-    };
+
 
     useEffect(() => {
         const preload = readPreload('gov_preload_availability');
         if (preload && score === null) {
             setScore(preload.predicted_availability_score);
-            setMeta(mergeMeta(preload.meta, fallbackMeta));
+            setMeta(mergeMeta(preload.meta, ALLOCATION_FALLBACK_META));
         }
     }, [score]);
 
@@ -345,7 +351,7 @@ export const AvailabilityPredictor = () => {
             const res = await apiFetch('/api/gov/predict_availability', { method: 'POST', body: JSON.stringify(formData) });
             const data = res.ok ? res.data : {};
             setScore(data.predicted_availability_score);
-            setMeta(mergeMeta(data.meta, fallbackMeta));
+            setMeta(mergeMeta(data.meta, ALLOCATION_FALLBACK_META));
             savePreload('gov_preload_availability', data);
         } catch (err) { console.error(err); } finally { setLoading(false); }
     };

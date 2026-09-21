@@ -44,7 +44,7 @@ const HomeTab = ({ user, data, sosStats, fetchData, fetchNotifications }) => {
   const [alertStatus, setAlertStatus] = useState({ error: '', success: '', loading: false, recommendation: null, sentMessage: '' });
   const [sosId, setSosId] = useState(null);
   const [sosStatus, setSosStatus] = useState(null);
-  const [sosMeta, setSosMeta] = useState(null);
+  const [_sosMeta, setSosMeta] = useState(null);
   const [assistantSteps, setAssistantSteps] = useState([]);
   const [assistantLoading, setAssistantLoading] = useState(false);
   const [triggeredAt, setTriggeredAt] = useState(null);
@@ -60,7 +60,7 @@ const HomeTab = ({ user, data, sosStats, fetchData, fetchNotifications }) => {
   const [dbStatusError, setDbStatusError] = useState('');
 
   // ─── Hook: Geolocation ────────────────────────────────
-  const { location: sosLocation, status: sosLocationStatus } = useGeolocation();
+  const { location: sosLocation, status: _sosLocationStatus } = useGeolocation();
 
   // ─── Hook: Speech Recognition ─────────────────────────
   const { isRecording, transcript, setTranscript, toggleRecording, isSupported: speechSupported } = useSpeechRecognition();
@@ -120,9 +120,12 @@ const HomeTab = ({ user, data, sosStats, fetchData, fetchNotifications }) => {
   const [requestCount] = useCountUp(data?.resourceRequests?.length || 0, 1200, false);
 
   // ─── Audio Waveform Simulation ──────────────────────────
+  const [waveformSeed, setWaveformSeed] = useState(0);
+  useEffect(() => { setWaveformSeed((s) => s + 1); }, [isRecording]);
   const waveformBars = useMemo(() => {
+    void waveformSeed;
     return Array.from({ length: 20 }, () => Math.random() * 60 + 20);
-  }, [isRecording]);
+  }, [waveformSeed]);
 
   // ─── Handlers ───────────────────────────────────────────
   const handleSendAlert = async (event) => {
@@ -384,7 +387,7 @@ const HomeTab = ({ user, data, sosStats, fetchData, fetchNotifications }) => {
                     { label: 'Hospital assigned', value: alertStatus.recommendation.hospital_name, icon: 'fa-hospital' },
                     { label: 'Ambulance dispatched', value: sosStatus?.ambulance?.ambulanceId || sosStatus?.ambulance?.code || 'Pending', icon: 'fa-truck-medical' },
                     { label: 'ETA', value: `${sosStatus?.eta_minutes || alertStatus.recommendation.eta} min`, icon: 'fa-clock' },
-                  ].map((step, i) => (
+                  ].map((step) => (
                     <div key={step.label} className="flex items-center gap-3">
                       <div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px]"
                         style={{ backgroundColor: `${sevConf.color}15`, color: sevConf.color }}>

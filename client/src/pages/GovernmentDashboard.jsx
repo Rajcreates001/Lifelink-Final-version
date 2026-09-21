@@ -66,6 +66,10 @@ const ModuleFallback = () => (
 );
 
 // ── GovernmentDashboard — modular dispatcher ────────────────
+// Module-level visited-set (this shell is mounted once) keeps render pure
+// without reading a ref during render (react-hooks/refs).
+const VISITED_MODULES = new Set();
+
 const GovernmentDashboard = () => {
   const navigate = useNavigate();
   const { module: activeModule } = useParams();
@@ -79,7 +83,7 @@ const GovernmentDashboard = () => {
   const [showMobileModules, setShowMobileModules] = useState(false);
 
   // Real-time WebSocket for government dashboard updates
-  const { isConnected: wsConnected, lastMessage: wsMessage } = useWebSocket('government', {
+  const { isConnected: _wsConnected, lastMessage: _wsMessage } = useWebSocket('government', {
     onMessage: (data) => {
       if (data?.type === 'disaster' || data?.type === 'alert') {
         // Trigger module refresh on real-time events
@@ -93,9 +97,8 @@ const GovernmentDashboard = () => {
   const ModuleComponent = MODULE_COMPONENT_MAP[resolvedModule] || DisasterDashboard;
 
   // Track which modules have been visited — for first visit Suspense
-  const visitedModules = useRef(new Set());
   useEffect(() => {
-    visitedModules.current.add(resolvedModule);
+    VISITED_MODULES.add(resolvedModule);
   }, [resolvedModule]);
 
   // Build sidebar items from module registry
@@ -155,7 +158,7 @@ const GovernmentDashboard = () => {
         {/* State preservation: render all visited modules, only show active */}
         {MODULE_KEYS.map((key) => {
           const Comp = MODULE_COMPONENT_MAP[key];
-          const isVisited = visitedModules.current.has(key);
+          const isVisited = VISITED_MODULES.has(key);
           const isActive = key === resolvedModule;
           // First visit: lazy-load via Suspense; subsequent: direct render
           if (!isVisited && !isActive) return null;

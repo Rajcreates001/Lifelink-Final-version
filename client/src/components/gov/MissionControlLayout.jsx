@@ -86,7 +86,7 @@ const AI_AVATARS = {
 const MissionControlLayout = ({
   role = 'default',
   orgName = 'Command Center',
-  orgDesc = '',
+  __orgDesc = '',
   status = 'Operational',
   online = 0,
   staff = 0,
@@ -102,7 +102,7 @@ const MissionControlLayout = ({
   const timeStr = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
   const dateStr = new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 
-  const greeting = hours < 12 ? 'Morning' : hours < 17 ? 'Afternoon' : 'Evening';
+  const _greeting = hours < 12 ? 'Morning' : hours < 17 ? 'Afternoon' : 'Evening';
 
   return (
     <div className="min-h-screen bg-slate-900 text-white">

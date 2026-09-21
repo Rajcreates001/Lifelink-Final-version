@@ -87,7 +87,7 @@ const GlobalSearchModal = ({ open, onClose, userRole }) => {
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, [open, results, selectedIndex, onClose]);
+  }, [open, results, selectedIndex, onClose, handleSelectResult]);
 
   // Scroll selected item into view
   useEffect(() => {
@@ -96,16 +96,6 @@ const GlobalSearchModal = ({ open, onClose, userRole }) => {
       if (selected) selected.scrollIntoView({ block: 'nearest' });
     }
   }, [selectedIndex, results.length]);
-
-  // Debounced search
-  useEffect(() => {
-    if (!query.trim() || query.trim().length < 2) {
-      setResults([]);
-      return;
-    }
-    const timer = setTimeout(() => performSearch(query), 300);
-    return () => clearTimeout(timer);
-  }, [query]);
 
   const performSearch = useCallback(async (searchQuery) => {
     setLoading(true);
@@ -160,6 +150,16 @@ const GlobalSearchModal = ({ open, onClose, userRole }) => {
     }
   }, [userRole]);
 
+  // Debounced search (after performSearch definition so it can be a dep)
+  useEffect(() => {
+    if (!query.trim() || query.trim().length < 2) {
+      setResults([]);
+      return undefined;
+    }
+    const timer = setTimeout(() => performSearch(query), 300);
+    return () => clearTimeout(timer);
+  }, [query, performSearch]);
+
   const getRouteForEntity = (category, item, role) => {
     const base = role === 'hospital' ? '/dashboard/hospital'
       : role === 'government' ? '/dashboard/government'
@@ -176,7 +176,7 @@ const GlobalSearchModal = ({ open, onClose, userRole }) => {
     }
   };
 
-  const handleSelectResult = (result) => {
+  const handleSelectResult = useCallback((result) => {
     // Save to recent searches
     const newRecent = [query, ...recentSearches.filter((s) => s !== query)].slice(0, 5);
     setRecentSearches(newRecent);
@@ -186,7 +186,7 @@ const GlobalSearchModal = ({ open, onClose, userRole }) => {
       navigate(result.route);
     }
     onClose();
-  };
+  }, [query, recentSearches, navigate, onClose]);
 
   const handleQuickAction = (action) => {
     switch (action) {

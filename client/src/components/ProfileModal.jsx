@@ -46,7 +46,7 @@ const ProfileModal = ({ onClose, variant = 'modal' }) => {
             } catch (err) { console.error("Failed to load profile", err); }
         };
         fetchDetails();
-    }, [user?.id]);
+    }, [user?.id, user.name, user.email, user.phone, user.bloodGroup, user.location]);
 
     const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 

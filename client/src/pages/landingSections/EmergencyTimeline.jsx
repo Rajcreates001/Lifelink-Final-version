@@ -7,7 +7,7 @@ const EmergencyTimeline = () => {
     const [activeStep, setActiveStep] = useState(0);
     const [paused, setPaused] = useState(false);
     const [particles, setParticles] = useState([]);
-    const [prevStep, setPrevStep] = useState(0);
+    const [_prevStep, setPrevStep] = useState(0);
 
     // Auto-advance with pause on hover
     useEffect(() => {
@@ -21,17 +21,24 @@ const EmergencyTimeline = () => {
     // Particle burst on step change
     useEffect(() => {
         if (!entered) return;
-        const newParticles = Array.from({ length: 3 }, (_, i) => ({
-            id: `${Date.now()}-${i}`,
-            tx: `${30 + i * 15}px`,
-            ty: `${-20 - i * 10}px`,
-            size: `${3 + i * 2}px`,
-        }));
-        setParticles((p) => [...p.slice(-6), ...newParticles]);
+        let newParticles = null;
+        const burstT = setTimeout(() => {
+            newParticles = Array.from({ length: 3 }, (_, i) => ({
+                id: `${Date.now()}-${i}`,
+                tx: `${30 + i * 15}px`,
+                ty: `${-20 - i * 10}px`,
+                size: `${3 + i * 2}px`,
+            }));
+            setParticles((p) => [...p.slice(-6), ...newParticles]);
+        }, 0);
         const timer = setTimeout(() => {
+            if (!newParticles) return;
             setParticles((p) => p.filter((pt) => !newParticles.find((n) => n.id === pt.id)));
         }, 800);
-        return () => clearTimeout(timer);
+        return () => {
+            clearTimeout(burstT);
+            clearTimeout(timer);
+        };
     }, [activeStep, entered]);
 
     const currentColor = TIMELINE_STEPS[activeStep].color;
@@ -119,7 +126,7 @@ const EmergencyTimeline = () => {
                             {TIMELINE_STEPS.map((step, i) => {
                                 const isActive = i <= activeStep;
                                 const isCurrent = i === activeStep;
-                                const isPrev = i === activeStep - 1;
+                                const _isPrev = i === activeStep - 1;
                                 return (
                                     <div
                                         key={step.step}

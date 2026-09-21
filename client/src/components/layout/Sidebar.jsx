@@ -24,7 +24,7 @@ const Sidebar = ({
     onNotifications,
     onHistory,
     onLogout,
-    onSwitchRole,
+    __onSwitchRole,
     hasUnread,
     onLogoClick,
     className = '',

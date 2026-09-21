@@ -210,7 +210,7 @@ const SimulationCenter = () => {
       }
     }, 1200);
     return () => clearInterval(timerRef.current);
-  }, [engine, showToast]);
+  }, [engine, showToast, activeSim?.sessionId]);
 
   const startSimulation = useCallback(async (type, severity, region, population) => {
     const newEngine = new SimulationEngine(type, severity, region, population);

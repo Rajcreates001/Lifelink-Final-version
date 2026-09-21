@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config/api';
 import './HospitalCommunications.css';
@@ -47,12 +47,12 @@ class ErrorBoundary extends React.Component {
 const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName }) => {
   const { user } = useAuth();
   const baseUrl = API_BASE_URL || '';
-  const isValidId = (value) => (
+  const isValidId = useCallback((value) => (
     typeof value === 'string' &&
     value.trim() !== '' &&
     value !== 'undefined' &&
     value !== 'null'
-  );
+  ), []);
   const resolvedHospitalId = useMemo(() => (
     currentHospitalId || user?._id || user?.id || ''
   ), [currentHospitalId, user?._id, user?.id]);
@@ -84,7 +84,7 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
   const [resourceName, setResourceName] = useState('');
   const [resourceQuantity, setResourceQuantity] = useState(1);
   const [urgencyLevel, setUrgencyLevel] = useState('medium');
-  const [preferredDate, setPreferredDate] = useState('');
+  const [_preferredDate, setPreferredDate] = useState('');
   const [duration, setDuration] = useState('1 day');
 
   const fallbackHospitals = useMemo(() => ([
@@ -197,9 +197,9 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
 
     return () => clearTimeout(timeoutId);
 
-  }, [resolvedHospitalId, resolvedHospitalName]);
+  }, [resolvedHospitalId, resolvedHospitalName, fetchHospitals, fetchMessages, fetchAgreements, isValidId]);
 
-  const fetchHospitals = async (hospitalId) => {
+  const fetchHospitals = useCallback(async (hospitalId) => {
     try {
       
       if (!isValidId(hospitalId)) {
@@ -257,9 +257,9 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
       setHospitals(fallbackHospitals);
       return fallbackHospitals;
     }
-  };
+  }, [baseUrl, isValidId, fallbackHospitals, setWarning]);
 
-  const fetchMessages = async (hospitalId) => {
+  const fetchMessages = useCallback(async (hospitalId) => {
     try {
       
       if (!isValidId(hospitalId)) {
@@ -302,9 +302,9 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
       setMessages(fallbackMessages);
       return fallbackMessages;
     }
-  };
+  }, [baseUrl, isValidId, fallbackMessages, setWarning]);
 
-  const fetchAgreements = async (hospitalId) => {
+  const fetchAgreements = useCallback(async (hospitalId) => {
     try {
       if (!isValidId(hospitalId)) {
         setAgreements([]);
@@ -324,7 +324,7 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
     } finally {
       setAgreementsLoading(false);
     }
-  };
+  }, [baseUrl, isValidId]);
 
   const handleCreateAgreement = async () => {
     if (!agreementForm.partnerHospitalId) return;
@@ -446,7 +446,7 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
         throw new Error(errorMsg);
       }
 
-      const data = await response.json();
+      const _data = await response.json();
       alert('Message sent successfully!');
       resetForm();
       setView('list');
@@ -459,7 +459,7 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
     }
   };
 
-  const handleResolveMessage = async (messageId, currentStatus) => {
+  const _handleResolveMessage = async (messageId, currentStatus) => {
     try {
       const newStatus = currentStatus === 'pending' ? 'resolved' : 'pending';
       

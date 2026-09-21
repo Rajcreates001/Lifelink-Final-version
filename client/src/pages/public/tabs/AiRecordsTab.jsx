@@ -55,8 +55,8 @@ const COMMON_DISEASES = [
 function useCountUp(target, duration = 1200) {
   const [count, setCount] = useState(0);
   useEffect(() => {
-    if (target === 0) { setCount(0); return; }
-    if (!target) return;
+    if (target === 0) { const t = setTimeout(() => setCount(0), 0); return () => clearTimeout(t); }
+    if (!target) return undefined;
     let start = 0;
     const step = Math.max(1, Math.ceil(target / (duration / 16)));
     const timer = setInterval(() => { start += step; if (start >= target) { setCount(target); clearInterval(timer); } else setCount(start); }, 16);
@@ -125,7 +125,7 @@ const SAMPLE_REPORT_PRELOADED_RESULT = {
 
 const generateReportAnalysisFallback = (text, filename) => {
   const t = String(text || filename || '');
-  const bpMatch = t.match(/(?:bp|blood pressure)?\s*[:\-]?\s*(\d{2,3})\s*\/\s*(\d{2,3})/i);
+  const bpMatch = t.match(/(?:bp|blood pressure)?\s*[:-]?\s*(\d{2,3})\s*\/\s*(\d{2,3})/i);
   const hrMatch = t.match(/(?:hr|pulse|heart rate)\s*[:-]?\s*(\d{2,3})/i);
   const bmiMatch = t.match(/\bbmi\s*[:-]?\s*(\d{1,2}(?:\.\d+)?)/i);
   const glucoseMatch = t.match(/(?:glucose|sugar)\s*[:-]?\s*(\d{2,3})/i);

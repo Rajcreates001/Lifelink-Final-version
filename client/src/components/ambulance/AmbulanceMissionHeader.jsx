@@ -68,7 +68,7 @@ const AmbulanceMissionHeader = ({
   vehicleLabel,
   speedKph,
   missionStart,
-  onSwitchModule,
+  __onSwitchModule,
 }) => {
   const severityColor = severity === 'Critical' ? 'red' : severity === 'High' ? 'amber' : 'sky';
   const badgeColors = { red: 'bg-red-100 text-red-700 border-red-200', amber: 'bg-amber-100 text-amber-700 border-amber-200', sky: 'bg-sky-100 text-sky-700 border-sky-200' };
