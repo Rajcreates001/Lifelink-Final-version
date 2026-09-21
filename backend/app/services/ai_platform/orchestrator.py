@@ -282,19 +282,22 @@ class AIOrchestrator:
             emergency_agent,
         )
 
-        # Build the agent event
-        event = {
-            "query": request.query,
-            "context_items": [item.get("content", "") for item in context.items[:10]],
-            "retrieval_items": [item.get("content", "") for item in retrieval_items[:5]],
-            "user_role": context.user_ctx.role,
-            "priority": request.priority,
-        }
-
         if request.agent_type == "clinical":
-            result = clinical_agent(event)
+            # to_dict(): AgentResult objects are not plain dicts — the
+            # process() pipeline reads response/confidence keys from them.
+            result = clinical_agent().to_dict()
         elif request.agent_type == "emergency":
-            result = emergency_agent(event)
+            # emergency_agent expects the free-text message as a str — passing
+            # the event dict made every emergency-agent call crash with
+            # "'dict' object has no attribute 'strip'" and fall to the fallback.
+            result = emergency_agent(message=request.query).to_dict()
+            # Map AgentResult's shape onto what process() expects.
+            result = {
+                "response": result.get("summary", ""),
+                "confidence": result.get("confidence", 0.0),
+                "data_label": "deterministic",
+                "actions": result.get("data", {}).get("actions", []),
+            }
         else:
             # Use the existing LLM for conversational queries
             from app.services.llm_service import generate_response_async

@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS lifelink_ai_messages (
     confidence FLOAT,
     attachments JSONB DEFAULT '[]'::jsonb,
     web_results JSONB DEFAULT '[]'::jsonb,
-    references JSONB DEFAULT '[]'::jsonb,
+    "references" JSONB DEFAULT '[]'::jsonb,
     reasoning JSONB DEFAULT '[]'::jsonb,
     clarifying JSONB DEFAULT '[]'::jsonb,
     charts JSONB DEFAULT '[]'::jsonb,
@@ -168,10 +168,15 @@ async def main():
     engine = create_async_engine(database_url, echo=False)
 
     async with engine.begin() as conn:
+        from sqlalchemy import text as sa_text
+
         for statement in SQL.split(";"):
             stmt = statement.strip()
-            if stmt:
-                await conn.execute(stmt)
+            # Skip comment-only fragments (a raw string is not executable).
+            if stmt and not all(
+                line.strip().startswith("--") or not line.strip() for line in stmt.splitlines()
+            ):
+                await conn.execute(sa_text(stmt))
 
     await engine.dispose()
 

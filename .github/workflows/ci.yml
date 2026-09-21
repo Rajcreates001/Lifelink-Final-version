@@ -135,11 +135,11 @@ jobs:
 
       - name: Run linting (ratcheting gate)
         # Ratchet pattern: CI fails only when the flake8 violation count grows
-        # beyond backend/.flake8-baseline. Fix code, then LOWER the baseline.
+        # beyond .flake8-baseline (repo root). Fix code, then LOWER the baseline.
         # Config in backend/.flake8 documents all deliberate ignores.
         run: |
           pip install flake8
-          BASELINE=$(cat .flake8-baseline)
+          BASELINE=$(cat ../.flake8-baseline)
           COUNT=$(flake8 app/ --count -qq | tail -1)
           echo "flake8 violations: $COUNT (baseline: $BASELINE)"
           if [ "$COUNT" -gt "$BASELINE" ]; then
@@ -165,7 +165,6 @@ jobs:
           JWT_SECRET: test-secret-key-for-ci
           DATABASE_URL: postgresql://lifelink:test_password@localhost:5432/lifelink_test
           REDIS_URL: redis://localhost:6379
-          MONGODB_URI: mongodb://localhost:27017/lifelink_test
           ENCRYPTION_KEY: test-encryption-key-for-ci-only
         run: |
           pip install pytest-cov
@@ -238,7 +237,6 @@ jobs:
           JWT_SECRET: test-secret-key-for-ci
           DATABASE_URL: postgresql://lifelink:test_password@localhost:5432/lifelink_test
           REDIS_URL: redis://localhost:6379
-          MONGODB_URI: mongodb://localhost:27017/lifelink_test
           ENCRYPTION_KEY: test-encryption-key-for-ci-only
         run: |
           cd backend
@@ -304,6 +302,26 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,scope=backend,mode=max
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: client/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}-frontend
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,scope=frontend,mode=max
 
 # ─── Deployments ─────────────────────────────────────────────
 # Deployment is owned by .github/workflows/deploy.yml (Render + Vercel hooks).

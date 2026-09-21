@@ -7,13 +7,56 @@ Every endpoint validates hospital_id, user_id, and role_id.
 
 from __future__ import annotations
 
+import logging
 import time
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from pydantic import BaseModel
 
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, _extract_token
+from app.core.config import get_settings
+from app.core.security import decode_access_token
 from app.services.rate_limiter import rate_limit_ml_heavy
+from app.services.llm_service import generate_response_async
+
+logger = logging.getLogger(__name__)
+
+
+async def _validate_enterprise_session(token: str) -> None:
+    """
+    Revocation check for enterprise tokens: the session must exist and be
+    active in enterprise_sessions. Uses the same token-hash scheme the
+    enterprise auth service wrote at login time.
+    """
+    import hashlib
+
+    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    try:
+        from app.db.database import connect_database, get_db
+        from sqlalchemy import text
+
+        connect_database()
+        factory = get_db()
+        if factory is None:
+            return  # DB not ready — auth service itself will have failed earlier
+        async with factory() as db:
+            row = (
+                await db.execute(
+                    text(
+                        "SELECT is_active FROM enterprise_sessions WHERE token_hash = :th"
+                    ),
+                    {"th": token_hash},
+                )
+            ).first()
+    except Exception as exc:
+        # Fail closed on DB errors? No — the JWT signature is already proof of
+        # authenticity; a transient DB blip should not take down AI chat.
+        logger.warning("Enterprise session check skipped: %s", exc)
+        return
+
+    if row is None or not row.is_active:
+        raise HTTPException(status_code=401, detail="Enterprise session expired or revoked")
 
 
 async def _current_user_dict(authorization: str | None = Header(default=None)) -> dict:
@@ -25,14 +68,45 @@ async def _current_user_dict(authorization: str | None = Header(default=None)) -
     an AuthContext dataclass. Passing AuthContext directly crashes every
     authenticated /lifelink-ai/* call with AttributeError. This wrapper
     bridges the two shapes.
+
+    Enterprise (hospital/government portal) tokens carry their own identity
+    claims (sub, role, sub_role, department_key) and their users live in the
+    enterprise_users table, not the public `documents/users` collection — so
+    we must NOT route enterprise tokens through get_current_user, which
+    401s with "User not found in database" for them. Instead, decode the JWT
+    directly and validate the enterprise session server-side.
     """
-    ctx = await get_current_user(authorization)
+    token = _extract_token(authorization)
+    try:
+        payload = decode_access_token(token)
+    except Exception as exc:
+        raise HTTPException(status_code=401, detail="Invalid token") from exc
+
+    token_type = payload.get("type")
+    if token_type != "enterprise":
+        # Public/legacy v1 token — validate against the users collection.
+        ctx = await get_current_user(authorization)
+        return {
+            "id": ctx.user_id,
+            "role": ctx.role,
+            "subRole": ctx.sub_role,
+            "sub_role": ctx.sub_role,
+            "scopes": sorted(ctx.scopes or set()),
+        }
+
+    # Enterprise token: verify the session is still valid (revocation check),
+    # then trust the token claims for identity/role scoping.
+    await _validate_enterprise_session(token)
     return {
-        "id": ctx.user_id,
-        "role": ctx.role,
-        "subRole": ctx.sub_role,
-        "sub_role": ctx.sub_role,
-        "scopes": sorted(ctx.scopes or set()),
+        "id": payload.get("sub") or "",
+        "role": payload.get("role") or "hospital",
+        "subRole": payload.get("role_name") or payload.get("sub_role"),
+        "sub_role": payload.get("role_name") or payload.get("sub_role"),
+        "department": payload.get("department_key"),
+        "organization_id": payload.get("organization_id"),
+        "hospital_id": payload.get("hospital_id") or payload.get("organization_id"),
+        "name": payload.get("name"),
+        "email": payload.get("email"),
     }
 from app.core.dependencies import get_enterprise_ai_service, get_enterprise_rag_service
 from app.services.enterprise_ai_service import (
@@ -553,10 +627,8 @@ async def ask_ai(
         org_summary = (
             f"Organization: {gov_org_info.get('name', 'Government Organization')} "
         )
-        # System prompt for the LLM path; the current stub response path does
-        # not consume it yet. Kept (assigned to _) to preserve the
-        # prompt-engineering work for the real LLM wiring (F841 ratchet in CI).
-        _ = (
+        # System prompt for the LLM path.
+        system_prompt = (
             f"You are LifeLink AI, the Government of India's National Emergency Response Intelligence. "
             f"Current user: {user.get('name') or user.get('fullName') or 'Officer'}.\n"
             f"Role: {role_label}\n"
@@ -578,6 +650,11 @@ async def ask_ai(
             f"For emergency situations, recommend specific actions with clear reasoning. "
             f"If asked about a domain outside your scope, politely explain it is not available under your current security clearance."
         )
+        system_prompt += (
+            f"\n\nToday's date is {datetime.now(timezone.utc).strftime('%Y-%m-%d')}. "
+            f"Ground every answer in the CONTEXT and RELEVANT KNOWLEDGE sections above. "
+            f"If the context does not contain the answer, say so plainly and suggest which module or report to check."
+        )
     else:
         # Hospital context summary
         hospital_info = context.get("hospital", {})
@@ -587,7 +664,7 @@ async def ask_ai(
             f"{hospital_info.get('bed_summary', '500 beds total.')}\n"
             f"{hospital_info.get('department_status_text', '12 departments registered.')}"
         )
-        _ = (
+        system_prompt = (
             f"You are LifeLink AI, an enterprise hospital assistant. "
             f"Current user: {user.get('name') or user.get('fullName') or 'Staff'}.\n"
             f"Role: {role_label}\n"
@@ -610,21 +687,38 @@ async def ask_ai(
             f"If asked about a domain outside your scope, politely explain it's not available."
         )
 
-    # 5. Generate AI response (role-scoped)
+        system_prompt += (
+            f"\n\nToday's date is {datetime.now(timezone.utc).strftime('%Y-%m-%d')}. "
+            f"Ground every answer in the HOSPITAL CONTEXT and RELEVANT KNOWLEDGE sections above. "
+            f"If the context does not contain the answer, say so plainly and suggest which module or report to check."
+        )
+
+    # 5. Generate AI response (role-scoped, LLM-backed)
     try:
-        response_text = (
-            f"Hello {user.get('name') or 'User'}. As **{role_label}**, I have access to "
-            f"{accessible_modules_str}.\n\n"
-            f"You asked: _{body.query}_\n\n"
-            f"Based on your role permissions, I can analyze information related to: "
-            f"{domains_str}. "
-            f"Your current module view is **{body.module}**. "
-            f"How would you like me to proceed?"
+        response_text = await generate_response_async(
+            timeout=45.0,
+            prompt=(
+                f"User question: {body.query}\n\n"
+                f"Current module view: {body.module}.\n\n"
+                f"Answer the question directly using the context and knowledge provided in your instructions."
+            ),
+            system_prompt=system_prompt,
+            mode="analysis",
         )
     except Exception:
+        logger.exception("LifeLink AI generation failed for user %s", auth["user_id"])
         response_text = "I apologize, but I encountered an issue processing your request. Please try again."
 
     latency_ms = int((time.time() - start_time) * 1000)
+
+    # Flag whether the LLM answered or the graceful fallback did, so the UI
+    # and audit trail can distinguish real AI output from canned text.
+    llm_unavailable = response_text.startswith("The AI inference service is temporarily at capacity")
+    source_detail = (
+        f"Built-in knowledge ({get_settings().llm_provider} unavailable)"
+        if llm_unavailable
+        else f"LLM ({get_settings().llm_provider}) with RAG context"
+    )
 
     # 6. Store assistant message
     await service.add_message(
@@ -634,13 +728,13 @@ async def ask_ai(
         role_id=auth["role_id"],
         role="assistant",
         content=response_text,
-        confidence=0.8,
-        references=[{"title": f"Role: {role_label}", "detail": f"Scoped to {domains_str}"}],
+        confidence=0.2 if llm_unavailable else 0.8,
+        references=[{"title": f"Role: {role_label}", "detail": source_detail}],
         reasoning=[
             f"Loaded context for {role_label} ({auth['role_id']})",
             f"Verified permissions: {accessible_modules_str}",
             "Generated response within role scope",
-        ]
+        ],
     )
     # 7. Log audit
     await service.log_audit(

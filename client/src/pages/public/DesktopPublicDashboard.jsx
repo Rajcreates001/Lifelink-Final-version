@@ -66,7 +66,30 @@ const DesktopPublicDashboard = () => {
   useEffect(() => { isMountedRef.current = true; return () => { isMountedRef.current = false; }; }, []);
 
   const fetchData = useCallback(async (skipCache = false) => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      try {
+        const donorsRes = await apiFetch('/api/donors', { method: 'GET', timeoutMs: 8000 });
+        const donorsData = Array.isArray(donorsRes?.data) ? donorsRes.data : [];
+        const guestData = {
+          allDonors: donorsData,
+          fullHistory: [],
+          resourceRequests: [],
+          alerts: [],
+          donationHistory: [],
+          isGuest: true,
+        };
+        if (isMountedRef.current) {
+          setData(guestData);
+          setLoading(false);
+        }
+      } catch {
+        if (isMountedRef.current) {
+          setData({ allDonors: [], fullHistory: [], isGuest: true });
+          setLoading(false);
+        }
+      }
+      return;
+    }
 
     // Try cache first
     if (!skipCache) {

@@ -17,7 +17,7 @@ import logging
 from fastapi import APIRouter, Body, Depends, HTTPException
 
 from app.services.medical_knowledge import validate_health_payload
-from app.core.auth import get_current_user, AuthContext
+from app.core.auth import get_optional_user, get_current_user, AuthContext
 from app.services.rate_limiter import rate_limit_ml
 
 from app.routes.ai_shared import (
@@ -52,7 +52,7 @@ router = APIRouter(tags=["ai"])
 @router.post("/predict_health_risk")
 async def predict_health_risk(
     payload: HealthRiskPayload = Body(...),
-    ctx: AuthContext = Depends(get_current_user),
+    ctx: AuthContext | None = Depends(get_optional_user),
     _: None = Depends(rate_limit_ml.dependency()),
 ):
     # Convert to dict, excluding None values so ML model gets clean input

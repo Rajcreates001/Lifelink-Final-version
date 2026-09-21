@@ -278,5 +278,43 @@
       ]
     },
     "response_time_ms": 9
+  },
+  {
+    "timestamp": "2026-09-21T05:16:20.028264",
+    "test": "performance",
+    "status": "PASS",
+    "details": "Response time 8 ms",
+    "input": {
+      "endpoint": "/api/health"
+    },
+    "output": {
+      "status_code": 200,
+      "response_time_ms": 8,
+      "samples": [
+        23,
+        8,
+        23
+      ]
+    },
+    "response_time_ms": 8
+  },
+  {
+    "timestamp": "2026-09-21T06:53:23.491797",
+    "test": "performance",
+    "status": "PASS",
+    "details": "Response time 5 ms",
+    "input": {
+      "endpoint": "/api/health"
+    },
+    "output": {
+      "status_code": 200,
+      "response_time_ms": 5,
+      "samples": [
+        5,
+        8,
+        6
+      ]
+    },
+    "response_time_ms": 5
   }
 ]

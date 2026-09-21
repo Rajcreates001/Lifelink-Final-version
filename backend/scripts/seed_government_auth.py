@@ -561,8 +561,8 @@ async def main():
                     user_id = _id()
                     pw_hash = bcrypt.hashpw(cred["password"].encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
                     await conn.execute(
-                        "INSERT INTO enterprise_users (id, full_name, email, password_hash, status, mfa_enabled, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
-                        user_id, cred["name"], cred["email"], pw_hash, "active", False, now, now,
+                        "INSERT INTO enterprise_users (id, full_name, email, password_hash, status, mfa_enabled, profile_settings, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9)",
+                        user_id, cred["name"], cred["email"], pw_hash, "active", False, "{}", now, now,
                     )
 
                 # Map user to department + role

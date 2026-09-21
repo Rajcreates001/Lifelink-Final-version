@@ -331,6 +331,12 @@ class EnterpriseAuthService:
                 created_at TIMESTAMPTZ NOT NULL, updated_at TIMESTAMPTZ NOT NULL
             )
         """)
+        # Self-heal pre-existing tables created without the JSONB default:
+        # rows inserted before this ran would violate the NOT NULL constraint.
+        await _execute(self.pool,
+            "ALTER TABLE enterprise_users ALTER COLUMN profile_settings SET DEFAULT '{}'::jsonb")
+        await _execute(self.pool,
+            "UPDATE enterprise_users SET profile_settings = '{}'::jsonb WHERE profile_settings IS NULL")
         await _execute(self.pool, """
             CREATE TABLE IF NOT EXISTS enterprise_roles (
                 id VARCHAR(40) PRIMARY KEY, name VARCHAR(120) UNIQUE NOT NULL,
@@ -462,8 +468,8 @@ class EnterpriseAuthService:
                     user_id = uuid4().hex
                     pw_hash = bcrypt.hashpw(cred["password"].encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
                     await _execute(self.pool,
-                        "INSERT INTO enterprise_users (id, full_name, email, password_hash, status, mfa_enabled, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
-                        user_id, cred["name"], cred["email"], pw_hash, "active", False, now, now)
+                        "INSERT INTO enterprise_users (id, full_name, email, password_hash, status, mfa_enabled, profile_settings, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9)",
+                        user_id, cred["name"], cred["email"], pw_hash, "active", False, "{}", now, now)
 
                     # Map user to department
                     dept_id = dept_id_map.get(cred["department"])

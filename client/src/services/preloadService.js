@@ -38,29 +38,37 @@ const track = (key, promiseFactory) => {
 export const getPreload = (key) => preloads.get(key) || null;
 
 // ─── Location-independent warm-up ────────────────────────
-export const preloadPublicData = (userId) => {
-  if (!userId) return;
-
-  // Dashboard Home + User Activity (DonationsTab) + History timeline.
-  track('dashboard', () => apiFetch(`/api/dashboard/public/${userId}/full`, { method: 'GET', timeoutMs: 10000 }));
-
+export const preloadPublicData = (userId = null) => {
+  // Public datasets (preloaded unconditionally for guests and authenticated users)
   // Find Donors tab (donor directory fallback) + DonorMatchScreen.
   track('donors', () => apiFetch('/api/donors', { method: 'GET', timeoutMs: 10000 }));
-
-  // AI Records tab — document history.
-  track('healthRecords', () => apiFetch(`/api/health/records/${userId}`, { method: 'GET', timeoutMs: 10000 }));
-
-  // Home tab — notifications/stats hub.
-  track('notifications', () => apiFetch(`/api/notifications/${userId}`, { method: 'GET', timeoutMs: 10000 }));
 
   // Home tab — public data-health panel.
   track('publicHealth', () => apiFetch('/v2/public/health/summary', { method: 'GET', ttlMs: 60000, timeoutMs: 12000 }));
 
-  // AI Health tab — risk-assessment history.
-  track('healthRiskHistory', () => apiFetch(`/api/health/risk/history/${userId}`, { method: 'GET', timeoutMs: 10000 }));
-
   // Public module registry (SOS screen + feature gating).
   track('modules', () => apiFetch('/v2/public/modules', { method: 'GET', timeoutMs: 10000 }));
+
+  // NOTE: intentionally NOT preloading /v2/ml/health-risk any more. The old
+  // behavior fired a prediction with fabricated vitals (age 45, BP 140, …) for
+  // every visitor, which wasted rate-limited ML quota and made the AI Health
+  // tab open with a risk score for a patient that does not exist. The tab now
+  // runs its first calculation only when the user enters their own values.
+
+  // Authenticated user-specific endpoints
+  if (userId) {
+    // Dashboard Home + User Activity (DonationsTab) + History timeline.
+    track('dashboard', () => apiFetch(`/api/dashboard/public/${userId}/full`, { method: 'GET', timeoutMs: 10000 }));
+
+    // AI Records tab — document history.
+    track('healthRecords', () => apiFetch(`/api/health/records/${userId}`, { method: 'GET', timeoutMs: 10000 }));
+
+    // Home tab — notifications/stats hub.
+    track('notifications', () => apiFetch(`/api/notifications/${userId}`, { method: 'GET', timeoutMs: 10000 }));
+
+    // AI Health tab — risk-assessment history.
+    track('healthRiskHistory', () => apiFetch(`/api/health/risk/history/${userId}`, { method: 'GET', timeoutMs: 10000 }));
+  }
 };
 
 // ─── Location-dependent warm-up ──────────────────────────

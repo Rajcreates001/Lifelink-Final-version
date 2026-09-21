@@ -48,6 +48,18 @@ backend/.rag/
 # e2e validation artifacts (regenerated on each run)
 tests/results/
 
+# coverage + lint dump artifacts (regenerated on each run)
+.coverage
+backend/.coverage
+coverage.xml
+htmlcov/
+eslint-current.json
+client/eslint-current.json
+
+# Windows reserved-device-name phantom (created by shells redirecting to NUL)
+nul
+client/nul
+
 # generated load-test / e2e reports (regenerated on each run)
 loadtest/reports/
 reports/e2e/

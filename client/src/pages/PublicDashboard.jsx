@@ -13,8 +13,7 @@ const PublicDashboard = () => {
   // AI Records, User Activity) as soon as the portal mounts — works for
   // both desktop tabs and the mobile module screens.
   useEffect(() => {
-    if (!user?.id) return;
-    preloadAll(user.id);
+    preloadAll(user?.id || null);
   }, [user?.id]);
 
   return isDesktop ? <DesktopPublicDashboard /> : <MobilePublicDashboard />;

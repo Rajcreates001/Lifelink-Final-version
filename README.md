@@ -201,8 +201,7 @@ LifeLink/
 |   |   |-- routes/v2/          # Modular v2 service routes
 |   |   |-- services/agents/    # LangGraph orchestration
 |   |   |-- services/rag/       # FAISS + embeddings
-|   |   |-- services/realtime/  # WebSocket manager
-|   |-- alembic/                # DB migrations (source of truth)
+|   |   |-- services/realtime/  # WebSocket manager| |-- migrations/              # Alembic migrations (source of truth)
 |   |-- ml/                     # ML engine + models (LFS-tracked)
 |   |-- scripts/                # Seeding and import utilities
 |

@@ -9,7 +9,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException
 
 import json
 
-from app.core.auth import require_roles, require_scopes
+from app.core.auth import get_optional_user, require_roles, require_scopes
 from app.core.celery_app import celery_app
 from app.core.config import get_settings
 from app.core.dependencies import get_routing_service, get_weather_service
@@ -241,7 +241,7 @@ async def _run(command: str, payload):
 
 
 @router.post("/health-risk")
-async def health_risk(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(require_roles("public", "hospital", "ambulance", "government"))):
+async def health_risk(payload: dict = Body(default_factory=dict), ctx: AuthContext | None = Depends(get_optional_user)):
     settings = get_settings()
 
     # Validate payload through medical knowledge layer before processing
@@ -372,7 +372,7 @@ async def health_risk(payload: dict = Body(default_factory=dict), ctx: AuthConte
 
 
 @router.post("/health-risk/async")
-async def health_risk_async(payload: dict = Body(default_factory=dict), ctx: AuthContext = Depends(require_roles("public", "hospital", "ambulance", "government"))):
+async def health_risk_async(payload: dict = Body(default_factory=dict), ctx: AuthContext | None = Depends(get_optional_user)):
     job = celery_app.send_task("ml.run_model", args=["predict_risk", payload])
     return {"job_id": job.id, "status": job.status}
 

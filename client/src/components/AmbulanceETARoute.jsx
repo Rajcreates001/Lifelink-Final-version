@@ -4,6 +4,17 @@ import 'leaflet/dist/leaflet.css';
 import { apiFetch, API_BASE_URL } from '../config/api';
 import './AmbulanceETARoute.css';
 
+// Escape user-controlled strings before embedding in Leaflet popup HTML.
+// Leaflet renders bindPopup content as HTML, so raw interpolation of names,
+// IDs, or free-text locations is a stored-XSS vector.
+const escapeHtml = (value) =>
+    String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
 const AmbulanceETARoute = ({ currentHospitalId, currentHospitalName, hospitalLocation = { lat: 12.8752, lng: 74.8470 } }) => {
     // KMC Hospital Mangalore as default
     const KMC_HOSPITAL_LAT = 12.8752;
@@ -113,7 +124,7 @@ const AmbulanceETARoute = ({ currentHospitalId, currentHospitalName, hospitalLoc
                 });
 
                 L.marker([resolvedHospital.lat, resolvedHospital.lng], { icon: hospitalIcon })
-                    .bindPopup(`<b>${resolvedHospital.name}</b><br>Hospital Location`)
+                    .bindPopup(`<b>${escapeHtml(resolvedHospital.name)}</b><br>Hospital Location`)
                     .addTo(mapInstance.current);
 
                 markersRef.current.hospital = true; // Mark as initialized
@@ -160,7 +171,7 @@ const AmbulanceETARoute = ({ currentHospitalId, currentHospitalName, hospitalLoc
                     const marker = L.marker(
                         [ambulance.currentLocation.latitude, ambulance.currentLocation.longitude],
                         { icon: ambulanceIcon }
-                    ).bindPopup(`<b>${ambulance.ambulanceId}</b><br>Status: ${ambulance.status.replace(/_/g, ' ')}`)
+                    ).bindPopup(`<b>${escapeHtml(ambulance.ambulanceId)}</b><br>Status: ${escapeHtml((ambulance.status || '').replace(/_/g, ' '))}`)
                      .addTo(mapInstance.current);
 
                     markersRef.current[`ambulance-${ambulance._id}`] = marker;
@@ -239,14 +250,12 @@ const AmbulanceETARoute = ({ currentHospitalId, currentHospitalName, hospitalLoc
 
             // Only update if we got new data
             if (ambulanceList.length > 0) {
-                // Ensure all ambulances have currentLocation data
+                // Flag ambulances without a real GPS fix instead of inventing
+                // coordinates — fabricated positions are dangerous in an
+                // emergency-response context (dispatchers would trust them).
                 ambulanceList = ambulanceList.map(amb => ({
                     ...amb,
-                    currentLocation: amb.currentLocation || {
-                        latitude: MANGALORE_LAT + (Math.random() - 0.5) * 0.2,
-                        longitude: MANGALORE_LNG + (Math.random() - 0.5) * 0.2,
-                        address: 'Mangalore'
-                    }
+                    locationUnknown: !amb.currentLocation?.latitude || !amb.currentLocation?.longitude,
                 }));
 
                 setAmbulances(ambulanceList);
@@ -471,9 +480,13 @@ const AmbulanceETARoute = ({ currentHospitalId, currentHospitalName, hospitalLoc
 
     const predictETA = async (ambulanceId) => {
         if (!ambulanceId || !latitude || !longitude) return;
+        // Skip ETA prediction when the ambulance has no real GPS fix —
+        // guessing its position would produce a misleading ETA.
+        if (selectedAmbulance?.locationUnknown) return;
         try {
-            const ambulanceLat = selectedAmbulance?.currentLocation?.latitude || MANGALORE_LAT;
-            const ambulanceLng = selectedAmbulance?.currentLocation?.longitude || MANGALORE_LNG;
+            const ambulanceLat = selectedAmbulance?.currentLocation?.latitude;
+            const ambulanceLng = selectedAmbulance?.currentLocation?.longitude;
+            if (!ambulanceLat || !ambulanceLng) return;
 
                 const response = await apiFetch(`/api/ambulance/${ambulanceId}/predict-eta`, {
                     method: 'POST',
@@ -519,12 +532,18 @@ const AmbulanceETARoute = ({ currentHospitalId, currentHospitalName, hospitalLoc
             return;
         }
 
+        // Refuse to draw a route from an unknown ambulance position
+        if (autoSelectedAmbulance.locationUnknown || !autoSelectedAmbulance.currentLocation?.latitude) {
+            setError('Selected ambulance has no live GPS location yet. Pick another unit or wait for its tracking signal.');
+            return;
+        }
+
         setLoading(true);
         setError(null); // Clear previous errors
         try {
             // Get ambulance current location
-            const ambulanceLat = autoSelectedAmbulance.currentLocation?.latitude || MANGALORE_LAT;
-            const ambulanceLng = autoSelectedAmbulance.currentLocation?.longitude || MANGALORE_LNG;
+            const ambulanceLat = autoSelectedAmbulance.currentLocation.latitude;
+            const ambulanceLng = autoSelectedAmbulance.currentLocation.longitude;
             const destinationLat = resolvedHospital.lat;
             const destinationLng = resolvedHospital.lng;
 
@@ -590,9 +609,9 @@ const AmbulanceETARoute = ({ currentHospitalId, currentHospitalName, hospitalLoc
             console.error('Error getting route:', err);
             setError('Failed to calculate route. Please try again.');
             // Still draw fallback
-            if (autoSelectedAmbulance) {
-                const ambulanceLat = autoSelectedAmbulance.currentLocation?.latitude || MANGALORE_LAT;
-                const ambulanceLng = autoSelectedAmbulance.currentLocation?.longitude || MANGALORE_LNG;
+            if (autoSelectedAmbulance && !autoSelectedAmbulance.locationUnknown && autoSelectedAmbulance.currentLocation?.latitude) {
+                const ambulanceLat = autoSelectedAmbulance.currentLocation.latitude;
+                const ambulanceLng = autoSelectedAmbulance.currentLocation.longitude;
                 const simplePath = [
                     { latitude: ambulanceLat, longitude: ambulanceLng },
                     { latitude: latitude, longitude: longitude },
@@ -653,7 +672,7 @@ const AmbulanceETARoute = ({ currentHospitalId, currentHospitalName, hospitalLoc
 
             if (ambulanceLat && ambulanceLng) {
                 markersRef.current.ambulanceStart = L.marker([ambulanceLat, ambulanceLng], { icon: ambulanceStartIcon })
-                    .bindPopup(`<b>${selectedAmbulance?.ambulanceId || 'Ambulance'}</b><br>Current Location<br>En Route to Pickup`)
+                    .bindPopup(`<b>${escapeHtml(selectedAmbulance?.ambulanceId || 'Ambulance')}</b><br>Current Location<br>En Route to Pickup`)
                     .addTo(mapInstance.current);
             }
 
@@ -666,7 +685,7 @@ const AmbulanceETARoute = ({ currentHospitalId, currentHospitalName, hospitalLoc
 
             // Pickup marker at the specified pickup location coordinates
             markersRef.current.pickup = L.marker([pickupLat, pickupLng], { icon: pickupIcon })
-                .bindPopup(`<b>Pickup Location</b><br>${pickupLocation}<br>Lat: ${pickupLat?.toFixed(4) || 'N/A'}, Lng: ${pickupLng?.toFixed(4) || 'N/A'}`)
+                .bindPopup(`<b>Pickup Location</b><br>${escapeHtml(pickupLocation)}<br>Lat: ${pickupLat?.toFixed(4) || 'N/A'}, Lng: ${pickupLng?.toFixed(4) || 'N/A'}`)
                 .addTo(mapInstance.current)
                 .openPopup();
 
