@@ -17,7 +17,6 @@ from app.core.rbac import AuthContext
 from app.db.database import require_db
 from app.services.cache_store import CacheStore
 from app.services.collections import ANALYTICS_EVENTS, PREDICTIONS
-from app.services.prediction_store import get_latest_prediction
 from app.services.routing_service import RoutingService
 from app.services.weather_service import WeatherService
 from app.services.repository import MongoRepository
@@ -84,17 +83,54 @@ def _fast_health_risk(payload: dict) -> dict:
     has_condition = payload.get("has_condition") in {"1", 1, True}
     lifestyle = payload.get("lifestyle_factor") or payload.get("lifestyle")
 
+    glucose_val = None
+    g_raw = payload.get("glucose")
+    if g_raw is not None:
+        try:
+            glucose_val = float(str(g_raw))
+        except (TypeError, ValueError):
+            logger.debug("Suppressed (TypeError, ValueError) in %s", __name__)
+
+    chol_val = None
+    c_raw = payload.get("cholesterol")
+    if c_raw is not None:
+        try:
+            chol_val = float(str(c_raw))
+        except (TypeError, ValueError):
+            logger.debug("Suppressed (TypeError, ValueError) in %s", __name__)
+
+    dia_val = None
+    dia_raw = payload.get("blood_pressure_diastolic")
+    if dia_raw is None and isinstance(bp_raw, str) and "/" in bp_raw:
+        dia_raw = bp_raw.split("/")[1].strip()
+    if dia_raw is not None:
+        try:
+            dia_val = int(float(str(dia_raw)))
+        except (TypeError, ValueError):
+            logger.debug("Suppressed (TypeError, ValueError) in %s", __name__)
+
+    smoker_flag = None
+    if "smoker" in payload:
+        smoker_flag = payload.get("smoker") in {"1", 1, True, "true", "yes"}
+
     result = _compute_risk_score(
         age=age_val,
         bmi=bmi_val,
         blood_pressure_sys=bp_val,
+        blood_pressure_dia=dia_val,
         heart_rate=hr_val,
         oxygen=oxygen_val,
+        glucose=glucose_val,
+        cholesterol=chol_val,
+        smoker=smoker_flag,
         has_condition=has_condition,
         lifestyle=lifestyle
     )
     risk_level = result.get("risk_level", "Low")
-    risk_score = result.get("risk_score", 0) or 50
+    # A genuine 0 (healthy person, all factors normal) is a real score —
+    # do NOT inflate it to 50. Only fall back when the model returned nothing.
+    raw_score = result.get("risk_score")
+    risk_score = raw_score if isinstance(raw_score, (int, float)) else 50
 
     # Map drivers to the format expected by callers
     drivers_raw = result.get("drivers", [])
@@ -211,31 +247,49 @@ def _fallback_eta_minutes(distance_km: float) -> int:
 
 
 async def _run(command: str, payload):
+    """Compute a prediction for THIS request's payload, then warm the cache.
+
+    The result is always computed synchronously from the submitted payload —
+    we never serve the latest cached row, which could belong to a different
+    user's inputs (wrong results + cross-user data leak). The Celery task
+    refreshes the shared prediction cache for analytics consumers.
+    """
+    from app.services.ml_runner import run_ml_model
     celery_app.send_task("system.generate_predictions", args=[command, payload])
-    cached = await get_latest_prediction(command)
-    if cached and isinstance(cached.get("result"), dict):
-        return cached["result"]
     if command == "predict_risk":
         return _fast_health_risk(payload)
     if command == "predict_eta":
         distance_km = _numeric(payload.get("distance_km"), 1.0)
+        try:
+            model_result = await run_ml_model(command, payload, "ai_ml.py")
+            if isinstance(model_result, dict) and model_result.get("eta_minutes") is not None:
+                return model_result
+        except Exception:
+            logger.debug("predict_eta model unavailable; using distance fallback")
         return {
             "eta_minutes": _fallback_eta_minutes(distance_km),
             "distance_km": distance_km,
             "meta": {
                 "confidence": 0.4,
-                "reasoning": ["Fallback ETA until async model completes."],
-                "references": [{"title": "Task", "detail": f"system.generate_predictions::{command}"}],
+                "reasoning": ["ETA approximated from distance; ML model unavailable."],
+                "references": [{"title": "Model", "detail": "ml/ai_ml.py::predict_eta"}],
             },
         }
     if command == "predict_sos_severity":
         return _fast_severity_from_message(payload.get("message", ""))
+    try:
+        result = await run_ml_model(command, payload, "ai_ml.py")
+        if isinstance(result, dict):
+            return result
+    except Exception as exc:
+        logger.warning("ML command %s failed: %s", command, exc)
     return {
-        "status": "queued",
+        "status": "error",
+        "error": f"Model returned no result for command '{command}'.",
         "meta": {
             "confidence": 0.0,
-            "reasoning": ["Prediction queued for background processing."],
-            "references": [{"title": "Task", "detail": f"system.generate_predictions::{command}"}],
+            "reasoning": ["The ML model did not return a result for the submitted inputs."],
+            "references": [{"title": "Model", "detail": f"ml/ai_ml.py::{command}"}],
         },
     }
 
@@ -296,7 +350,10 @@ async def health_risk(payload: dict = Body(default_factory=dict), ctx: AuthConte
     # Normalize legacy labels ("Moderate") to the canonical 4-level scale
     # (Low / Medium / High / Critical) expected by all callers.
     risk_level = {"Moderate": "Medium", "Very High": "Critical"}.get(risk_level, risk_level)
-    risk_score = result.get("risk_score") or (78 if risk_level == "High" else 35)
+    # Honest fallback: only invent a score when the model truly returned none.
+    # A computed 0 (healthy profile) must survive — it is a real result.
+    _raw_score = result.get("risk_score")
+    risk_score = _raw_score if isinstance(_raw_score, (int, float)) else (78 if risk_level == "High" else 35)
 
     drivers = result.get("drivers") or []
     if not drivers:

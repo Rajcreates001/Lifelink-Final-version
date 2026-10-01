@@ -291,14 +291,19 @@ async def get_notifications(user_id: str, ctx: AuthContext = Depends(get_current
         )
 
     def _sort_key(item: dict) -> datetime:
+        # MongoDB stores tz-aware UTC datetimes, but some records carry naive
+        # ISO strings — mixing them in sort() raises
+        # "can't compare offset-naive and offset-aware datetimes".
+        # Normalize everything to tz-aware UTC before comparing.
         ts = item.get("timestamp")
         if isinstance(ts, datetime):
-            return ts
+            return ts if ts.tzinfo else ts.replace(tzinfo=timezone.utc)
         if isinstance(ts, str):
             try:
-                return datetime.fromisoformat(ts)
+                dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
             except ValueError:
                 return datetime.now(timezone.utc)
+            return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
         return datetime.now(timezone.utc)
 
     mapped.sort(key=_sort_key, reverse=True)

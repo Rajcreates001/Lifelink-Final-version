@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timezone
 from typing import Any
 
@@ -68,6 +69,25 @@ def _parse_float(value: float, label: str) -> float:
         raise HTTPException(status_code=400, detail=f"Invalid {label}") from exc
 
 
+async def _send_task_safe(task_name: str, args: list[Any] | None = None, timeout: float = 1.5) -> None:
+    """Fire-and-forget Celery dispatch that can never stall the request path.
+
+    celery_app.send_task is a synchronous broker publish. When the broker is
+    unreachable it blocks for the full kombu connection-retry window — and
+    called directly in an async route it freezes the entire event loop. This
+    wrapper mirrors system._safe_send_task: run the publish in a worker thread
+    with a hard deadline and swallow failures. Predictions are best-effort
+    enrichment; they must never delay SOS dispatch.
+    """
+    try:
+        await asyncio.wait_for(
+            asyncio.to_thread(celery_app.send_task, task_name, args=args or []),
+            timeout=timeout,
+        )
+    except Exception:
+        pass
+
+
 def _as_object_id(value: str | None) -> ObjectId | None:
     try:
         return ObjectId(str(value)) if value else None
@@ -82,12 +102,13 @@ def _extract_coords(doc: dict[str, Any]) -> tuple[float, float] | None:
                 return float(doc[key_pair[0]]), float(doc[key_pair[1]])
             except (TypeError, ValueError):
                 return None
-    location = doc.get("location") or {}
-    if isinstance(location, dict) and "lat" in location and "lng" in location:
-        try:
-            return float(location["lat"]), float(location["lng"])
-        except (TypeError, ValueError):
-            return None
+    for container_key in ("coordinates", "location"):
+        container = doc.get(container_key) or {}
+        if isinstance(container, dict) and "lat" in container and "lng" in container:
+            try:
+                return float(container["lat"]), float(container["lng"])
+            except (TypeError, ValueError):
+                return None
     return None
 
 
@@ -263,31 +284,30 @@ async def _log_activity(
 
 async def _seed_ambulances(db, center_lat: float, center_lng: float, count: int = 10) -> int:
     repo = MongoRepository(db, AMBULANCES)
-    inserted = 0
+    docs: list[dict[str, Any]] = []
     for idx in range(count):
         lat = center_lat + random.uniform(-0.08, 0.08)
         lng = center_lng + random.uniform(-0.08, 0.08)
-        doc = {
+        docs.append({
             "ambulanceId": f"AMB-{1000 + idx}",
             "status": "Available",
             "location": {"lat": round(lat, 6), "lng": round(lng, 6)},
             "createdAt": datetime.now(timezone.utc),
             "updatedAt": datetime.now(timezone.utc),
-        }
-        await repo.insert_one(doc)
-        inserted += 1
-    return inserted
+        })
+    await repo.insert_many(docs)
+    return len(docs)
 
 
 async def _seed_hospitals(db, center_lat: float, center_lng: float, count: int = 20) -> int:
     repo = MongoRepository(db, HOSPITALS)
-    inserted = 0
+    docs: list[dict[str, Any]] = []
     for idx in range(count):
         lat = center_lat + random.uniform(-0.35, 0.35)
         lng = center_lng + random.uniform(-0.35, 0.35)
         beds_total = random.randint(90, 220)
         beds_available = random.randint(12, max(18, int(beds_total * 0.4)))
-        doc = {
+        docs.append({
             "name": f"City Medical Center {idx + 1}",
             "location": {"lat": round(lat, 6), "lng": round(lng, 6)},
             "beds_total": beds_total,
@@ -295,10 +315,9 @@ async def _seed_hospitals(db, center_lat: float, center_lng: float, count: int =
             "rating": round(random.uniform(3.8, 4.9), 1),
             "createdAt": datetime.now(timezone.utc),
             "updatedAt": datetime.now(timezone.utc),
-        }
-        await repo.insert_one(doc)
-        inserted += 1
-    return inserted
+        })
+    await repo.insert_many(docs)
+    return len(docs)
 
 
 @router.get("/modules")
@@ -345,31 +364,32 @@ async def create_sos(
 
     async def _insert_role_notifications(role: str, title: str, message_text: str, metadata_base: dict[str, Any] | None = None, route: str | None = None, module_name: str | None = None):
         users = await user_repo.find_many({"role": role}, limit=200)
-        for user in users:
-            user_oid = _as_object_id(user.get("_id"))
-            if not user_oid:
-                continue
-            await notification_repo.insert_one(
-                {
-                    "user": user_oid,
-                    "type": "sos_alert",
-                    "title": title,
-                    "message": message_text,
-                    "createdAt": datetime.now(timezone.utc),
-                    "read": False,
-                    "metadata": {
-                        **(metadata_base or {}),
-                        "route": route,
-                        "actionLabel": "View route" if route else None,
-                        "module": module_name,
-                    },
-                }
-            )
+        now = datetime.now(timezone.utc)
+        docs = [
+            {
+                "user": user_oid,
+                "type": "sos_alert",
+                "title": title,
+                "message": message_text,
+                "createdAt": now,
+                "read": False,
+                "metadata": {
+                    **(metadata_base or {}),
+                    "route": route,
+                    "actionLabel": "View route" if route else None,
+                    "module": module_name,
+                },
+            }
+            for user in users
+            if (user_oid := _as_object_id(user.get("_id")))
+        ]
+        if docs:
+            await notification_repo.insert_many(docs)
 
     severity_result = _predict_sos_heuristic(payload.message)
-    celery_app.send_task(
+    await _send_task_safe(
         "system.generate_predictions",
-        args=["predict_sos_severity", {"message": payload.message, "vitals": payload.vitals or {}}]
+        ["predict_sos_severity", {"message": payload.message, "vitals": payload.vitals or {}}],
     )
     emergency_type = severity_result.get("emergency_type") or "medical_emergency"
 
@@ -388,7 +408,12 @@ async def create_sos(
             ],
         }
 
-    weather_now = await weather.current(latitude, longitude)
+    # Weather is enrichment for the traffic heuristic only — a slow or blocked
+    # upstream must never delay dispatch. Falls back to _traffic_level(None) == 2.
+    try:
+        weather_now = await asyncio.wait_for(weather.current(latitude, longitude), timeout=3.0)
+    except Exception:
+        weather_now = None
     traffic_level = _traffic_level(weather_now)
 
     settings = get_settings()
@@ -445,7 +470,7 @@ async def create_sos(
     ]
     ranking_result = {"ranked": []}
     if ranked_payload and not fast_mode:
-        celery_app.send_task("system.generate_predictions", args=["predict_recommend", ranked_payload])
+        await _send_task_safe("system.generate_predictions", ["predict_recommend", ranked_payload])
     ranking_lookup = {item.get("index"): item for item in ranking_result.get("ranked", [])}
 
     enriched: list[dict[str, Any]] = []
@@ -558,17 +583,20 @@ async def create_sos(
         )
 
         family_members = await family_repo.find_many({"user": sos_user_id or user_id}, limit=20)
-        for member in family_members:
-            await notification_repo.insert_one(
-                {
-                    "user": _as_object_id(member.get("_id")) or member.get("id"),
-                    "type": "family_alert",
-                    "title": "Family SOS Triggered",
-                    "message": payload.message,
-                    "createdAt": datetime.now(timezone.utc),
-                    "read": False,
-                    "metadata": {"alert_id": created_alert.get("_id"), "relation": member.get("relation")},
-                }
+        if family_members:
+            await notification_repo.insert_many(
+                [
+                    {
+                        "user": _as_object_id(member.get("_id")) or member.get("id"),
+                        "type": "family_alert",
+                        "title": "Family SOS Triggered",
+                        "message": payload.message,
+                        "createdAt": datetime.now(timezone.utc),
+                        "read": False,
+                        "metadata": {"alert_id": created_alert.get("_id"), "relation": member.get("relation")},
+                    }
+                    for member in family_members
+                ]
             )
 
     common_sos_metadata = {
@@ -749,10 +777,15 @@ async def donor_match(
         coords = _extract_coords(user) or _extract_coords(donor_profile) or _extract_coords(health)
         if coords:
             distance_km = routing.haversine_km(payload.latitude, payload.longitude, coords[0], coords[1])
+            has_distance = True
         else:
-            distance_km = random.uniform(2.0, 18.0)
+            # No coordinates on the donor profile — do NOT invent a distance.
+            # Ranking proceeds on blood compatibility, availability, and
+            # urgency alone; the UI hides the distance chip when this is None.
+            distance_km = None
+            has_distance = False
 
-        distance_score = max(0.1, 1 - (distance_km / 40))
+        distance_score = max(0.1, 1 - (distance_km / 40)) if has_distance else 0.5
         availability_score = _availability_score(availability)
         score = (
             (0.4 * blood_factor)
@@ -771,9 +804,9 @@ async def donor_match(
             {
                 "id": user.get("_id"),
                 "name": user.get("name"),
-                "blood_group": _resolve_blood_group(user, donor_profile, health),
+                "blood_group": donor_blood,
                 "availability": availability if isinstance(availability, str) else "Available",
-                "distance_km": round(distance_km, 2),
+                "distance_km": round(distance_km, 2) if has_distance else None,
                 "location": location_label,
                 "score": round(score * 100, 1),
                 "phone": user.get("phone") or health.get("contact"),

@@ -7,11 +7,17 @@ FROM python:3.11-slim AS base
 
 WORKDIR /app
 
-# Install system dependencies needed for ML libraries
+# Install system dependencies needed for ML libraries + OCR stack.
+# tesseract  = OCR engine required by pytesseract (medical report images/scans)
+# poppler    = PDF rasterizer required by pdf2image (scanned PDF reports)
+# Without these, /api/analyze_report_file silently degrades for every
+# scanned/image upload — the docs promise PDF/OCR support, so ship it.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libglib2.0-0 \
     libffi-dev \
+    tesseract-ocr \
+    poppler-utils \
     wget \
     curl \
     && rm -rf /var/lib/apt/lists/*

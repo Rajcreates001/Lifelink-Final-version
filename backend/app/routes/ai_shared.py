@@ -16,7 +16,6 @@ from bson import ObjectId
 from fastapi import HTTPException
 
 from app.core.celery_app import celery_app
-from app.services.prediction_store import get_latest_prediction
 from app.services.ml_runner import run_ml_model
 
 logger = logging.getLogger(__name__)
@@ -48,18 +47,18 @@ def ensure_meta(meta: Any, confidence: float, reasoning: list[str], references: 
 
 
 async def run_prediction(command: str, payload: dict):
-    """Run an ML prediction via Celery background task with fallback to direct model execution."""
+    """Run an ML prediction synchronously with a Celery warm-cache refresh.
+
+    Correctness over latency: the result served for THIS request is always
+    computed from THIS request's payload. A background Celery task refreshes
+    the Postgres prediction cache for dashboard/analytics consumers.
+
+    The previous implementation queued the task and then returned the newest
+    cached row for that command type — i.e. a different user's inputs — which
+    both produced wrong results and leaked other users' prediction data.
+    """
+    # Refresh the shared prediction cache in the background for analytics.
     celery_app.send_task("system.generate_predictions", args=[command, payload])
-    cached = await get_latest_prediction(command)
-    if cached and isinstance(cached.get("result"), dict):
-        result = cached["result"]
-        result["meta"] = ensure_meta(
-            result.get("meta"),
-            cached.get("confidence", 0.0),
-            ["Serving latest cached prediction; fresh run queued in background."],
-            [{"title": "Task", "detail": f"system.generate_predictions::{command}"}]
-        )
-        return result
 
     try:
         result = await run_ml_model(command, payload, "ai_ml.py")
@@ -67,29 +66,30 @@ async def run_prediction(command: str, payload: dict):
             result["meta"] = ensure_meta(
                 result.get("meta"),
                 result.get("meta", {}).get("confidence", 0.65) if isinstance(result.get("meta"), dict) else 0.65,
-                ["Generated immediately from the ML model as no cached prediction was available."],
+                ["Generated from the ML model using the submitted inputs."],
                 [{"title": "Model", "detail": f"ai_ml.py::{command}"}]
             )
             return result
     except Exception as exc:
         return {
-            "status": "queued",
-            "error": f"Prediction queued; direct model execution failed: {exc}",
+            "status": "error",
+            "error": f"Prediction failed: {exc}",
             "meta": ensure_meta(
                 None,
                 0.0,
-                ["Prediction queued for background processing."],
+                ["Prediction could not be computed for the submitted inputs."],
                 [{"title": "Task", "detail": f"system.generate_predictions::{command}"}]
             ),
         }
 
     return {
-        "status": "queued",
+        "status": "error",
+        "error": f"Model returned no result for command '{command}'.",
         "meta": ensure_meta(
             None,
             0.0,
-            ["Prediction queued for background processing."],
-            [{"title": "Task", "detail": f"system.generate_predictions::{command}"}]
+            ["The ML model did not return a result for the submitted inputs."],
+            [{"title": "Model", "detail": f"ai_ml.py::{command}"}]
         ),
     }
 

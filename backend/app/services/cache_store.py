@@ -9,6 +9,19 @@ import redis
 
 logger = logging.getLogger(__name__)
 
+# Redis must never stall a request path: every operation is bounded by these
+# timeouts and CacheStore degrades to the in-process memory cache on failure.
+_REDIS_SOCKET_TIMEOUT_S = 1.0
+_REDIS_CONNECT_TIMEOUT_S = 1.0
+# If the initial ping fails, how long before the next CacheStore instance
+# retries connecting (avoids paying the connect timeout on every request).
+_REDIS_RETRY_INTERVAL_S = 30.0
+
+# One shared client per redis_url across all CacheStore instances — the
+# namespace only affects key prefixes, so the connection is reusable.
+_shared_clients: dict[str, Any] = {}
+_last_attempt: dict[str, float] = {}
+
 
 class CacheStore:
     def __init__(self, redis_url: str, namespace: str) -> None:
@@ -18,11 +31,28 @@ class CacheStore:
 
     @staticmethod
     def _init_redis(redis_url: str):
+        now = time.time()
+        if redis_url in _shared_clients:
+            client = _shared_clients[redis_url]
+            if client is not None:
+                return client
+            # Previous attempt failed — only retry at a bounded interval so a
+            # down Redis costs at most one connect timeout per retry window.
+            if now - _last_attempt.get(redis_url, 0.0) < _REDIS_RETRY_INTERVAL_S:
+                return None
         try:
-            client = redis.Redis.from_url(redis_url, decode_responses=True)
+            client = redis.Redis.from_url(
+                redis_url,
+                decode_responses=True,
+                socket_timeout=_REDIS_SOCKET_TIMEOUT_S,
+                socket_connect_timeout=_REDIS_CONNECT_TIMEOUT_S,
+            )
             client.ping()
+            _shared_clients[redis_url] = client
             return client
         except Exception:
+            _shared_clients[redis_url] = None
+            _last_attempt[redis_url] = now
             return None
 
     def _key(self, key: str) -> str:

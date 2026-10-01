@@ -71,18 +71,30 @@ async def get_donors(
     for donor in donors:
         health = (donor.get("publicProfile") or {}).get("healthRecords") or {}
         donor_profile = (donor.get("publicProfile") or {}).get("donorProfile") or {}
-        blood_group = _resolve_blood_group(donor, donor_profile, health)
+        # Blood group is only reported when it actually exists on the profile
+        # (donor profile → health record → top-level user field). The old
+        # unconditional "O+" default fabricated medical data.
+        raw_blood = (
+            donor_profile.get("bloodGroup")
+            or donor_profile.get("blood_group")
+            or health.get("bloodGroup")
+            or health.get("blood_group")
+            or donor.get("bloodGroup")
+            or donor.get("blood_group")
+        )
+        blood_group = _normalize_blood_group(raw_blood) if raw_blood else None
+        last_donation = donor_profile.get("lastDonation") or health.get("lastDonation") or None
         results.append(
             {
                 "user_id": donor.get("_id"),
                 "name": donor.get("name"),
-                "location": donor.get("location") or health.get("location") or "Unknown",
-            "blood_group": blood_group,
-                "phone": donor.get("phone") or "Not available",
-                "age": health.get("age"),
-                "gender": health.get("gender"),
+                "location": donor.get("location") or health.get("location") or None,
+                "blood_group": blood_group,
+                "phone": donor.get("phone") or None,
+                "age": health.get("age") or None,
+                "gender": health.get("gender") or None,
                 "availability": donor_profile.get("availability") or "Available",
-                "lastDonation": donor_profile.get("lastDonation") or health.get("lastDonation") or "2026-01-01",
+                "lastDonation": last_donation,
                 "organTypes": donor_profile.get("organTypes") or ["Blood"],
             }
         )

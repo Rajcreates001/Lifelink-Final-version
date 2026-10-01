@@ -51,13 +51,16 @@ def _extract_coords(doc: dict[str, Any]) -> tuple[float, float] | None:
 
 async def _ensure_hospital_locations(db, center_lat: float, center_lng: float) -> int:
     repo = MongoRepository(db, HOSPITALS)
+    # Geocode EVERY hospital still missing coordinates — a single geocoded
+    # record used to short-circuit this check, leaving the rest of the
+    # directory invisible to /nearby (which only considers geocoded docs).
     existing = await repo.collection.find_one(
-        {"$or": [{"lat": {"$exists": True}}, {"location.lat": {"$exists": True}}, {"latitude": {"$exists": True}}]}
+        {"$or": [{"lat": {"$exists": False}}, {"location.lat": {"$exists": False}}, {"latitude": {"$exists": False}}]}
     )
-    if existing:
+    if not existing:
         return 0
 
-    docs = await repo.collection.find({}).to_list(length=500)
+    docs = await repo.collection.find({}).to_list(length=1000)
     if not docs:
         return 0
 
@@ -202,10 +205,12 @@ async def nearby_hospitals(
     db = require_db()
     await _ensure_hospital_locations(db, latitude, longitude)
     repo = MongoRepository(db, HOSPITALS)
-    docs = await repo.collection.find({}).to_list(length=500)
+    # Only geocoded hospitals can be distance-ranked — query them directly
+    # instead of fetching an arbitrary page of the directory.
+    docs = await repo.collection.find({"$or": [{"location.lat": {"$exists": True}}, {"lat": {"$exists": True}}, {"latitude": {"$exists": True}}]}).to_list(length=1000)
     if not docs:
         await _seed_hospitals(db, latitude, longitude)
-        docs = await repo.collection.find({}).to_list(length=500)
+        docs = await repo.collection.find({"$or": [{"location.lat": {"$exists": True}}, {"lat": {"$exists": True}}, {"latitude": {"$exists": True}}]}).to_list(length=1000)
 
     candidates: list[dict[str, Any]] = []
     for doc in docs:

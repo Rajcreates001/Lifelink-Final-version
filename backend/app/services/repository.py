@@ -243,6 +243,37 @@ class PgCollection:
             await session.commit()
             return type("InsertResult", (), {"inserted_id": doc_id})()
 
+    async def insert_many(self, documents: list[dict[str, Any]]) -> list[str]:
+        """Insert many documents in a single transaction — one commit total.
+
+        Individual insert_one calls each open a session and commit; seeding or
+        bulk notification fan-out through insert_one multiplies request latency
+        by the document count. Returns the list of generated ids in order.
+        """
+        if not documents:
+            return []
+        now = datetime.now(timezone.utc)
+        records: list[Document] = []
+        ids: list[str] = []
+        for document in documents:
+            doc_data = to_serializable(document)
+            doc_id = doc_data.get("_id") or str(ObjectId())
+            doc_data["_id"] = doc_id
+            created_at = _ensure_datetime(doc_data.get("createdAt") or now)
+            updated_at = _ensure_datetime(doc_data.get("updatedAt") or created_at)
+            records.append(Document(
+                id=str(doc_id),
+                collection=self._collection,
+                data=doc_data,
+                created_at=created_at,
+                updated_at=updated_at,
+            ))
+            ids.append(str(doc_id))
+        async with self._session_factory() as session:
+            session.add_all(records)
+            await session.commit()
+        return ids
+
     async def update_one(self, query: dict[str, Any], update: dict[str, Any]):
         async with self._session_factory() as session:
             stmt = select(Document).where(Document.collection == self._collection)
@@ -327,6 +358,13 @@ class MongoRepository:
             result = await self.collection.insert_one(document)
             inserted = await self.collection.find_one({"_id": result.inserted_id})
             return normalize_mongo_doc(inserted)  # type: ignore[return-value]
+        except Exception as exc:
+            self._raise_db_error(exc)
+
+    async def insert_many(self, documents: list[dict[str, Any]]) -> list[str]:
+        """Batch insert within one transaction; falls back to per-doc inserts."""
+        try:
+            return await self.collection.insert_many(documents)
         except Exception as exc:
             self._raise_db_error(exc)
 

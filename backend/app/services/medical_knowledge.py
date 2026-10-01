@@ -858,8 +858,12 @@ def compute_risk_score(
     age: int | None = None,
     bmi: float | None = None,
     blood_pressure_sys: int | None = None,
+    blood_pressure_dia: int | None = None,
     heart_rate: int | None = None,
     oxygen: int | None = None,
+    glucose: float | None = None,
+    cholesterol: float | None = None,
+    smoker: bool | None = None,
     has_condition: bool = False,
     lifestyle: str | None = None,
     symptoms: list[str] | None = None,
@@ -870,7 +874,9 @@ def compute_risk_score(
     Each factor contributes a weighted score. The final score is the sum
     of all applicable factors, capped at 100. Returns the breakdown.
     """
-    if age is None and bmi is None and blood_pressure_sys is None and heart_rate is None and oxygen is None and not has_condition:
+    if age is None and bmi is None and blood_pressure_sys is None and blood_pressure_dia is None \
+            and heart_rate is None and oxygen is None and glucose is None and cholesterol is None \
+            and smoker is None and not has_condition:
         return {
             "risk_score": None,
             "risk_level": "insufficient_data",
@@ -927,6 +933,56 @@ def compute_risk_score(
     else:
         missing_data.append("blood_pressure")
 
+    # Numeric coercion keeps the factor blocks safe against string inputs
+    def _num(value):
+        if value is None:
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    glucose = _num(glucose)
+    cholesterol = _num(cholesterol)
+    blood_pressure_dia = _num(blood_pressure_dia)
+
+    # Diastolic blood pressure
+    if blood_pressure_dia is not None:
+        if blood_pressure_dia >= 120:
+            score += 8
+            drivers.append({"factor": "Diastolic BP ≥120 (Severe hypertension)", "contribution": 8, "detail": "Diastolic ≥120 mmHg is a hypertensive-urgency red flag."})
+        elif blood_pressure_dia >= 90:
+            score += 5
+            drivers.append({"factor": "Diastolic BP 90–119 (Elevated)", "contribution": 5, "detail": "Diastolic hypertension contributes to cardiovascular risk."})
+
+    # Blood glucose (mg/dL)
+    if glucose is not None:
+        if glucose >= 200:
+            score += 14
+            drivers.append({"factor": "Glucose ≥200 (Hyperglycemia)", "contribution": 14, "detail": "Blood glucose in the hyperglycemic range; urgent evaluation advised."})
+        elif glucose >= 126:
+            score += 8
+            drivers.append({"factor": "Glucose 126–199 (Diabetic range)", "contribution": 8, "detail": "Glucose ≥126 mg/dL suggests diabetes; confirm with HbA1c."})
+        elif glucose >= 100:
+            score += 3
+            drivers.append({"factor": "Glucose 100–125 (Pre-diabetic)", "contribution": 3, "detail": "Impaired fasting glucose increases long-term metabolic risk."})
+    else:
+        missing_data.append("glucose")
+
+    # Total cholesterol (mg/dL)
+    if cholesterol is not None:
+        if cholesterol >= 280:
+            score += 8
+            drivers.append({"factor": "Cholesterol ≥280 (Severely elevated)", "contribution": 8, "detail": "Very high total cholesterol markedly increases cardiovascular risk."})
+        elif cholesterol >= 240:
+            score += 5
+            drivers.append({"factor": "Cholesterol 240–279 (High)", "contribution": 5, "detail": "High total cholesterol contributes to atherosclerotic risk."})
+        elif cholesterol >= 200:
+            score += 2
+            drivers.append({"factor": "Cholesterol 200–239 (Borderline)", "contribution": 2, "detail": "Borderline cholesterol; a lipid panel is recommended."})
+    else:
+        missing_data.append("cholesterol")
+
     # Heart rate
     if heart_rate is not None:
         if heart_rate > 120:
@@ -969,6 +1025,11 @@ def compute_risk_score(
         elif lower_life in ("active",):
             score -= 3
             drivers.append({"factor": "Active lifestyle", "contribution": -3, "detail": "Regular physical activity reduces risk."})
+
+    # Smoking status (explicit flag; skip if lifestyle string already counted it)
+    if smoker is True and not (lifestyle and "smok" in lifestyle.lower()):
+        score += 10
+        drivers.append({"factor": "Current smoker", "contribution": 10, "detail": "Tobacco use significantly increases cardiovascular and respiratory risk."})
 
     # Cap and classify
     score = max(0, min(100, score))

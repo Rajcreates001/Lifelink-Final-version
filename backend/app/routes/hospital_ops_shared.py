@@ -528,18 +528,22 @@ def _parse_datetime(value: Any) -> datetime | None:
     if not value:
         return None
     if isinstance(value, datetime):
-        return value
+        # Normalize naive datetimes (e.g. from Mongo) to UTC-aware so they can
+        # never be compared with aware ones downstream.
+        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
     if isinstance(value, str):
         text = value.strip()
         if not text:
             return None
         try:
-            return datetime.fromisoformat(text.replace("Z", "+00:00"))
+            dt = datetime.fromisoformat(text.replace("Z", "+00:00"))
         except ValueError:
             logger.debug("Suppressed ValueError in %s", __name__)
+        else:
+            return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
         for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
             try:
-                return datetime.strptime(text, fmt)
+                return datetime.strptime(text, fmt).replace(tzinfo=timezone.utc)
             except ValueError:
                 continue
     return None

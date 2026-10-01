@@ -35,6 +35,7 @@ from app.routes.ai_shared import (
     clean_report_text,
     ensure_meta,
     extract_text_from_upload,
+    infer_upload_kind,
     looks_like_binary_text,
     run_prediction,
 )
@@ -250,6 +251,64 @@ def build_condition_guidance(conditions: list[str]) -> tuple[list[str], list[str
             seen_steps.add(step)
             next_steps.append(step)
     return explanations, next_steps
+
+
+def build_condition_confidences(conditions: list[str], metrics: dict[str, Any], analysis_confidence: float) -> dict[str, float]:
+    """Per-condition confidence (0-100) derived from supporting evidence.
+
+    Text-pattern detection alone anchors at the analysis confidence (which is
+    driven by input completeness). An objective vital/lab confirmation
+    (abnormal BP, HbA1c, glucose, SpO2, fever) raises the confidence; a normal
+    objective reading for a text-claimed condition lowers it. Every number
+    returned is computed from the report's own evidence — never invented.
+    """
+    systolic = metrics.get("blood_pressure_systolic")
+    diastolic = metrics.get("blood_pressure_diastolic")
+    glucose = metrics.get("glucose_mg_dl")
+    hba1c = metrics.get("hba1c")
+    oxygen = metrics.get("oxygen")
+    temp_value = metrics.get("temperature")
+    temp_unit = metrics.get("temperature_unit")
+
+    def _is_num(v) -> bool:
+        return isinstance(v, (int, float))
+
+    has_fever = _is_num(temp_value) and (
+        (temp_unit == "F" and temp_value >= 100.4) or (temp_unit != "F" and temp_value >= 38.0)
+    )
+
+    base = max(0.4, min(0.92, analysis_confidence)) * 100
+    confidences: dict[str, float] = {}
+    for condition in conditions:
+        confidence = base
+        if condition == "Hypertension":
+            if (_is_num(systolic) and systolic >= 140) or (_is_num(diastolic) and diastolic >= 90):
+                confidence = min(95, base + 20)
+            elif systolic is not None:
+                confidence = max(35, base - 20)
+        elif condition == "Hypotension":
+            if _is_num(systolic) and systolic < 90:
+                confidence = min(95, base + 20)
+            elif systolic is not None:
+                confidence = max(35, base - 20)
+        elif condition == "Diabetes":
+            if (_is_num(hba1c) and hba1c >= 6.5) or (_is_num(glucose) and glucose >= 126):
+                confidence = min(95, base + 20)
+            elif hba1c is not None or glucose is not None:
+                confidence = max(35, base - 15)
+        elif condition == "Elevated Glucose":
+            if _is_num(glucose) and glucose >= 140:
+                confidence = min(95, base + 20)
+            elif glucose is not None:
+                confidence = max(35, base - 10)
+        elif condition in {"Respiratory Disease", "Pneumonia"}:
+            if _is_num(oxygen) and oxygen < 92:
+                confidence = min(95, base + 15)
+        elif condition in {"Infection", "Sepsis"}:
+            if has_fever:
+                confidence = min(95, base + 15)
+        confidences[condition] = round(confidence)
+    return confidences
 
 
 def extract_conditions(report_text: str) -> list[str]:
@@ -542,6 +601,7 @@ async def build_report_analysis(report_text: str, user_id: str | None, source_me
         "risk_score": risk_score,
         "primary_category": primary_category,
         "detected_conditions": conditions,
+        "disease_confidences": build_condition_confidences(conditions, metrics, analysis_confidence),
         "summary": patient_summary,
         "explanation": explanation_lines,
         "next_steps": next_steps,
@@ -631,18 +691,37 @@ async def analyze_report_file(
 
     combined = clean_report_text(combined)
     if len(combined) < MIN_REPORT_CHARS:
+        # Honest failure: text could not be extracted from the document (scanned
+        # PDF/image without OCR tooling, or an unsupported binary format).
+        # NEVER fabricate a plausible-looking patient report — that surfaced a
+        # fake "Age 45, BP 138/88, Glucose 118" assessment for every
+        # unreadable upload, which is clinically dangerous misinformation.
         fname = file.filename or "Uploaded Medical Document"
-        combined = (
-            f"Clinical Diagnostic Report: {fname}\n"
-            f"Document Type: {file.content_type or 'Medical Report'}, Size: {len(data)} bytes.\n"
-            "Patient Evaluation: Age 45, Blood Pressure: 138/88 mmHg, Heart Rate: 78 bpm, BMI: 27.2. "
-            "Biomarker Findings: Fasting Blood Sugar 118 mg/dL, HbA1c 6.2%, SpO2 98%. "
-            "Clinical Observations: Mild metabolic elevation, normal pulmonary and cardiac rhythm. Routine preventive follow-up recommended."
+        kind = (source_meta or {}).get("source", infer_upload_kind(file.filename, file.content_type))
+        warnings = list((source_meta or {}).get("warnings") or [])
+        # source can be pdf_text / pdf_ocr / image_ocr — treat all as "needs OCR"
+        if isinstance(kind, str) and (kind.startswith("pdf") or kind.startswith("image")):
+            detail = (
+                f"No readable text could be extracted from '{fname}' (document type: {kind}). "
+                "Scanned documents and photos need OCR support on the server "
+                "(tesseract + poppler), or paste the report text manually."
+            )
+        else:
+            detail = (
+                f"No readable text could be extracted from '{fname}' "
+                f"(detected type: {kind or 'unknown'}). "
+                "Upload a text-based PDF, a TXT/CSV/JSON file, or paste the report content."
+            )
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "Report text extraction failed",
+                "detail": detail,
+                "filename": fname,
+                "source": kind,
+                "warnings": warnings,
+            },
         )
-        if not source_meta:
-            source_meta = {}
-        source_meta["source"] = "scan_assisted_ai_fallback"
-        source_meta.setdefault("warnings", []).append("Text extracted via AI document heuristics.")
 
     target_user_id = user_id or (ctx.user_id if ctx else None)
     return await build_report_analysis(combined, target_user_id, source_meta)

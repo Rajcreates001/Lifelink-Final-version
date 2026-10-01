@@ -200,9 +200,43 @@ def predict_activity_cluster(
         prediction = model.predict(input_df)[0]
         return {"cluster_label": cluster_map.get(prediction, "Unknown"), "cluster_id": int(prediction)}
     except FileNotFoundError:
-        return {"error": "Model file (activity_cluster_model.joblib) not found."}
+        return _activity_cluster_fallback(input_data_dict)
     except Exception as e:
-        return {"error": f"Prediction error: {e}"}
+        # Model load/inference failures (missing deps, schema drift) fall back
+        # to rule-based clustering so the API always returns usable output.
+        result = _activity_cluster_fallback(input_data_dict)
+        result["fallback_reason"] = str(e)
+        return result
+
+
+def _activity_cluster_fallback(input_data_dict: dict) -> dict:
+    """Rule-based engagement clustering used when the trained model cannot
+    load (e.g. joblib artifact missing). Mirrors the model's 3-cluster label
+    space so callers always get a cluster_label.
+    """
+    def _num(key):
+        try:
+            return float(input_data_dict.get(key) or 0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    sos_usage = _num("sos_usage")
+    donations_made = _num("donations_made")
+    health_logs = _num("health_logs")
+
+    engagement = donations_made * 3 + health_logs + sos_usage
+    if engagement >= 25 and donations_made >= 3:
+        label, cluster_id = "Active", 1
+    elif engagement >= 10:
+        label, cluster_id = "Moderate", 2
+    else:
+        label, cluster_id = "Inactive", 0
+    return {
+        "cluster_label": label,
+        "cluster_id": cluster_id,
+        "engagement_score": round(min(100.0, engagement * 2.5), 1),
+        "fallback": True,
+    }
 
 
 # =====================================================================
@@ -222,9 +256,30 @@ def predict_behavior_forecast(
         predicted_value = max(0, round(prediction))
         return {"forecasted_donations_next_period": int(predicted_value)}
     except FileNotFoundError:
-        return {"error": "Model file (behavior_forecast_model.joblib) not found."}
+        return _behavior_forecast_fallback(input_data_dict)
     except Exception as e:
-        return {"error": f"Prediction error: {e}"}
+        # Fall back to a conservative trend-based estimate instead of erroring.
+        result = _behavior_forecast_fallback(input_data_dict)
+        result["fallback_reason"] = str(e)
+        return result
+
+
+def _behavior_forecast_fallback(input_data_dict: dict) -> dict:
+    """Rule-based donation forecast used when the trained model cannot load.
+    A mildly increasing trend over the user's actual donation history keeps
+    the forecast grounded in the user's real activity.
+    """
+    try:
+        past = float(input_data_dict.get("past_donations") or 0)
+    except (TypeError, ValueError):
+        past = 0.0
+    # Continue the observed cadence: a small positive drift capped at +1.
+    predicted = max(1, round(past * 0.75) + 1) if past > 0 else 1
+    return {
+        "forecasted_donations_next_period": int(predicted),
+        "basis": "trend_estimate_from_past_donations",
+        "fallback": True,
+    }
 
 
 # =====================================================================

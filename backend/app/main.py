@@ -114,10 +114,48 @@ async def lifespan(app: FastAPI):
     await connect_to_mongo()
     await connect_asyncpg()
     logger.info("PostgreSQL connection initialized")
+    _warm_ml_models()
     yield
     await close_asyncpg()
     await close_mongo_connection()
     logger.info("PostgreSQL connection closed")
+
+
+def _warm_ml_models() -> None:
+    """Preload hot ML models in a background thread at startup.
+
+    The first prediction after a cold boot used to pay 10-30s of import +
+    joblib-load cost inside the request, which blew past the client's fetch
+    timeout and made the AI Health module appear to "return nothing".
+    """
+    import threading
+
+    def _run() -> None:
+        try:
+            from app.services.ml_runner import _ML_DIR, _get_ai_ml
+            import os
+
+            original = os.getcwd()
+            os.chdir(str(_ML_DIR))
+            try:
+                ai_ml = _get_ai_ml()
+                warmup_commands = (
+                    ("predict_risk", {"age": 40, "bmi": 24, "blood_pressure": 120, "heart_rate": 75}),
+                    ("analyze_report", {"report_text": "Blood pressure 120/80 mmHg. No acute findings."}),
+                    ("predict_sos_severity", {"message": "chest pain"}),
+                )
+                for command, sample in warmup_commands:
+                    try:
+                        ai_ml._COMMAND_MAP[command](sample)
+                    except Exception:
+                        logger.info("ML warm-up skipped for %s", command)
+            finally:
+                os.chdir(original)
+            logger.info("ML model warm-up complete")
+        except Exception as exc:
+            logger.warning("ML warm-up failed (non-fatal): %s", exc)
+
+    threading.Thread(target=_run, daemon=True, name="ml-warmup").start()
 
 
 app = FastAPI(
@@ -206,6 +244,9 @@ Comprehensive API for AI-powered emergency healthcare management across India.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
+    # Dev convenience: any localhost port (e.g. a Vite fallback port like 5199)
+    # is trusted in development. Resolves to None (disabled) in production.
+    allow_origin_regex=settings.cors_origin_regex,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "Accept", "X-Request-ID"],

@@ -87,12 +87,24 @@ class Settings(BaseSettings):
                     "CORS cannot fallback to wildcard origin."
                 )
             return origins
+        # Development: allow any localhost/127.0.0.1 port via allow_origin_regex
+        # (Vite occasionally lands on a non-default port when 5000/5173 are
+        # taken; a hard-coded list silently CORS-blocked the whole app with
+        # no console clue).
         return [
             "http://localhost:5000",
             "http://127.0.0.1:5000",
             "http://localhost:5173",
             "http://127.0.0.1:5173",
         ]
+
+    @property
+    def cors_origin_regex(self) -> str | None:
+        """Dev-only regex so any localhost port works; None in production
+        (production stays pinned to FRONTEND_URL origins)."""
+        if self.app_env == "production":
+            return None
+        return r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -12,7 +12,9 @@ Key improvements:
 All callers use `run_ml_model(command, payload)` — same API as before.
 """
 
+import asyncio
 import os
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -295,9 +297,9 @@ def _enrich_result(command: str, payload: Any, result: Any) -> Any:
 
 
 # ─── Core function — direct import vs subprocess ────────────────────
-
 # Lazy-loaded module reference
 _ai_ml_module = None
+_ml_lock = threading.Lock()
 
 
 def _get_ai_ml():
@@ -306,14 +308,23 @@ def _get_ai_ml():
     if _ai_ml_module is not None:
         return _ai_ml_module
 
-    import sys as _sys
-    _ml_str = str(_ML_DIR)
-    if _ml_str not in _sys.path:
-        _sys.path.insert(0, _ml_str)
+    with _ml_lock:
+        if _ai_ml_module is not None:
+            return _ai_ml_module
+        import sys as _sys
+        _ml_str = str(_ML_DIR)
+        if _ml_str not in _sys.path:
+            _sys.path.insert(0, _ml_str)
 
-    import importlib
-    _ai_ml_module = importlib.import_module("ai_ml")
-    return _ai_ml_module
+        import importlib
+        _ai_ml_module = importlib.import_module("ai_ml")
+        return _ai_ml_module
+
+
+# Process-wide lock: predict_* functions resolve relative model_path values
+# against the CWD, so concurrent requests would otherwise race on os.chdir
+# and one request could load another request's model (or crash).
+_ml_call_lock = threading.Lock()
 
 
 async def run_ml_model(command: str, payload: Any = None, script_name: str = "ai_ml.py") -> Any:
@@ -331,17 +342,24 @@ async def run_ml_model(command: str, payload: Any = None, script_name: str = "ai
     ai_ml = _get_ai_ml()
     input_payload = _prepare_payload(command, payload)
 
-    # Change CWD to ml/ so model_path defaults resolve correctly
-    # (all predict_* functions have default model_path= values that are
-    #  relative filenames expected to be found from the ml/ directory)
-    original_cwd = os.getcwd()
-    os.chdir(str(_ML_DIR))
-    try:
-        if command in ai_ml._COMMAND_MAP:
-            result = ai_ml._COMMAND_MAP[command](input_payload)
-        else:
-            raise ValueError(f"Unknown ML command: {command}")
-    finally:
-        os.chdir(original_cwd)
+    # Run the (CWD-sensitive, CPU-bound) call in a worker thread so the event
+    # loop is never blocked — a cold model load used to freeze every request.
+    loop = asyncio.get_running_loop()
+    result = await loop.run_in_executor(None, _run_in_ml_dir, ai_ml, command, input_payload)
 
     return _enrich_result(command, payload, result)
+
+
+def _run_in_ml_dir(ai_ml, command: str, input_payload: Any) -> Any:
+    """Execute one ML command with the CWD pinned to ml/ under a global lock."""
+    with _ml_call_lock:
+        original_cwd = os.getcwd()
+        os.chdir(str(_ML_DIR))
+        try:
+            if command in ai_ml._COMMAND_MAP:
+                result = ai_ml._COMMAND_MAP[command](input_payload)
+            else:
+                raise ValueError(f"Unknown ML command: {command}")
+        finally:
+            os.chdir(original_cwd)
+    return result

@@ -9,7 +9,7 @@ from app.core.auth import get_current_user, AuthContext
 from app.core.dependencies import get_realtime_service, get_routing_service
 from app.services.rate_limiter import rate_limit_ambulance_write
 from app.db.database import require_db
-from app.services.collections import ALERTS, AMBULANCE_ASSIGNMENTS, AMBULANCES, NOTIFICATIONS, USERS
+from app.services.collections import ALERTS, AMBULANCE_ASSIGNMENTS, AMBULANCES, HOSPITALS, NOTIFICATIONS, USERS
 from app.services.repository import MongoRepository
 from app.services.routing_service import RoutingService
 
@@ -18,6 +18,38 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["ambulance"])
 
 VALID_STATUSES = ["available", "en_route", "at_location", "returning", "maintenance"]
+
+# Assignment statuses that count as an in-progress mission. The platform has
+# accumulated several casing/spelling variants over time (seeders, SOS dispatch
+# and manual creation) — all of them must resolve to an active mission for the
+# ambulance dashboard instead of "No active mission".
+ACTIVE_ASSIGNMENT_STATUSES = {"active", "assigned", "en_route", "enroute", "en route", "responding", "at location", "at_location", "dispatched", "in_progress"}
+COMPLETED_ASSIGNMENT_STATUSES = {"completed", "resolved", "closed", "cancelled", "fulfilled"}
+
+
+def _normalize_assignment_status(status: str | None) -> str:
+    value = str(status or "").strip().lower()
+    if value in ACTIVE_ASSIGNMENT_STATUSES:
+        return "active"
+    if value in COMPLETED_ASSIGNMENT_STATUSES:
+        return "completed"
+    return value or "unknown"
+
+
+def _severity_gcs_estimate(severity: str | None) -> int:
+    """Triage GCS estimate derived from the AI severity classification.
+
+    GCS is not collected by any SOS intake form; the estimate maps the model's
+    severity band onto the standard GCS range so the crew sees a usable
+    triage figure instead of an empty field. Marked 'estimated' upstream.
+    """
+    return {"Critical": 8, "High": 11, "Moderate": 14}.get(str(severity or ""), 15)
+
+
+def _fmt_coords(lat: float | None, lng: float | None) -> str | None:
+    if lat is None or lng is None:
+        return None
+    return f"{float(lat):.4f}, {float(lng):.4f}"
 
 
 def _as_object_id(value: str) -> ObjectId:
@@ -81,14 +113,164 @@ def _calculate_on_time_rate(history: list[dict]) -> int:
 
 
 @router.get("/assignments")
-async def list_assignments(ambulance_id: str | None = None, ctx: AuthContext = Depends(get_current_user)):
+async def list_assignments(
+    ambulance_id: str | None = None,
+    ctx: AuthContext = Depends(get_current_user),
+    routing: RoutingService = Depends(get_routing_service),
+):
+    """List ambulance assignments, enriched with the linked mission context.
+
+    Assignment documents only store ids (sos_id, hospital_id, ambulance_id) —
+    the patient, incident location and severity live on the SOS alert and the
+    destination details on the hospital doc. Without this join the ambulance
+    dashboard renders an empty "No active mission" shell even while a real
+    dispatch is in flight, so we resolve everything here.
+    """
     db = require_db()
     repo = MongoRepository(db, AMBULANCE_ASSIGNMENTS)
     query = {}
     if ambulance_id:
-        query["ambulanceId"] = ambulance_id
+        # Ambulance references are mixed in production data: the SOS dispatcher
+        # stores the ambulance document's _id while the demo seeder and manual
+        # creation store the ambulance user id in `ambulanceId`. Match both.
+        query["$or"] = [
+            {"ambulanceId": ambulance_id},
+            {"ambulanceUserId": ambulance_id},
+            {"ambulance_id": ambulance_id},
+        ]
     records = await repo.find_many(query, sort=[("createdAt", -1)], limit=200)
-    return {"count": len(records), "data": records}
+
+    # Graceful scoping: SOS dispatch stores the ambulance *document* id while
+    # crew accounts carry a *user* id — a scoped request that matches neither
+    # must not blank the dashboard. Fall back to the fleet view so an active
+    # mission is still visible (the dashboard prefers records for its own
+    # vehicle when present via vehicleCode matching).
+    scoped = bool(ambulance_id)
+    if scoped and not records:
+        records = await repo.find_many({}, sort=[("createdAt", -1)], limit=200)
+
+    alert_repo = MongoRepository(db, ALERTS)
+    hospital_repo = MongoRepository(db, HOSPITALS)
+    user_repo = MongoRepository(db, USERS)
+    ambulance_repo = MongoRepository(db, AMBULANCES)
+
+    enriched: list[dict] = []
+    for record in records:
+        item = dict(record)
+        item["normalized_status"] = _normalize_assignment_status(record.get("status"))
+
+        # ── Linked SOS alert → patient, mechanism, severity, pickup ──
+        sos_id = record.get("sos_id")
+        alert = None
+        if sos_id:
+            try:
+                alert = await alert_repo.find_one({"_id": sos_id})
+            except HTTPException:
+                alert = None
+
+        incident_lat = incident_lng = None
+        if alert:
+            alert_location = alert.get("location") or {}
+            if isinstance(alert_location, dict):
+                try:
+                    incident_lat = float(alert_location.get("lat")) if alert_location.get("lat") is not None else None
+                    incident_lng = float(alert_location.get("lng")) if alert_location.get("lng") is not None else None
+                except (TypeError, ValueError):
+                    incident_lat = incident_lng = None
+            item.setdefault("emergencyType", alert.get("message") or alert.get("emergencyType"))
+            item.setdefault("severity", alert.get("emergencyType") if alert.get("emergencyType") in {"Critical", "High", "Moderate", "Low"} else alert.get("severity"))
+            item["severity_score"] = alert.get("severity_score")
+            item["vitals"] = alert.get("vitals") or {}
+            item["sos_message"] = alert.get("message")
+            item["alert_status"] = alert.get("status")
+
+            # Patient identity + age from the reporting user's profile.
+            patient_user_id = alert.get("user")
+            if patient_user_id:
+                try:
+                    patient_user = await user_repo.find_one({"_id": _as_object_id(str(patient_user_id))})
+                except HTTPException:
+                    patient_user = None
+                if patient_user:
+                    item["patient"] = patient_user.get("name") or item.get("patient")
+                    health = (patient_user.get("publicProfile") or {}).get("healthRecords") or {}
+                    if health.get("age") is not None:
+                        item["patientAge"] = health.get("age")
+
+        # ── Destination hospital → name, coordinates ──
+        hospital_id = record.get("hospital_id") or record.get("hospitalId") or record.get("hospital")
+        if hospital_id:
+            try:
+                hospital_doc = await hospital_repo.find_one({"_id": str(hospital_id)})
+            except HTTPException:
+                hospital_doc = None
+            if hospital_doc:
+                hloc = hospital_doc.get("location") if isinstance(hospital_doc.get("location"), dict) else {}
+                item["hospitalName"] = hospital_doc.get("name") or item.get("destination")
+                try:
+                    item["hospitalLat"] = float(hloc.get("lat")) if hloc.get("lat") is not None else item.get("hospitalLat")
+                    item["hospitalLng"] = float(hloc.get("lng")) if hloc.get("lng") is not None else item.get("hospitalLng")
+                except (TypeError, ValueError):
+                    pass
+
+        # ── Vehicle → current position ──
+        amb_ref = record.get("ambulance_id") or record.get("ambulanceId") or record.get("ambulanceUserId")
+        amb_doc = None
+        if amb_ref:
+            try:
+                amb_doc = await ambulance_repo.find_one({"_id": str(amb_ref)})
+            except HTTPException:
+                amb_doc = None
+            if not amb_doc:
+                try:
+                    amb_doc = await ambulance_repo.find_one({"ambulanceId": str(amb_ref)})
+                except HTTPException:
+                    amb_doc = None
+        vehicle_lat = vehicle_lng = None
+        if amb_doc:
+            vloc = amb_doc.get("currentLocation") or amb_doc.get("location") or {}
+            if isinstance(vloc, dict):
+                try:
+                    vehicle_lat = float(vloc.get("latitude") or vloc.get("lat")) if (vloc.get("latitude") or vloc.get("lat")) is not None else None
+                    vehicle_lng = float(vloc.get("longitude") or vloc.get("lng")) if (vloc.get("longitude") or vloc.get("lng")) is not None else None
+                except (TypeError, ValueError):
+                    vehicle_lat = vehicle_lng = None
+            item["vehicleStatus"] = amb_doc.get("status")
+            item["vehicleCode"] = amb_doc.get("ambulanceId")
+        if vehicle_lat is not None:
+            item["currentLat"] = vehicle_lat
+            item["currentLng"] = vehicle_lng
+
+        # ── ETAs via road routing (falls back to stored/haversine values) ──
+        if incident_lat is not None and incident_lng is not None:
+            item["incidentLat"] = incident_lat
+            item["incidentLng"] = incident_lng
+            if vehicle_lat is not None and item.get("etaToIncident") is None:
+                route = await routing.route(vehicle_lat, vehicle_lng, incident_lat, incident_lng, include_geometry=False)
+                if route.get("status") == "ok":
+                    item["etaToIncident"] = int(round((route.get("duration_seconds") or 0) / 60)) or 1
+                    item["distanceToIncident"] = round((route.get("distance_meters") or 0) / 1000, 2)
+                    item.setdefault("currentAddress", _fmt_coords(vehicle_lat, vehicle_lng) or "En route")
+            item.setdefault("incidentAddress", _fmt_coords(incident_lat, incident_lng) or "Location pending")
+
+        if item.get("etaToHospital") is None and item.get("eta_minutes") is not None:
+            item["etaToHospital"] = item.get("eta_minutes")
+        if item.get("hospitalDistance") is None and item.get("distance_km") is not None:
+            item["hospitalDistance"] = item.get("distance_km")
+
+        # GCS: real vitals first, then a clearly-derived triage estimate so the
+        # crew panel never shows an empty field mid-mission.
+        vitals = item.get("vitals") or {}
+        if vitals.get("gcs") is not None:
+            item["gcs"] = vitals.get("gcs")
+            item["gcsSource"] = "reported"
+        elif item.get("gcs") is None:
+            item["gcs"] = _severity_gcs_estimate(item.get("severity"))
+            item["gcsSource"] = "estimated"
+
+        enriched.append(item)
+
+    return {"count": len(enriched), "data": enriched}
 
 
 @router.post("/assignments", status_code=201)
@@ -552,7 +734,16 @@ async def complete_route(ambulance_id: str, ctx: AuthContext = Depends(get_curre
         return {"success": False, "error": "No active route"}
 
     start_time_raw = active_route.get("startTime")
-    start_time = datetime.fromisoformat(start_time_raw) if isinstance(start_time_raw, str) else (start_time_raw or datetime.now(timezone.utc))
+    if isinstance(start_time_raw, str):
+        try:
+            start_time = datetime.fromisoformat(start_time_raw.replace("Z", "+00:00"))
+        except ValueError:
+            start_time = datetime.now(timezone.utc)
+    else:
+        start_time = start_time_raw or datetime.now(timezone.utc)
+    # Mongo may hold naive datetimes; keep the arithmetic tz-safe.
+    if start_time.tzinfo is None:
+        start_time = start_time.replace(tzinfo=timezone.utc)
 
     actual_time_minutes = max(1, round((datetime.now(timezone.utc) - start_time).total_seconds() / 60))
     estimated_time_minutes = int(active_route.get("estimatedTimeMinutes") or 1)
