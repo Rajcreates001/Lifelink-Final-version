@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import EnterpriseModal from './EnterpriseModal';
 
 const LOGOUT_PHASES = ['Finalizing session...', 'Synchronizing workspace...', 'Sync Complete', 'Signing Out...'];
@@ -6,24 +6,31 @@ const LOGOUT_PHASES = ['Finalizing session...', 'Synchronizing workspace...', 'S
 const LogoutConfirmDialog = ({ open, onClose, onConfirm, userName, userRole, workspaceName, variant = 'government' }) => {
   const [signingOut, setSigningOut] = useState(false);
   const [signOutPhase, setSignOutPhase] = useState(0);
+  const confirmTimerRef = useRef(null);
 
   const handleConfirm = () => {
     setSigningOut(true);
     setSignOutPhase(0);
-    const phaseTimers = [600, 600, 500, 600];
-    let totalDelay = 0;
-    [0, 1, 2, 3].forEach((phase, i) => {
-      setTimeout(() => {
-        setSignOutPhase(phase);
-        if (phase === 3) {
-          setTimeout(() => {
-            onConfirm?.();
-          }, 400);
-        }
-      }, totalDelay);
-      totalDelay += phaseTimers[i];
+    // Deterministic sign-out: run the full phase animation, then invoke
+    // onConfirm exactly once. The previous nested per-phase setTimeout chain
+    // re-scheduled itself on every effect re-run (parent re-renders from WS
+    // status changes fired constantly), so onConfirm often never fired and
+    // logout silently failed while the dialog just closed.
+    if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+    const phases = [600, 600, 500, 600];
+    let elapsed = 0;
+    phases.forEach((delay, i) => {
+      elapsed += delay;
+      confirmTimerRef.current = setTimeout(() => setSignOutPhase(i), elapsed);
     });
+    confirmTimerRef.current = setTimeout(() => {
+      onConfirm?.();
+    }, elapsed + 400);
   };
+
+  useEffect(() => () => {
+    if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+  }, []);
 
   const now = new Date();
   const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });

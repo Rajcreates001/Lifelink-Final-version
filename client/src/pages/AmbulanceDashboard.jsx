@@ -130,7 +130,8 @@ const useAmbulanceMissionData = () => {
 
         if (!active) return;
 
-        // Vehicle data from ambulance status
+        // Vehicle data from ambulance status. Telemetry (speed/fuel) only
+        // shown when a source actually provides it — no fabricated defaults.
         const statusData = statusRes.ok ? statusRes.data : null;
         if (statusData) {
           setVehicle({
@@ -138,39 +139,62 @@ const useAmbulanceMissionData = () => {
             lat: statusData.currentLat || 12.9766,
             lng: statusData.currentLng || 77.5713,
             address: statusData.currentAddress || statusData.location || 'En route',
-            speedKph: statusData.speedKph || statusData.speed || 0,
-            fuelLevel: statusData.fuelLevel || statusData.fuel || 100,
-            equipment: statusData.equipment || ['Defibrillator', 'Trauma Kit'],
+            speedKph: statusData.speedKph ?? statusData.speed ?? null,
+            fuelLevel: statusData.fuelLevel ?? statusData.fuel ?? null,
+            equipment: statusData.equipment || [],
           });
         }
 
-        // Incident data from assignments
+        // Incident data from assignments — the backend now returns a
+        // normalized_status ('active'/'completed') so casing variants like
+        // 'Assigned'/'enroute' correctly resolve to a live mission.
         const assignmentsData = assignmentsRes.ok ? (assignmentsRes.data?.data || assignmentsRes.data || []) : [];
+        const isActiveAssignment = (a) => ['active', 'en_route', 'enroute', 'assigned', 'responding', 'at_location', 'dispatched', 'in_progress'].includes(String(a.normalized_status || a.status || '').toLowerCase());
         const activeAssignment = Array.isArray(assignmentsData)
-          ? assignmentsData.find(a => a.status === 'active' || a.status === 'en_route' || a.status === 'responding')
+          ? (assignmentsData.find(isActiveAssignment) || null)
           : null;
 
         if (activeAssignment) {
           setIncident({
-            label: activeAssignment.incidentType || activeAssignment.type || 'Emergency call',
-            lat: activeAssignment.incidentLat || activeAssignment.pickupLat || 12.9763,
-            lng: activeAssignment.incidentLng || activeAssignment.pickupLng || 77.5929,
-            address: activeAssignment.incidentAddress || activeAssignment.pickupAddress || 'Location pending',
-            severity: activeAssignment.severity || 'High',
-            patientName: activeAssignment.patientName || activeAssignment.patient_name || 'Patient',
+            label: activeAssignment.emergencyType || activeAssignment.sos_message || activeAssignment.incidentType || activeAssignment.type || 'Emergency call',
+            lat: activeAssignment.incidentLat ?? activeAssignment.pickupLat ?? (activeAssignment.pickup?.lat) ?? 12.9763,
+            lng: activeAssignment.incidentLng ?? activeAssignment.pickupLng ?? (activeAssignment.pickup?.lng) ?? 77.5929,
+            address: activeAssignment.incidentAddress || activeAssignment.pickupAddress || activeAssignment.pickup?.address || 'Location pending',
+            severity: activeAssignment.severity || activeAssignment.emergencyType || 'High',
+            patientName: activeAssignment.patient || activeAssignment.patientName || activeAssignment.patient_name || 'Patient',
             age: activeAssignment.patientAge || activeAssignment.age || null,
-            gcs: activeAssignment.gcs || null,
-            mechanism: activeAssignment.mechanism || activeAssignment.incidentType || 'Emergency',
+            gcs: activeAssignment.gcs ?? null,
+            gcsSource: activeAssignment.gcsSource || null,
+            mechanism: activeAssignment.emergencyType || activeAssignment.sos_message || activeAssignment.mechanism || activeAssignment.incidentType || 'Emergency',
           });
           setToIncident({
-            etaMinutes: activeAssignment.etaToIncident || activeAssignment.eta_minutes || null,
-            distanceKm: activeAssignment.distanceToIncident || activeAssignment.distance_km || null,
+            etaMinutes: activeAssignment.etaToIncident ?? activeAssignment.eta_minutes ?? null,
+            distanceKm: activeAssignment.distanceToIncident ?? activeAssignment.distance_km ?? null,
             traffic: activeAssignment.traffic || { level: 'Unknown', adjustedMinutes: null, baseMinutes: null },
           });
         } else {
           // Fallback to default incident data when no active assignment
           setIncident({ label: 'No active mission', lat: 12.9763, lng: 77.5929, address: 'Awaiting assignment', severity: 'Low', patientName: '—', age: null, gcs: null, mechanism: '—' });
           setToIncident({ etaMinutes: null, distanceKm: null, traffic: { level: 'Unknown', adjustedMinutes: null, baseMinutes: null } });
+        }
+
+        // Live telemetry from the GPS tracking simulator when this ambulance
+        // is registered there (speed/fuel). Non-fatal if not running.
+        const telemetryCode = activeAssignment?.vehicleCode || activeAssignment?.vehicleLabel;
+        if (telemetryCode) {
+          try {
+            const gpsRes = await apiFetch(`/api/gps-tracking/ambulance/${encodeURIComponent(telemetryCode)}`, { method: 'GET', timeoutMs: 5000, cache: 'no-store' });
+            if (gpsRes.ok && gpsRes.data) {
+              const gps = gpsRes.data;
+              setVehicle((prev) => ({
+                ...prev,
+                speedKph: gps.speedKmh ?? gps.speedKph ?? prev.speedKph,
+                fuelLevel: gps.fuelLevel ?? prev.fuelLevel,
+                lat: gps.lat ?? gps.latitude ?? prev.lat,
+                lng: gps.lng ?? gps.longitude ?? prev.lng,
+              }));
+            }
+          } catch { /* simulator not running — KPIs show '—' */ }
         }
 
         // Hospital data
@@ -180,18 +204,18 @@ const useAmbulanceMissionData = () => {
 
         if (targetHospital) {
           setHospital({
-            label: targetHospital.name || targetHospital.hospitalName || 'Nearest Hospital',
-            lat: targetHospital.lat || targetHospital.latitude || 12.9686,
-            lng: targetHospital.lng || targetHospital.longitude || 77.5995,
+            label: activeAssignment?.hospitalName || targetHospital.name || targetHospital.hospitalName || 'Nearest Hospital',
+            lat: activeAssignment?.hospitalLat || targetHospital.lat || targetHospital.latitude || 12.9686,
+            lng: activeAssignment?.hospitalLng || targetHospital.lng || targetHospital.longitude || 77.5995,
             address: targetHospital.address || targetHospital.location || '',
             icuBeds: targetHospital.icuBeds || targetHospital.icu_beds || 0,
             traumaReady: targetHospital.traumaReady || false,
-            distance: activeAssignment?.hospitalDistance || targetHospital.distance_km || null,
-            eta: activeAssignment?.etaToHospital || targetHospital.eta_minutes || null,
+            distance: activeAssignment?.hospitalDistance ?? targetHospital.distance_km ?? null,
+            eta: activeAssignment?.etaToHospital ?? targetHospital.eta_minutes ?? null,
           });
           setToHospital({
-            etaMinutes: activeAssignment?.etaToHospital || targetHospital.eta_minutes || null,
-            distanceKm: activeAssignment?.hospitalDistance || targetHospital.distance_km || null,
+            etaMinutes: activeAssignment?.etaToHospital ?? targetHospital.eta_minutes ?? null,
+            distanceKm: activeAssignment?.hospitalDistance ?? targetHospital.distance_km ?? null,
             traffic: activeAssignment?.trafficToHospital || { level: 'Unknown', adjustedMinutes: null, baseMinutes: null },
           });
         }
@@ -241,6 +265,19 @@ const DesktopAmbulanceDashboard = () => {
   const [triageInput, setTriageInput] = useState('');
   const [toast, setToast] = useState(null);
   const [missionStart] = useState(() => new Date().toISOString());
+  // Track visited modules: only visited modules stay mounted (state
+  // preservation), the rest are NOT rendered. Previously ALL 13 modules were
+  // mounted at once — each a full charts+map workspace — which made the
+  // first dashboard paint extremely heavy and the whole app laggy.
+  // Computed during render (Set union) instead of an effect to avoid a
+  // setState-in-effect cascade.
+  const [mountedModules, setMountedModules] = useState(() => new Set(['mission-overview']));
+  if (!mountedModules.has(activeModule)) {
+    const next = new Set(mountedModules);
+    next.add(activeModule);
+    setMountedModules(next);
+  }
+  const visited = mountedModules;
 
   const showToast = useCallback((msg, type = 'success') => {
     setToast({ message: msg, type });
@@ -291,44 +328,31 @@ const DesktopAmbulanceDashboard = () => {
         <h2 className="text-lg font-bold text-slate-900 font-display">{moduleLabels[activeModule] || 'Mission Overview'}</h2>
       </div>
 
-      {/* ✨ Dedicated Module Workspaces — all rendered but only active is visible.
-          This preserves component state across module switches (e.g. search query,
-          accepted/rejected recommendations, form inputs). */}
+      {/* ✨ Dedicated Module Workspaces — visited modules stay mounted (hidden
+          via CSS) to preserve state (search text, accepted recommendations);
+          never-visited modules are not rendered at all, keeping the dashboard
+          light and responsive. */}
       <div className="relative">
         {MODULE_KEYS.map((key) => {
+          if (!visited.has(key)) return null;
           const Comp = MODULE_COMPONENT_MAP[key] || MissionOverview;
           const isActive = key === activeModule;
           return (
             <div key={key} className={isActive ? '' : 'hidden'}>
-              {isActive ? (
-                <Suspense fallback={<ModuleFallback />}>
-                  <Comp
-                    vehicle={vehicle || {}}
-                    incident={incident || {}}
-                    hospital={hospital || {}}
-                    toIncident={toIncident || {}}
-                    toHospital={toHospital || {}}
-                    missionStart={missionStart}
-                    patientStatus="Critical"
-                    goldenHour
-                    onAction={handleAction}
-                    onOpenTriage={() => { setTriageOpen(true); }}
-                  />
-                </Suspense>
-              ) : (
+              <Suspense fallback={<ModuleFallback />}>
                 <Comp
-                  vehicle={undefined}
-                  incident={undefined}
-                  hospital={undefined}
-                  toIncident={undefined}
-                  toHospital={undefined}
+                  vehicle={vehicle || {}}
+                  incident={incident || {}}
+                  hospital={hospital || {}}
+                  toIncident={toIncident || {}}
+                  toHospital={toHospital || {}}
                   missionStart={missionStart}
                   patientStatus="Critical"
                   goldenHour
                   onAction={handleAction}
                   onOpenTriage={() => { setTriageOpen(true); }}
                 />
-              )}
+              </Suspense>
             </div>
           );
         })}
@@ -373,6 +397,15 @@ const MobileAmbulanceDashboard = () => {
   const activeModule = urlModule && moduleLabels[urlModule] ? urlModule : 'mission-overview';
   const [missionStart] = useState(() => new Date().toISOString());
   const [toast, setToast] = useState(null);
+  // Same visited-module optimization as desktop — on mobile, mounting all 13
+  // workspaces at once made scrolling and module switching visibly janky.
+  const [mountedModules, setMountedModules] = useState(() => new Set(['mission-overview']));
+  if (!mountedModules.has(activeModule)) {
+    const next = new Set(mountedModules);
+    next.add(activeModule);
+    setMountedModules(next);
+  }
+  const visited = mountedModules;
 
   const showToast = useCallback((msg, type = 'success') => {
     setToast({ message: msg, type });
@@ -443,29 +476,18 @@ const MobileAmbulanceDashboard = () => {
         />
       </div>
 
-      {/* ✨ Module Content — all rendered for state preservation */}
+      {/* ✨ Module Content — visited modules stay mounted for state, others are
+          not rendered (the desktop/mobile props were previously swapped so the
+          active module always received undefined data). */}
       <div className="px-3 py-4">
         <div className="relative">
           {MODULE_KEYS.map((key) => {
+            if (!visited.has(key)) return null;
             const Comp = MODULE_COMPONENT_MAP[key] || MissionOverview;
             const isActive = key === activeModule;
             return (
               <div key={key} className={isActive ? '' : 'hidden'}>
-                {isActive ? (
-                  <Suspense fallback={<ModuleFallback />}>
-                    <Comp
-                      vehicle={undefined}
-                      incident={undefined}
-                      hospital={undefined}
-                      toIncident={undefined}
-                      toHospital={undefined}
-                      missionStart={missionStart}
-                      patientStatus="Critical"
-                      goldenHour
-                      onAction={handleAction}
-                    />
-                  </Suspense>
-                ) : (
+                <Suspense fallback={<ModuleFallback />}>
                   <Comp
                     vehicle={vehicle || {}}
                     incident={incident || {}}
@@ -473,11 +495,11 @@ const MobileAmbulanceDashboard = () => {
                     toIncident={toIncident || {}}
                     toHospital={toHospital || {}}
                     missionStart={missionStart}
-                    patientStatus="Critical"
+                    patientStatus={incident?.severity || 'Active'}
                     goldenHour
                     onAction={handleAction}
                   />
-                )}
+                </Suspense>
               </div>
             );
           })}

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, getLoginRoute } from '../context/AuthContext';
 import { API_BASE_URL } from '../config/api';
 import PremiumRoleSelector from '../components/PremiumRoleSelector';
 
@@ -53,7 +53,7 @@ const ROLE_META = {
 
 const Login = () => {
     const navigate = useNavigate();
-    const { performLogin } = useAuth();
+    const { performLogin, user } = useAuth();
     const [formData, setFormData] = useState({ email: '', hospitalId: '', password: '', role: 'public' });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -65,6 +65,18 @@ const Login = () => {
 
     useEffect(() => { const t = setTimeout(() => setMounted(true), 10); return () => clearTimeout(t); }, []);
     const currentRole = ROLE_META[formData.role] || ROLE_META.public;
+
+    // Already signed in (e.g. pressed Back after logout bounced here)? Send to
+    // the correct workspace instead of letting them log in over an active session.
+    useEffect(() => {
+        if (!user?.role) return;
+        const role = String(user.role).toLowerCase();
+        if (['hospital', 'government'].includes(role) && !user.subRole) {
+            navigate(`/dashboard/${role}/roles`, { replace: true });
+        } else {
+            navigate(getLoginRoute(user), { replace: true });
+        }
+    }, [user, navigate]);
 
     // Debounced role switch — ignore clicks during 400ms transition
     const switchRole = (r) => {

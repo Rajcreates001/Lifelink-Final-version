@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, _useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../config/api';

@@ -157,48 +157,6 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
     }
   ]), []);
 
-  // Main useEffect - Fetch data when component mounts
-  useEffect(() => {
-    
-    if (!isValidId(resolvedHospitalId)) {
-      console.error('[HospitalCommunications] No hospital ID provided');
-      setError('Hospital ID is missing. Please ensure you are logged in.');
-      setLoading(false);
-      return;
-    }
-
-    setError(null);
-    setWarning('');
-    setLoading(true);
-    
-    // Create a timeout to prevent infinite loading
-    const timeoutId = setTimeout(() => {
-      console.error('[HospitalCommunications] Request timeout after 10 seconds');
-      setError('Request timed out. Please check your connection and refresh.');
-      setLoading(false);
-    }, 10000);
-    
-    // Fetch both hospitals and messages in parallel
-    Promise.all([
-      fetchHospitals(resolvedHospitalId),
-      fetchMessages(resolvedHospitalId),
-      fetchAgreements(resolvedHospitalId)
-    ])
-    .then(() => {
-      clearTimeout(timeoutId);
-      setLoading(false);
-    })
-    .catch((err) => {
-      clearTimeout(timeoutId);
-      console.error('[HospitalCommunications] Error loading data:', err);
-      setError(`Failed to load communications data: ${err.message}`);
-      setLoading(false);
-    });
-
-    return () => clearTimeout(timeoutId);
-
-  }, [resolvedHospitalId, resolvedHospitalName, fetchHospitals, fetchMessages, fetchAgreements, isValidId]);
-
   const fetchHospitals = useCallback(async (hospitalId) => {
     try {
       
@@ -325,6 +283,47 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
       setAgreementsLoading(false);
     }
   }, [baseUrl, isValidId]);
+
+  // Main data-loading effect. Lives below the fetch callbacks' definitions —
+  // listing them in deps earlier than their const definitions is a TDZ crash.
+  useEffect(() => {
+    if (!isValidId(resolvedHospitalId)) {
+      console.error('[HospitalCommunications] No hospital ID provided');
+      setError('Hospital ID is missing. Please ensure you are logged in.');
+      setLoading(false);
+      return;
+    }
+
+    setError(null);
+    setWarning('');
+    setLoading(true);
+
+    // Create a timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      console.error('[HospitalCommunications] Request timeout after 10 seconds');
+      setError('Request timed out. Please check your connection and refresh.');
+      setLoading(false);
+    }, 10000);
+
+    // Fetch hospitals, messages and agreements in parallel
+    Promise.all([
+      fetchHospitals(resolvedHospitalId),
+      fetchMessages(resolvedHospitalId),
+      fetchAgreements(resolvedHospitalId)
+    ])
+    .then(() => {
+      clearTimeout(timeoutId);
+      setLoading(false);
+    })
+    .catch((err) => {
+      clearTimeout(timeoutId);
+      console.error('[HospitalCommunications] Error loading data:', err);
+      setError(`Failed to load communications data: ${err.message}`);
+      setLoading(false);
+    });
+
+    return () => clearTimeout(timeoutId);
+  }, [resolvedHospitalId, resolvedHospitalName, fetchHospitals, fetchMessages, fetchAgreements, isValidId]);
 
   const handleCreateAgreement = async () => {
     if (!agreementForm.partnerHospitalId) return;

@@ -17,14 +17,6 @@ const MyHospital = () => {
   const [newDoctor, setNewDoctor] = useState({ name: '', department: '', availability: true });
   const [newResource, setNewResource] = useState({ name: '', category: '', totalUnits: 0, availableUnits: 0, unit: 'units' });
 
-  // Fetch hospital details
-  useEffect(() => {
-    const run = async () => {
-      await fetchHospitalDetails();
-    };
-    run();
-  }, [user, fetchHospitalDetails]);
-
   const fetchHospitalDetails = useCallback(async () => {
     try {
       setLoading(true);
@@ -49,6 +41,15 @@ const MyHospital = () => {
       setLoading(false);
     }
   }, [user]);
+
+  // Fetch hospital details — lives below fetchHospitalDetails's definition
+  // (dep referenced earlier = TDZ crash).
+  useEffect(() => {
+    const run = async () => {
+      await fetchHospitalDetails();
+    };
+    run();
+  }, [user, fetchHospitalDetails]);
 
   const handleBedsChange = (e) => {
     const { name, value } = e.target;

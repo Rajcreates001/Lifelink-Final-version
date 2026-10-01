@@ -15,7 +15,7 @@ const FindHospitalScreen = ({ onBack, rightSlot }) => {
   const [aiRanked, setAiRanked] = useState([]);
 
   // Location denied/unsupported: stop the eternal "Loading..." and paint the
-  // preloaded nearby list (or mock fallback) instead.
+  // preloaded nearby list (or clearly-labelled demo fallback) instead.
   const setLocationStatusDenied = () => {
     setLoading(false);
     setHospitals((prev) => {
@@ -24,10 +24,7 @@ const FindHospitalScreen = ({ onBack, rightSlot }) => {
         id: item.id,
         name: item.name,
         distance_km: null,
-        beds_available: item.bedsAvailable,
-        beds_total: item.bedsAvailable + 40,
-        eta_seconds: null,
-        safety_score: Math.round(item.rating * 20),
+        isDemo: true,
       }));
     });
   };
@@ -73,16 +70,8 @@ const FindHospitalScreen = ({ onBack, rightSlot }) => {
         if (list.length) {
           setHospitals(list);
         } else {
-          const fallback = mockHospitals.slice(0, 6).map((item) => ({
-            id: item.id,
-            name: item.name,
-            distance_km: getDistanceKm(location.lat, location.lng, item.lat, item.lng),
-            beds_available: item.bedsAvailable,
-            beds_total: item.bedsAvailable + 40,
-            eta_seconds: Math.round((getDistanceKm(location.lat, location.lng, item.lat, item.lng) / 40) * 3600),
-            safety_score: Math.round(item.rating * 20),
-          }));
-          setHospitals(fallback);
+          // Never present placeholder listings as live availability.
+          setHospitals([]);
         }
       }
       setLoading(false);
@@ -171,7 +160,10 @@ const FindHospitalScreen = ({ onBack, rightSlot }) => {
           <p className="text-sm font-semibold text-slate-700">Nearest hospitals</p>
           {loading && <p className="text-xs text-slate-400 mt-2 animate-fade-in">Loading...</p>}
           {!loading && hospitals.length === 0 && (
-            <p className="text-xs text-slate-400 mt-2 animate-fade-in">No hospitals found nearby.</p>
+            <p className="text-xs text-slate-400 mt-2 animate-fade-in">No live hospital availability found nearby. Try again or enable precise location.</p>
+          )}
+          {hospitals.some((h) => h.isDemo) && (
+            <p className="text-[11px] text-amber-600 mt-2 animate-fade-in">Showing demo listings — enable location access for live bed availability.</p>
           )}
         </div>
         <div className="space-y-3">
@@ -179,12 +171,21 @@ const FindHospitalScreen = ({ onBack, rightSlot }) => {
             <MobileCard key={hospital.id} className="animate-fade-in-up" style={{ animationDelay: `${300 + index * 100}ms` }}>
               <div className="flex items-center justify-between">
                 <p className="font-semibold text-slate-900">{hospital.name}</p>
-                <span className="text-xs text-slate-500">{hospital.distance_km} km</span>
+                {hospital.isDemo ? (
+                  <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Demo</span>
+                ) : (
+                  <span className="text-xs text-slate-500">{hospital.distance_km} km</span>
+                )}
               </div>
-              <p className="text-xs text-slate-500 mt-1">Beds {hospital.beds_available}/{hospital.beds_total}</p>
-              <p className="text-xs text-slate-500">ETA {Math.round((hospital.eta_seconds || 0) / 60)} min</p>
-              <p className="text-xs text-slate-500">Readiness score {hospital.safety_score}</p>
-              <p className="text-xs text-slate-500">Rating {((hospital.safety_score || 80) / 20).toFixed(1)} ★</p>
+              {hospital.isDemo ? (
+                <p className="text-xs text-slate-400 mt-1">Demo listing — live availability unavailable.</p>
+              ) : (
+                <>
+                  {hospital.beds_available != null && <p className="text-xs text-slate-500 mt-1">Beds {hospital.beds_available}{hospital.beds_total != null ? `/${hospital.beds_total}` : ''}</p>}
+                  {hospital.eta_seconds != null && <p className="text-xs text-slate-500">ETA {Math.round(hospital.eta_seconds / 60)} min</p>}
+                  {hospital.safety_score != null && <p className="text-xs text-slate-500">Readiness score {hospital.safety_score}</p>}
+                </>
+              )}
               {aiRanked.length > 0 && aiRanked.some((item) => String(item.id) === String(hospital.id)) && (
                 <span className="inline-flex mt-2 text-[11px] bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full">AI recommended</span>
               )}

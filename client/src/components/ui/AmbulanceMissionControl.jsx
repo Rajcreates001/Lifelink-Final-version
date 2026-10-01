@@ -538,7 +538,12 @@ const AmbulanceMissionControl = ({ activeModule: externalModule }) => {
           apiFetch(`/api/ambulance/assignments${ambulanceId ? `?ambulance_id=${ambulanceId}` : ''}`, { method: 'GET' }),
         ]);
         const assignments = (assignmentsRes.data?.data || assignmentsRes.data || []);
-        const active = Array.isArray(assignments) ? assignments.find((a) => ['active', 'en route'].includes(String(a.status || '').toLowerCase())) || assignments[0] : null;
+        // Backend enriches each assignment with normalized_status — 'active'
+        // covers Assigned/assigned/enroute/en_route/responding etc. Only fall
+        // back to the newest record if none is in flight (so the panel always
+        // reflects the real mission, including a genuinely completed list).
+        const isActiveAssignment = (a) => String(a.normalized_status || a.status || '').toLowerCase() === 'active';
+        const active = Array.isArray(assignments) ? (assignments.find(isActiveAssignment) || null) : null;
 
         if (active && isActive) {
           // Build full data from real API response
@@ -552,15 +557,16 @@ const AmbulanceMissionControl = ({ activeModule: externalModule }) => {
             equipment: active.equipment || [],
           };
           const incidentData = {
-            label: active.emergencyType || active.type || 'Emergency call',
-            lat: active.incidentLat || active.pickupLat || 12.9763,
-            lng: active.incidentLng || active.pickupLng || 77.5929,
-            address: active.incidentAddress || active.pickupAddress || 'Location pending',
-            severity: active.priorityLevel || active.priority || active.severity || 'High',
+            label: active.emergencyType || active.sos_message || active.type || 'Emergency call',
+            lat: active.incidentLat ?? active.pickupLat ?? active.pickup?.lat ?? 12.9763,
+            lng: active.incidentLng ?? active.pickupLng ?? active.pickup?.lng ?? 77.5929,
+            address: active.incidentAddress || active.pickupAddress || active.pickup?.address || 'Location pending',
+            severity: active.severity || active.priorityLevel || active.priority || 'High',
             patientName: active.patient || active.patientName || 'Patient',
             age: active.patientAge || active.age || null,
-            gcs: active.gcs || null,
-            mechanism: active.emergencyType || active.type || 'Emergency',
+            gcs: active.gcs ?? null,
+            gcsSource: active.gcsSource || null,
+            mechanism: active.emergencyType || active.sos_message || active.type || 'Emergency',
           };
           const hospitalData = {
             label: active.hospitalName || active.destinationHospital || 'Nearest Hospital',
@@ -569,8 +575,8 @@ const AmbulanceMissionControl = ({ activeModule: externalModule }) => {
             address: active.hospitalAddress || '',
             icuBeds: active.icuBeds || 0,
             traumaReady: active.traumaReady || false,
-            distance: active.hospitalDistance || null,
-            eta: active.etaToHospital || null,
+            distance: active.hospitalDistance ?? active.distance_km ?? null,
+            eta: active.etaToHospital ?? active.eta_minutes ?? null,
           };
           setState((prev) => ({
             ...prev,
@@ -581,14 +587,14 @@ const AmbulanceMissionControl = ({ activeModule: externalModule }) => {
               hospital: hospitalData,
               toIncident: {
                 path: buildFallbackRoute(vehicleData, incidentData),
-                etaMinutes: active.etaToIncident || null,
-                distanceKm: active.distanceToIncident || null,
+                etaMinutes: active.etaToIncident ?? active.eta_minutes ?? null,
+                distanceKm: active.distanceToIncident ?? active.distance_km ?? null,
                 traffic: active.traffic || { level: 'Unknown', adjustedMinutes: null, baseMinutes: null },
               },
               toHospital: {
                 path: buildFallbackRoute(incidentData, hospitalData),
-                etaMinutes: active.etaToHospital || null,
-                distanceKm: active.hospitalDistance || null,
+                etaMinutes: active.etaToHospital ?? active.eta_minutes ?? null,
+                distanceKm: active.hospitalDistance ?? active.distance_km ?? null,
                 traffic: active.trafficToHospital || { level: 'Unknown', adjustedMinutes: null, baseMinutes: null },
               },
               patientStatus: active.priorityLevel || active.priority || 'Unknown',
@@ -613,15 +619,18 @@ const AmbulanceMissionControl = ({ activeModule: externalModule }) => {
   const toHospitalRoute = data.toHospital?.path || buildFallbackRoute(incident, hospital);
   const mapCenter = useMemo(() => (hasCoords(incident) ? [incident.lat, incident.lng] : DEFAULT_CENTER), [incident]);
 
-  // Compute KPIs
+  // Compute KPIs — real values with explicit '—' when genuinely unknown.
+  // The previous `${x || 44}`/`${x || 78}` fallbacks displayed plausible-looking
+  // fabricated telemetry (44 km/h, 100/78% fuel) when the API had no data.
+  const hasMission = Boolean(data.toIncident?.etaMinutes != null || data.toIncident?.distanceKm != null || data.toHospital?.etaMinutes != null);
   const kpis = useMemo(() => [
-    { key: 'eta_incident', label: 'ETA to Pickup', value: `${data.toIncident?.etaMinutes || 0} min`, icon: 'fa-clock', color: 'sky', trend: 0 },
-    { key: 'eta_hospital', label: 'ETA to Hospital', value: `${data.toHospital?.etaMinutes || 0} min`, icon: 'fa-hospital', color: 'amber', trend: -5 },
-    { key: 'speed', label: 'Current Speed', value: `${vehicle.speedKph || 44} km/h`, icon: 'fa-gauge-high', color: 'emerald', trend: 8 },
-    { key: 'distance', label: 'Total Distance', value: `${((data.toIncident?.distanceKm || 0) + (data.toHospital?.distanceKm || 0)).toFixed(1)} km`, icon: 'fa-route', color: 'indigo', trend: 0 },
-    { key: 'gcs', label: 'Patient GCS', value: `${incident.gcs || '--'}`, icon: 'fa-brain', color: 'violet', trend: -10 },
-    { key: 'fuel', label: 'Fuel Level', value: `${vehicle.fuelLevel || 78}%`, icon: 'fa-gas-pump', color: 'rose', trend: -15 },
-  ], [data, vehicle, incident]);
+    { key: 'eta_incident', label: 'ETA to Pickup', value: data.toIncident?.etaMinutes != null ? `${data.toIncident.etaMinutes} min` : '—', icon: 'fa-clock', color: 'sky', trend: 0 },
+    { key: 'eta_hospital', label: 'ETA to Hospital', value: data.toHospital?.etaMinutes != null ? `${data.toHospital.etaMinutes} min` : '—', icon: 'fa-hospital', color: 'amber', trend: -5 },
+    { key: 'speed', label: 'Current Speed', value: vehicle.speedKph ? `${vehicle.speedKph} km/h` : '—', icon: 'fa-gauge-high', color: 'emerald', trend: 0 },
+    { key: 'distance', label: 'Total Distance', value: hasMission ? `${((data.toIncident?.distanceKm || 0) + (data.toHospital?.distanceKm || 0)).toFixed(1)} km` : '—', icon: 'fa-route', color: 'indigo', trend: 0 },
+    { key: 'gcs', label: 'Patient GCS', value: incident.gcs != null ? `${incident.gcs}${incident.gcsSource === 'estimated' ? ' (est.)' : ''}` : '--', icon: 'fa-brain', color: 'violet', trend: 0 },
+    { key: 'fuel', label: 'Fuel Level', value: vehicle.fuelLevel != null ? `${vehicle.fuelLevel}%` : '—', icon: 'fa-gas-pump', color: 'rose', trend: 0 },
+  ], [data, vehicle, incident, hasMission]);
 
   // Insights
   const insights = useMemo(() => [

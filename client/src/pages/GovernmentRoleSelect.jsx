@@ -360,18 +360,21 @@ const GovernmentRoleSelect = () => {
   }, [allowSwitch, user?.subRole, user?.role, navigate]);
 
   // ─── Handle orgKey param — open login modal directly ──
+  // Guarded by `didInitRef` so the navigation it performs (replace to
+  // /government) cannot re-trigger this effect through a remount cycle.
+  const didInitRef = useRef(false);
   useEffect(() => {
+    if (didInitRef.current) return;
+    didInitRef.current = true;
     if (orgKey) {
       const org = ORGANIZATIONS.find((o) => o.key === orgKey);
       if (org) {
         setSelectedOrg({ ...org, _portal: 'government' });
         setAuthModalOrg(org);
         addToRecent(org);
-        // Clean the URL — replace /government/:orgKey with /government
-        navigate('/government', { replace: true });
-      } else {
-        navigate('/government', { replace: true });
       }
+      // Clean the URL — replace /government/:orgKey with /government
+      navigate('/government', { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run only on mount
   }, []); // Run only on mount
@@ -539,7 +542,7 @@ const GovernmentRoleSelect = () => {
                 <div>
                   <p className="text-[10px] font-bold text-amber-400 uppercase tracking-[0.15em]">Government of India</p>
                   <h1 className="text-2xl sm:text-3xl font-bold font-display tracking-tight">LifeLink National Emergency Platform</h1>
-                  <p className="text-sm text-slate-300/80 mt-1 max-w-2xl">AI-powered national emergency command workspace \u2014 unified coordination for disaster response, health surveillance, and cross-agency operations.</p>
+                  <p className="text-sm text-slate-300/80 mt-1 max-w-2xl">AI-powered national emergency command workspace — unified coordination for disaster response, health surveillance, and cross-agency operations.</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">

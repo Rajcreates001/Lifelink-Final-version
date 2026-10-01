@@ -1,4 +1,4 @@
-import React, { useState, useCallback, _useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { GovKPICard, GovStatusBadge, GovSectionHeader, GovModuleHero } from '../shared/GovernmentShared';
 import { DetailModal, Toast, AnimatedBarChart, AIExplainPanel } from '../shared/InteractiveComponents';
 import { apiFetch } from '../../../config/api';

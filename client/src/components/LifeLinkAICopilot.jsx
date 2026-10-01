@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { apiFetch, _getAuthToken } from '../config/api';
+import { apiFetch } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 
 /* ═══════════════════════════════════════════════════════════════════════

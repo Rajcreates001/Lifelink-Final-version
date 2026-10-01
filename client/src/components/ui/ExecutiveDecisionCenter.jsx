@@ -1,4 +1,4 @@
-import React, { useState, useRef, _useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 const decisionActions = [
   { icon: 'fa-bed', label: 'Reallocate beds', desc: 'Optimize bed distribution across departments', confidence: 0.92 },

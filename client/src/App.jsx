@@ -1,5 +1,5 @@
-import React, { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React, { Suspense, lazy, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth, getLoginRoute, getWorkspaceRoute } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { getAuthToken } from './config/api';
@@ -61,6 +61,34 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     return children;
 };
 
+// ── Portal workspace gate ─────────────────────────────────────
+// Hospital/Government are two-level portals: the main dashboard routes only
+// render when a sub-role (department/organization) is selected. Without this
+// gate the dashboard shells would mount with no department and immediately
+// navigate away — the classic cause of flicker and "Not Found" mid-login.
+const PortalDashboardGate = ({ portal, children }) => {
+    const { user } = useAuth();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        if (user?.role === portal && !user?.subRole) {
+            navigate(`/dashboard/${portal}/roles`, { replace: true });
+        }
+    }, [user?.role, user?.subRole, portal, navigate]);
+
+    if (user?.role === portal && !user?.subRole) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-50">
+                <div className="flex flex-col items-center gap-3">
+                    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-indigo-600"></div>
+                    <p className="text-sm text-slate-500 font-medium">Opening workspace...</p>
+                </div>
+            </div>
+        );
+    }
+    return children;
+};
+
 const DashboardRedirect = () => {
     const { user } = useAuth();
     // Use centralized getLoginRoute — single source of truth for sign-in landing
@@ -76,14 +104,46 @@ const WorkspaceRedirect = () => {
     // When there's no stored data at all, redirect to /login.
     let redirectRoute = '/login';
     try {
-        const stored = sessionStorage.getItem('lifelink_user') || localStorage.getItem('lifelink_user');
+        // sessionStorage ONLY. The localStorage fallback resurrected stale
+        // sessions from an older build: after a full logout the stored user
+        // reappeared here and getWorkspaceRoute bounced e.g. ambulance users
+        // to /ambulance (the role-selection page) instead of /login.
+        const stored = sessionStorage.getItem('lifelink_user');
         if (stored) {
             const lastUser = JSON.parse(stored);
-            // Use getWorkspaceRoute to find the correct gateway
-            redirectRoute = getWorkspaceRoute(lastUser);
+            // If a stale portal user has no subRole (post-logout), send them to
+            // the role selector — NOT the dashboard (which would bounce back).
+            if (lastUser?.role && !lastUser.subRole &&
+                ['hospital', 'government'].includes(String(lastUser.role).toLowerCase())) {
+                redirectRoute = `/dashboard/${String(lastUser.role).toLowerCase()}/roles`;
+            } else {
+                redirectRoute = getWorkspaceRoute(lastUser);
+            }
         }
     } catch { /* fall through */ }
     return <Navigate to={redirectRoute} replace />;
+};
+
+// ─── Post-logout history guard ─────────────────────────────────
+// After a full logout the app lands on /login. Browser Back must NOT walk the
+// user through the dead protected pages that preceded logout (it previously
+// surfaced the splash/landing, and from there a stale session could re-enter).
+// Rewriting the current history entry severs that dead tail.
+const HistoryGuard = () => {
+    const location = useLocation();
+    const navigate = useNavigate();
+    const { user } = useAuth();
+
+    useEffect(() => {
+        if (user) return; // only relevant once logged out
+        if (location.pathname === '/login' || location.pathname === '/signup') {
+            // `replace` rewrites /login over the last protected entry so Back
+            // from /login goes to the true start of history, not the splash.
+            navigate(location.pathname + location.search, { replace: true });
+        }
+    }, [user, location.pathname, location.search, navigate]);
+
+    return null;
 };
 
 // ... keep rest of App component as provided
@@ -104,11 +164,17 @@ const App = () => {
       <Router>
         <ErrorBoundary>
         <Suspense fallback={<PageLoader />}>
+                <HistoryGuard />
                 <Routes>
                     {/* Public Routes */}
                     <Route path="/" element={<LandingPage />} />
                     <Route path="/signup" element={<Signup />} />
                     <Route path="/login" element={<Login />} />
+
+                    {/* /ambulance role-selection page was removed (single
+                        ambulance login type — no sub-role selection needed).
+                        Old bookmarks redirect to login. */}
+                    <Route path="/ambulance" element={<Navigate to="/login" replace />} />
 
                     {/* Protected: Public User Dashboard */}
                     <Route
@@ -149,7 +215,9 @@ const App = () => {
                         path="/dashboard/hospital" 
                         element={
                             <ProtectedRoute allowedRoles={['hospital']}>
-                                <HospitalDashboard />
+                                <PortalDashboardGate portal="hospital">
+                                    <HospitalDashboard />
+                                </PortalDashboardGate>
                             </ProtectedRoute>
                         } 
                     />
@@ -167,7 +235,9 @@ const App = () => {
                         path="/dashboard/hospital/:module"
                         element={
                             <ProtectedRoute allowedRoles={['hospital']}>
-                                <HospitalDashboard />
+                                <PortalDashboardGate portal="hospital">
+                                    <HospitalDashboard />
+                                </PortalDashboardGate>
                             </ProtectedRoute>
                         }
                     />
@@ -177,7 +247,9 @@ const App = () => {
                         path="/dashboard/government" 
                         element={
                             <ProtectedRoute allowedRoles={['government']}>
-                                <GovernmentDashboard />
+                                <PortalDashboardGate portal="government">
+                                    <GovernmentDashboard />
+                                </PortalDashboardGate>
                             </ProtectedRoute>
                         } 
                     />
@@ -195,7 +267,9 @@ const App = () => {
                         path="/dashboard/government/:module"
                         element={
                             <ProtectedRoute allowedRoles={['government']}>
-                                <GovernmentDashboard />
+                                <PortalDashboardGate portal="government">
+                                    <GovernmentDashboard />
+                                </PortalDashboardGate>
                             </ProtectedRoute>
                         }
                     />

@@ -115,6 +115,8 @@ function useCountUp(target, duration = 1200) {
 }
 
 // ─── Evidence-Based Clinical Risk Model ─────────────────
+// ─── Local clinical fallback (same math the backend uses offline) ──
+// Used only when BOTH endpoints are unreachable; clearly labelled in the UI.
 const computeEvidenceBasedRisk = (fd) => {
   const age = Number(fd.age) || 45;
   const bmi = Number(fd.bmi) || 28.5;
@@ -198,24 +200,16 @@ const extractClinicalDataFromText = (text) => {
   };
 };
 
-const INITIAL_PRELOADED_RESULT = computeEvidenceBasedRisk({
-  age: '45',
-  bmi: '28.5',
-  blood_pressure: '140',
-  heart_rate: '75',
-  has_condition: '1',
-  lifestyle_factor: 'Sedentary',
-  symptoms: '',
-});
+const emptyResult = () => null;
 
-// ─── Main Component ─────────────────────────────────────
 const HealthRiskCalculator = () => {
   const { user } = useAuth();
   const [formData, setFormData] = useState({
-    age: '45', bmi: '28.5', blood_pressure: '140', heart_rate: '75',
-    has_condition: '1', lifestyle_factor: 'Sedentary', symptoms: ''
+    age: '', bmi: '', blood_pressure: '', heart_rate: '',
+    has_condition: '0', lifestyle_factor: 'Average', symptoms: ''
   });
-  const [result, setResult] = useState(INITIAL_PRELOADED_RESULT);
+  const [result, setResult] = useState(emptyResult);
+  const [prefillStatus, setPrefillStatus] = useState('');
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState([]);
   const [aiInsight, setAiInsight] = useState(null);
@@ -228,6 +222,7 @@ const HealthRiskCalculator = () => {
   const [voiceTranscript, setVoiceTranscript] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
   const [uploadStatus, setUploadStatus] = useState('');
+  const [uploadError, setUploadError] = useState('');
   const [reportAnalysis, setReportAnalysis] = useState(null);
   const [, setIsAnalyzingFile] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
@@ -237,13 +232,51 @@ const HealthRiskCalculator = () => {
 
   useEffect(() => {
     setMounted(true);
-    // NOTE: the fake-patient 'initialHealthRisk' preload was removed — the
-    // preload fired a health-risk prediction with fabricated vitals for every
-    // visitor, so joining it here displayed a score for a patient that does
-    // not exist. The first real calculation now runs when the user submits
-    // their own values via handleSubmit.
+    // NOTE: no fabricated patient is preloaded — the previous default
+    // (age 45, BP 140, existing condition) was invented data presented as the
+    // visitor's own assessment. The form starts empty; real profile data
+    // (below) and the user's own inputs drive every number shown.
     return () => { if (stepsTimerRef.current) clearTimeout(stepsTimerRef.current); };
   }, []);
+
+  // ─── Prefill from the user's REAL profile + latest saved vitals ─────
+  // The dashboard payload already contains healthRecords (age, bloodGroup,
+  // conditions) and latestVitals (heart_rate, blood_pressure, oxygen) —
+  // warmed by PublicDashboard's preload, so this paints instantly.
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    const prefill = async () => {
+      const notes = [];
+      try {
+        const res = await apiFetch(`/api/dashboard/public/${user.id}/full`, { method: 'GET' });
+        if (cancelled) return;
+        if (res.ok && res.data) {
+          const health = res.data.healthRecords || {};
+          const vitalsDoc = Array.isArray(res.data.latestVitals) ? res.data.latestVitals[0] : res.data.latestVitals;
+          const metrics = vitalsDoc?.metrics || {};
+          setFormData((prev) => {
+            const next = { ...prev };
+            if (health.age && !prev.age) next.age = String(health.age);
+            if (metrics.heart_rate && !prev.heart_rate) next.heart_rate = String(metrics.heart_rate);
+            if (metrics.blood_pressure) {
+              const bpStr = String(metrics.blood_pressure);
+              next.blood_pressure = bpStr.includes('/') ? bpStr.split('/')[0] : bpStr;
+            }
+            if (metrics.oxygen && !prev.oxygen) next.oxygen = String(metrics.oxygen);
+            const conditions = Array.isArray(health.conditions) ? health.conditions : [];
+            if (conditions.length && prev.has_condition === '0') next.has_condition = '1';
+            return next;
+          });
+          if (health.age) notes.push(`profile age ${health.age}`);
+          if (metrics.heart_rate) notes.push('latest vitals');
+        }
+      } catch { /* prefill is best-effort */ }
+      if (!cancelled) setPrefillStatus(notes.length ? `Pre-filled from your ${notes.join(' + ')}` : '');
+    };
+    prefill();
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   // ─── Speech Recognition Setup ─────────────────────────
   useEffect(() => {
@@ -312,11 +345,13 @@ const HealthRiskCalculator = () => {
   // ─── Computed Vitals ──────────────────────────────────
   const bmiCategory = useMemo(() => {
     const b = numeric(formData.bmi);
+    if (!b) return '—';
     if (b >= 30) return 'Obese'; if (b >= 25) return 'Overweight'; if (b >= 18.5) return 'Normal'; return 'Underweight';
   }, [formData.bmi]);
 
   const bpCategory = useMemo(() => {
     const bp = numeric(formData.blood_pressure);
+    if (!bp) return '—';
     if (bp >= 140) return 'High'; if (bp >= 120) return 'Elevated'; return 'Normal';
   }, [formData.blood_pressure]);
 
@@ -454,11 +489,31 @@ const HealthRiskCalculator = () => {
     finally { setAiLoading(false); }
   };
 
-  const handleSaveAssessment = () => {
+  const handleSaveAssessment = async () => {
     if (!result) return;
-    setSaveMessage('Assessment saved ✓');
-    setTimeout(() => setSaveMessage(''), 2000);
-    loadHistory();
+    setSaveMessage('Saving…');
+    const payload = {
+      ...formData,
+      user_id: user?.id || null,
+      risk_level: result.risk_level,
+      risk_score: result.risk_score ?? (result.risk_level === 'High' ? 78 : result.risk_level === 'Moderate' ? 45 : 22),
+    };
+    // Persist via the canonical prediction endpoint (it stores history +
+    // fires analytics). Fall back to the fast v2 route if unavailable.
+    let saved = false;
+    try {
+      const res = await apiFetch('/api/predict_health_risk', { method: 'POST', body: JSON.stringify(payload) });
+      saved = res.ok;
+    } catch { saved = false; }
+    if (!saved) {
+      try {
+        const res = await apiFetch('/v2/ml/health-risk', { method: 'POST', body: JSON.stringify(payload) });
+        saved = res.ok;
+      } catch { saved = false; }
+    }
+    setSaveMessage(saved ? 'Assessment saved ✓' : 'Save failed — check your connection');
+    if (saved) loadHistory();
+    setTimeout(() => setSaveMessage(''), 2500);
   };
 
   // ─── Voice Input ──────────────────────────────────────
@@ -497,6 +552,7 @@ const HealthRiskCalculator = () => {
     if (!file) return;
     setUploadedFile(file);
     setIsAnalyzingFile(true);
+    setUploadError('');
     setUploadStatus(`Analyzing ${file.name} with AI...`);
     setShowAiThinking(true);
     setActiveStep(0);
@@ -529,9 +585,26 @@ const HealthRiskCalculator = () => {
       let analysisData = null;
       if (res.ok && res.data && !res.data.error) {
         analysisData = res.data;
+      } else if (res.status === 422 && res.data) {
+        // Backend could not extract text (scanned/image upload without OCR).
+        // Show the real reason — never invent a clinical result.
+        const detail = typeof res.data.detail === 'string'
+          ? res.data.detail
+          : res.data.detail?.detail || res.data.detail?.error || 'Text extraction failed';
+        setUploadStatus('');
+        setUploadError(detail);
+        setReportAnalysis(null);
+        setShowAiThinking(false);
+        return;
       } else {
-        // Resilient client-side clinical extractor fallback
-        analysisData = extractClinicalDataFromText(extractedText || file.name);
+        const msg = (typeof res.data?.detail === 'string' && res.data.detail)
+          || res.data?.error
+          || `Analysis service unavailable (HTTP ${res.status}).`;
+        setUploadStatus('');
+        setUploadError(msg);
+        setReportAnalysis(null);
+        setShowAiThinking(false);
+        return;
       }
 
       // Auto-populate vitals and form fields
@@ -551,6 +624,7 @@ const HealthRiskCalculator = () => {
       setFormData(updatedForm);
       setReportAnalysis(analysisData);
       setUploadStatus(`Parsed ${file.name} successfully ✓`);
+      setUploadError('');
 
       // Update AI Risk calculation with newly extracted vitals
       if (analysisData.risk_score) {
@@ -560,11 +634,15 @@ const HealthRiskCalculator = () => {
       }
       setActiveStep(ANALYSIS_STEPS.length - 1);
     } catch (err) {
-      const fallbackAnalysis = extractClinicalDataFromText(extractedText || file.name);
-      setReportAnalysis(fallbackAnalysis);
-      setUploadStatus(`Processed ${file.name} (heuristic extraction) ✓`);
-      setResult(computeEvidenceBasedRisk(formData));
-      setActiveStep(ANALYSIS_STEPS.length - 1);
+      // Network/timeout — say so. A silent fake analysis is worse than an error.
+      const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+      setUploadStatus('');
+      setUploadError(offline
+        ? 'You appear to be offline — analysis needs a connection.'
+        : `Could not analyze ${file.name}: ${err?.message || 'request failed'}. You can paste the report text instead.`);
+      setReportAnalysis(null);
+      setShowAiThinking(false);
+      setActiveStep(-1);
     } finally {
       setIsAnalyzingFile(false);
     }
@@ -623,11 +701,16 @@ const HealthRiskCalculator = () => {
             </div>
           </div>
             <form onSubmit={handleSubmit}>
+                {prefillStatus && (
+                  <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-100 text-[10px] text-emerald-700 animate-fade-in">
+                    <i className="fas fa-wand-magic-sparkles" /> {prefillStatus}
+                  </div>
+                )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <LabeledInput label="Age" name="age" type="number" placeholder="45" icon="fa-calendar" value={formData.age} onChange={handleChange} hint="Years" aiComment={numeric(formData.age) >= 60 ? 'Above 60 — monitor closely' : ''} />
-                <LabeledInput label="BMI" name="bmi" type="number" placeholder="28.5" icon="fa-weight" value={formData.bmi} onChange={handleChange} hint="18.5-24.9" aiComment={bmiComment} />
-                <LabeledInput label="Systolic BP" name="blood_pressure" type="number" placeholder="120" icon="fa-heartbeat" value={formData.blood_pressure} onChange={handleChange} hint="<120 mmHg" aiComment={bpComment} />
-                <LabeledInput label="Heart Rate" name="heart_rate" type="number" placeholder="75" icon="fa-heart" value={formData.heart_rate} onChange={handleChange} hint="60-100 BPM" aiComment={hrComment} />
+                <LabeledInput label="Age" name="age" type="number" placeholder="e.g. 45" icon="fa-calendar" value={formData.age} onChange={handleChange} hint="Years" aiComment={numeric(formData.age) >= 60 ? 'Above 60 — monitor closely' : ''} />
+                <LabeledInput label="BMI" name="bmi" type="number" placeholder="e.g. 24.5" icon="fa-weight" value={formData.bmi} onChange={handleChange} hint="18.5-24.9" aiComment={bmiComment} />
+                <LabeledInput label="Systolic BP" name="blood_pressure" type="number" placeholder="e.g. 120" icon="fa-heartbeat" value={formData.blood_pressure} onChange={handleChange} hint="<120 mmHg" aiComment={bpComment} />
+                <LabeledInput label="Heart Rate" name="heart_rate" type="number" placeholder="e.g. 75" icon="fa-heart" value={formData.heart_rate} onChange={handleChange} hint="60-100 BPM" aiComment={hrComment} />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                 <div className="p-4 rounded-xl" style={{ backgroundColor: 'rgba(255,255,255,0.6)', border: '1px solid rgba(0,0,0,0.06)' }}>
@@ -673,6 +756,7 @@ const HealthRiskCalculator = () => {
                   <input type="file" accept=".pdf,.jpg,.jpeg,.png,.dcm" onChange={handleFileUpload} className="hidden" />
                 </label>
                 {uploadStatus && <p className="text-[10px] text-gray-500 mt-1.5 flex items-center gap-1"><i className="fas fa-circle-check text-emerald-400" /> {uploadStatus}</p>}
+                {uploadError && <p className="text-[10px] text-red-600 mt-1.5 flex items-start gap-1 animate-fade-in"><i className="fas fa-circle-exclamation mt-0.5" /> <span>{uploadError}</span></p>}
                 {reportAnalysis && (
                   <div className="mt-3 p-4 rounded-xl bg-gradient-to-br from-indigo-50/90 to-blue-50/90 border border-indigo-200/80 shadow-sm animate-fade-in">
                     <div className="flex items-center justify-between mb-2">

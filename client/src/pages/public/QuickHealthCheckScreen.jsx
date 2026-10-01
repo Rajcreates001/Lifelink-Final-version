@@ -3,15 +3,13 @@ import { apiFetch } from '../../config/api';
 import MobileCard from '../../components/ui/MobileCard';
 import PublicShell from './PublicShell';
 
-const PRELOADED_QUICK_CHECK = {
-  risk_level: 'Low',
-  risk_score: 22,
-  explanation: 'Baseline vitals (HR: 76 bpm, BP: 120/80 mmHg, SpO2: 98%) are well within healthy physiological ranges.',
-};
-
 const QuickHealthCheckScreen = ({ user, onBack, rightSlot }) => {
-  const [form, setForm] = useState({ heart_rate: '76', blood_pressure: '120/80', oxygen: '98', symptoms: 'Mild fatigue' });
-  const [result, setResult] = useState(PRELOADED_QUICK_CHECK);
+  // No fabricated baseline: the old PRELOADED_QUICK_CHECK showed "Low risk, 22/100"
+  // before the user entered anything — invented data presented as a real result.
+  // The card renders only after the user checks their risk or uploads a report.
+  const [form, setForm] = useState({ heart_rate: '', blood_pressure: '', oxygen: '', symptoms: '' });
+  const [result, setResult] = useState(null);
+  const [prefillStatus, setPrefillStatus] = useState('');
   const [loading, setLoading] = useState(false);
   const [aiAdvice, setAiAdvice] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
@@ -29,6 +27,35 @@ const QuickHealthCheckScreen = ({ user, onBack, rightSlot }) => {
       }
     };
     loadHistory();
+  }, [user?.id]);
+
+  // ─── Prefill from the user's REAL latest saved vitals ──────
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    const prefill = async () => {
+      try {
+        const res = await apiFetch(`/api/dashboard/public/${user.id}/full`, { method: 'GET' });
+        if (cancelled || !res.ok || !res.data) return;
+        const vitalsDoc = Array.isArray(res.data.latestVitals) ? res.data.latestVitals[0] : res.data.latestVitals;
+        const metrics = vitalsDoc?.metrics || {};
+        const health = res.data.healthRecords || {};
+        setForm((prev) => ({
+          ...prev,
+          heart_rate: metrics.heart_rate ? String(metrics.heart_rate) : prev.heart_rate,
+          blood_pressure: metrics.blood_pressure
+            ? (String(metrics.blood_pressure).includes('/') ? metrics.blood_pressure : `${metrics.blood_pressure}/80`)
+            : prev.blood_pressure,
+          oxygen: metrics.oxygen ? String(metrics.oxygen) : prev.oxygen,
+          symptoms: Array.isArray(health.conditions) && health.conditions.length
+            ? health.conditions.join(', ')
+            : prev.symptoms,
+        }));
+        if (metrics.heart_rate) setPrefillStatus('Pre-filled from your latest vitals');
+      } catch { /* prefill is best-effort */ }
+    };
+    prefill();
+    return () => { cancelled = true; };
   }, [user?.id]);
 
   const handleSubmit = async () => {
@@ -102,8 +129,13 @@ const QuickHealthCheckScreen = ({ user, onBack, rightSlot }) => {
         const fd = new FormData();
         fd.append('file', file);
         if (user?.id) fd.append('user_id', user.id);
-        const res = await apiFetch('/api/analyze_report_file', { method: 'POST', body: fd, timeoutMs: 30000 });
-        if (res.ok && res.data) {
+        const res = await apiFetch('/api/analyze_report_file', { method: 'POST', body: fd, timeoutMs: 60000 });
+        if (!res.ok) {
+          // Real reason from the backend (OCR missing, unreadable file, too large…)
+          setDocError(res.error || `Could not analyze '${file.name}' (HTTP ${res.status}). Try a text-based PDF or paste the report text.`);
+          return;
+        }
+        if (res.data) {
           text = res.data.summary || file.name;
           const m = res.data.extracted_metrics || {};
           setForm((prev) => ({
@@ -132,7 +164,7 @@ const QuickHealthCheckScreen = ({ user, onBack, rightSlot }) => {
         }));
       }
     } catch {
-      setDocError('Report parsed using clinical heuristics.');
+      setDocError('Could not reach the analysis service. Check your connection and try again.');
     }
   };
 
@@ -148,12 +180,17 @@ const QuickHealthCheckScreen = ({ user, onBack, rightSlot }) => {
           </div>
         </MobileCard>
         <div className="grid grid-cols-1 gap-3 animate-fade-in-up delay-200">
-          <input className="rounded-xl border border-slate-200 p-3 text-sm transition-all duration-200 focus:ring-2 focus:ring-emerald-200" placeholder="Heart rate" value={form.heart_rate} onChange={(e) => setForm({ ...form, heart_rate: e.target.value })} />
-          <input className="rounded-xl border border-slate-200 p-3 text-sm transition-all duration-200 focus:ring-2 focus:ring-emerald-200" placeholder="Blood pressure" value={form.blood_pressure} onChange={(e) => setForm({ ...form, blood_pressure: e.target.value })} />
-          <input className="rounded-xl border border-slate-200 p-3 text-sm transition-all duration-200 focus:ring-2 focus:ring-emerald-200" placeholder="Oxygen %" value={form.oxygen} onChange={(e) => setForm({ ...form, oxygen: e.target.value })} />
-          <textarea className="rounded-xl border border-slate-200 p-3 text-sm transition-all duration-200 focus:ring-2 focus:ring-emerald-200" rows={3} placeholder="Symptoms" value={form.symptoms} onChange={(e) => setForm({ ...form, symptoms: e.target.value })} />
+          {prefillStatus && (
+            <p className="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2 flex items-center gap-1.5">
+              <i className="fas fa-wand-magic-sparkles" /> {prefillStatus}
+            </p>
+          )}
+          <input className="rounded-xl border border-slate-200 p-3 text-sm transition-all duration-200 focus:ring-2 focus:ring-emerald-200" placeholder="Heart rate (e.g. 76)" value={form.heart_rate} onChange={(e) => setForm({ ...form, heart_rate: e.target.value })} inputMode="numeric" />
+          <input className="rounded-xl border border-slate-200 p-3 text-sm transition-all duration-200 focus:ring-2 focus:ring-emerald-200" placeholder="Blood pressure (e.g. 120/80)" value={form.blood_pressure} onChange={(e) => setForm({ ...form, blood_pressure: e.target.value })} />
+          <input className="rounded-xl border border-slate-200 p-3 text-sm transition-all duration-200 focus:ring-2 focus:ring-emerald-200" placeholder="Oxygen % (e.g. 98)" value={form.oxygen} onChange={(e) => setForm({ ...form, oxygen: e.target.value })} inputMode="numeric" />
+          <textarea className="rounded-xl border border-slate-200 p-3 text-sm transition-all duration-200 focus:ring-2 focus:ring-emerald-200" rows={3} placeholder="Symptoms (optional)" value={form.symptoms} onChange={(e) => setForm({ ...form, symptoms: e.target.value })} />
         </div>
-        <button onClick={handleSubmit} disabled={loading} className="w-full rounded-2xl bg-emerald-600 text-white font-bold py-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg active:scale-95 disabled:opacity-60">
+        <button onClick={handleSubmit} disabled={loading || (!form.heart_rate && !form.blood_pressure && !form.oxygen && !form.symptoms)} className="w-full rounded-2xl bg-emerald-600 text-white font-bold py-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg active:scale-95 disabled:opacity-60">
           {loading ? 'Analyzing...' : 'Check Risk'}
         </button>
         {result && (

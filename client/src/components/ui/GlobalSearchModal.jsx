@@ -68,26 +68,9 @@ const GlobalSearchModal = ({ open, onClose, userRole }) => {
     }
   }, [open]);
 
-  // Keyboard navigation
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e) => {
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        setSelectedIndex((i) => Math.min(i + 1, results.length - 1));
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        setSelectedIndex((i) => Math.max(i - 1, 0));
-      } else if (e.key === 'Enter' && results[selectedIndex]) {
-        e.preventDefault();
-        handleSelectResult(results[selectedIndex]);
-      } else if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, [open, results, selectedIndex, onClose, handleSelectResult]);
+  // Keyboard navigation (effect lives below handleSelectResult's definition —
+  // referencing a const before initialization throws a TDZ ReferenceError
+  // during render, which crashed the whole desktop dashboard)
 
   // Scroll selected item into view
   useEffect(() => {
@@ -187,6 +170,27 @@ const GlobalSearchModal = ({ open, onClose, userRole }) => {
     }
     onClose();
   }, [query, recentSearches, navigate, onClose]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedIndex((i) => Math.min(i + 1, results.length - 1));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedIndex((i) => Math.max(i - 1, 0));
+      } else if (e.key === 'Enter' && results[selectedIndex]) {
+        e.preventDefault();
+        handleSelectResult(results[selectedIndex]);
+      } else if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [open, results, selectedIndex, onClose, handleSelectResult]);
 
   const handleQuickAction = (action) => {
     switch (action) {

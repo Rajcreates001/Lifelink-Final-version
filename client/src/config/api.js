@@ -148,7 +148,18 @@ export const apiFetch = async (path, options = {}) => {
 
       if (!res.ok) {
         // Surface the real backend error — never fabricate a success response.
-        const detail = data && typeof data === 'object' ? (data.detail || data.message || data.error) : undefined;
+        // Error payloads vary: FastAPI {detail: "..."}, structured upload
+        // errors {detail: {detail, filename, warnings}}, and custom handlers
+        // that wrap everything as {error: {error, detail, warnings}}.
+        const pickDetail = (v) => {
+          if (typeof v === 'string' && v.trim() !== '') return v;
+          if (v && typeof v === 'object') return v.detail || v.error || v.message;
+          return undefined;
+        };
+        let detail;
+        if (data && typeof data === 'object') {
+          detail = pickDetail(data.detail) || pickDetail(data.error) || pickDetail(data.message);
+        }
         const error = typeof detail === 'string' && detail.trim() !== ''
           ? detail
           : `Request failed with status ${res.status}${res.statusText ? ` (${res.statusText})` : ''}`;
@@ -172,7 +183,20 @@ export const apiFetch = async (path, options = {}) => {
 
       return payload;
     } catch (err) {
-      // Network failure, timeout, or aborted request — log it so it is never silent.
+      // Distinguish real failures from deliberate cancellation: an abort is
+      // normal control flow (unmount / tab switch / superseded request).
+      if (controller.signal.aborted && options.signal?.aborted) {
+        // Caller-initiated cancellation — rethrow quietly; callers guard on
+        // their own signal.aborted and must not see a fake network error.
+        throw err;
+      }
+      if (controller.signal.aborted || (err && err.name === 'AbortError')) {
+        const timeoutError = new Error(`Request timed out after ${timeoutMs}ms`);
+        timeoutError.name = 'TimeoutError';
+        console.error(`[apiFetch] ${method} ${path} → ${timeoutError.message}`);
+        throw timeoutError;
+      }
+      // Network failure — log it so it is never silent.
       console.error(`[apiFetch] ${method} ${path} → network error: ${err && err.message ? err.message : err}`);
       throw err;
     } finally {

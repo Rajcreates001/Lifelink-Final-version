@@ -24,7 +24,6 @@ import 'leaflet/dist/leaflet.css';
 import { apiFetch } from '../../../config/api';
 import { DashboardCard, LoadingSpinner } from '../../../components/Common';
 import HospitalMap from '../../../components/HospitalMap';
-import mockHospitals from '../../../data/mockHospitals';
 import { useCountUp } from '../hooks/useCountUp';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useSosPolling } from '../hooks/useSosPolling';
@@ -104,18 +103,35 @@ const HomeTab = ({ user, data, sosStats, fetchData, fetchNotifications }) => {
     return mapped.length > 0 ? mapped : fallbackIncidents;
   }, [data?.alerts]);
 
+  // Live hospital directory for the explorer map — real /v2/hospital/nearby
+  // data only. Until the first successful fetch the section shows its own
+  // loading/empty state instead of the previous hardcoded mock hospital list.
+  const [nearbyHospitals, setNearbyHospitals] = useState([]);
+  const [nearbyLoading, setNearbyLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    const loadNearby = async () => {
+      try {
+        const res = await apiFetch('/v2/hospital/nearby?lat=12.9716&lng=77.5946&limit=8&radius_km=100&include_eta=false', { method: 'GET', timeoutMs: 12000 });
+        if (!cancelled && res.ok) setNearbyHospitals(res.data?.hospitals || []);
+      } catch { /* map section renders its empty state */ }
+      finally { if (!cancelled) setNearbyLoading(false); }
+    };
+    loadNearby();
+    return () => { cancelled = true; };
+  }, []);
+
   const hospitalMarkers = useMemo(() => (
-    mockHospitals.map((h) => ({
+    nearbyHospitals.map((h) => ({
       id: h.id, name: h.name, location: h.location, lat: h.lat, lng: h.lng,
-      phone: h.phone, rating: h.rating, bedsAvailable: h.bedsAvailable, specialties: h.specialties || [],
+      phone: h.phone, rating: h.rating, bedsAvailable: h.available_beds, specialties: h.specialties || [],
     }))
-  ), []);
+  ), [nearbyHospitals]);
 
   const activityHistory = useMemo(() => data?.activityHistory || [], [data?.activityHistory]);
 
   // ─── Animated Counters ──────────────────────────────
   const [donorCount] = useCountUp(data?.allDonors?.length || 0, 1800, false);
-  const [helperCount] = useCountUp(Math.max(4, Math.round((data?.allDonors?.length || 8) * 0.4)), 1600, false);
   const [sosCount] = useCountUp(sosStats?.total_sos_calls || data?.alerts?.length || 0, 1400, false);
   const [requestCount] = useCountUp(data?.resourceRequests?.length || 0, 1200, false);
 
@@ -141,6 +157,9 @@ const HomeTab = ({ user, data, sosStats, fetchData, fetchNotifications }) => {
     try {
       const res = await apiFetch('/v2/public/sos', {
         method: 'POST',
+        // Cold start (hospital/ambulance seeding + notification fan-out) can
+        // exceed the 8s apiFetch default — match SmartSosScreen's 20s budget.
+        timeoutMs: 20000,
         body: JSON.stringify({ userId: user.id, message: messageToSend, latitude: sosLocation.lat, longitude: sosLocation.lng, fast: true }),
       });
       if (!res.ok) throw new Error(res.data?.message || res.data?.detail || 'Alert failed');
@@ -502,6 +521,11 @@ const HomeTab = ({ user, data, sosStats, fetchData, fetchNotifications }) => {
                       eventHandlers={{ click: () => setSelectedHospital(h) }}
                     />
                   ))}
+                  {nearbyLoading && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-[1px]">
+                      <p className="text-xs font-medium text-gray-500">Loading live hospital directory…</p>
+                    </div>
+                  )}
                 </MapContainer>
                 {/* Severity Legend */}
                 <div className="absolute bottom-3 left-3 z-10 flex items-center gap-3 px-3 py-1.5 rounded-lg bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm">
@@ -591,7 +615,6 @@ const HomeTab = ({ user, data, sosStats, fetchData, fetchNotifications }) => {
             <div className="grid grid-cols-2 gap-3">
               {[
                 { label: 'Available Donors', value: donorCount, icon: 'fa-droplet', color: '#DC2626', bg: 'rgba(220,38,38,0.06)' },
-                { label: 'Active Helpers', value: helperCount, icon: 'fa-hand-holding-heart', color: '#059669', bg: 'rgba(5,150,105,0.06)' },
                 { label: 'SOS This Week', value: sosCount, icon: 'fa-sos', color: '#F97316', bg: 'rgba(249,115,22,0.06)' },
                 { label: 'Requests Pending', value: requestCount, icon: 'fa-clock', color: '#7C3AED', bg: 'rgba(124,58,237,0.06)' },
               ].map((stat) => (

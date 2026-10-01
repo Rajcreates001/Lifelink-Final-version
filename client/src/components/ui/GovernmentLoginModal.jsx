@@ -107,8 +107,18 @@ const GovernmentLoginModal = ({ org, onClose, onSuccess }) => {
       if (!userData || !token) {
         throw new Error('Invalid server response');
       }
-      login(userData, token, refreshToken);
-      onSuccess(userData, token);
+      // The user logged in through THIS org's modal — bind the org as their
+      // subRole so the dashboard gate lets them straight in (the raw server
+      // response has no subRole and would bounce to the role selector).
+      const boundUser = {
+        ...userData,
+        role: 'government',
+        subRole: userData.subRole || org.key,
+        organization: userData.organization || org.title,
+        department: userData.department || org.desc,
+      };
+      login(boundUser, token, refreshToken);
+      onSuccess(boundUser, token);
       onClose();
     } catch (err) {
       // Fallback to demo login

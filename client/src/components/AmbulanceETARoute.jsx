@@ -182,14 +182,8 @@ const AmbulanceETARoute = ({ currentHospitalId, currentHospitalName, hospitalLoc
         }
     }, [ambulances]);
     // Fetch ambulances on mount and set up refresh interval
-    useEffect(() => {
-        const run = async () => {
-            await fetchAmbulances();
-        };
-        run();
-        const interval = setInterval(fetchAmbulances, 15000); // Refresh every 15 seconds
-        return () => clearInterval(interval);
-    }, [fetchAmbulances]);
+    // NOTE: the fetchAmbulances polling effect lives below its useCallback
+    // definition (referencing it earlier is a TDZ ReferenceError).
 
     useEffect(() => {
         if (!currentHospitalId) return;
@@ -273,6 +267,15 @@ const AmbulanceETARoute = ({ currentHospitalId, currentHospitalName, hospitalLoc
             console.error('Fetch error:', err.message);
         }
     }, [autoSelectedAmbulance]);
+
+    useEffect(() => {
+        const run = async () => {
+            await fetchAmbulances();
+        };
+        run();
+        const interval = setInterval(fetchAmbulances, 15000); // Refresh every 15 seconds
+        return () => clearInterval(interval);
+    }, [fetchAmbulances]);
 
     const handleAutoDetectLocation = () => {
         setLoading(true);

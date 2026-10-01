@@ -112,6 +112,7 @@ const HospitalRoleSelect = () => {
 
       const { ok, data } = await apiFetch('/v2/auth/select-role', {
         method: 'POST',
+        cache: 'no-store',
         body: JSON.stringify({ subRole }),
         headers: useToken ? { Authorization: `Bearer ${useToken}` } : {},
       });
@@ -122,6 +123,7 @@ const HospitalRoleSelect = () => {
           const dept = DEPARTMENTS.find((d) => d.key === subRole);
           setAuthModalDept(null);
           setTransitionDept(dept || { key: subRole, title: subRole, icon: 'fa-building' });
+          setLoading(false);
           return;
         }
         setError(data?.detail || data?.error || 'Authentication failed');
@@ -135,6 +137,7 @@ const HospitalRoleSelect = () => {
       const dept = DEPARTMENTS.find((d) => d.key === subRole);
       setAuthModalDept(null);
       setTransitionDept(dept || { key: subRole, title: subRole, icon: 'fa-building' });
+      setLoading(false);
     } catch (err) {
       setError('Connection error. Please try again.');
       setLoading(false);
@@ -143,7 +146,10 @@ const HospitalRoleSelect = () => {
 
   const handleTransitionComplete = useCallback(() => {
     setTransitionDept(null);
-    navigate('/dashboard/hospital');
+    // replace: the role-select page itself must not stay in history — Back
+    // from the dashboard would otherwise land here and immediately bounce the
+    // user forward again (or, post-logout, surface a stale transition).
+    navigate('/dashboard/hospital', { replace: true });
   }, [navigate]);
 
   const handleCardClick = useCallback((dept) => {

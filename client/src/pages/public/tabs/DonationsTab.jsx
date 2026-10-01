@@ -114,10 +114,12 @@ const DonationsTab = ({ user, data }) => {
       const res = await apiFetch('/api/predict_user_forecast', { method: 'POST', body: JSON.stringify(payload) });
       if (!res.ok) throw new Error('Forecast failed');
       const result = res.data || {};
-      let predicted = result.predicted_future_donations;
-      if (predicted === undefined || Number.isNaN(predicted)) predicted = 1;
-      setDonationForecast(Math.round(predicted));
-    } catch { setDonationForecast(1); }
+      const predicted = result.forecasted_donations_next_period ?? result.predicted_future_donations;
+      if (predicted === undefined || predicted === null || Number.isNaN(Number(predicted))) {
+        throw new Error(result.error || 'No forecast value returned');
+      }
+      setDonationForecast(Math.round(Number(predicted)));
+    } catch { setDonationForecast(null); }
     finally { setForecastLoading(false); }
   }, [donationCount]);
 
@@ -127,9 +129,11 @@ const DonationsTab = ({ user, data }) => {
       const payload = { sos_usage: alertCount, donations_made: donationCount, health_logs: 5 };
       const res = await apiFetch('/api/predict_user_cluster', { method: 'POST', body: JSON.stringify(payload) });
       if (!res.ok) throw new Error('Profile analysis failed');
-      setProfileCluster(res.data?.cluster_label || 'Standard User');
+      const cluster = res.data?.cluster_label;
+      if (!cluster) throw new Error(res.data?.error || 'No cluster label returned');
+      setProfileCluster(cluster);
       fetchForecast();
-    } catch { setProfileCluster('Standard User'); }
+    } catch { setProfileCluster(null); }
     finally { setIsAnalyzingProfile(false); }
   }, [alertCount, donationCount, fetchForecast]);
 

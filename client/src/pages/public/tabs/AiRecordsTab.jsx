@@ -74,103 +74,9 @@ History: Type 2 Diabetes Mellitus (5 years), Stage 1 Hypertension.
 Medication: Metformin 500mg twice daily, Amlodipine 5mg once daily.
 Assessment: Blood glucose poorly controlled; recommend HbA1c recheck in 3 months and lifestyle modification.`;
 
-const SAMPLE_REPORT_PRELOADED_RESULT = {
-  risk_level: 'High',
-  risk_score: 82,
-  primary_category: 'Endocrine & Cardiovascular',
-  detected_conditions: ['Diabetes Mellitus (Type 2)', 'Hypertension (Stage 1)', 'Hyperglycemia'],
-  summary: 'Patient exhibits sub-optimally managed Type 2 Diabetes (HbA1c 8.1%, Fasting Glucose 178 mg/dL) and elevated Stage 1 Hypertension (BP 150/95 mmHg). Elevated BMI of 28.4 compounds cardiovascular strain. Urgent glycemic adjustment and renal monitoring indicated.',
-  extracted_metrics: {
-    age: 45,
-    bmi: 28.4,
-    blood_pressure_systolic: 150,
-    blood_pressure_diastolic: 95,
-    heart_rate: 92,
-    oxygen: 97,
-    glucose_mg_dl: 178,
-    hba1c: 8.1,
-  },
-  risk_flags: [
-    'Elevated HbA1c (8.1% >= 6.5%) indicating uncontrolled diabetes',
-    'Systolic Blood Pressure 150 mmHg in Stage 2 range',
-    'Fasting Blood Glucose 178 mg/dL significantly above baseline',
-    'Elevated resting heart rate (92 bpm)',
-  ],
-  explanation: [
-    'Glycemic Markers: Fasting glucose 178 mg/dL with HbA1c 8.1% confirms sustained hyperglycemia.',
-    'Hemodynamic Status: Blood pressure 150/95 mmHg presents accelerated vascular and glomerular stress.',
-    'Metabolic Profile: BMI 28.4 and polyuria/fatigue symptoms warrant comprehensive lifestyle and therapy titration.',
-  ],
-  next_steps: [
-    'Titrate Metformin therapy and schedule follow-up HbA1c within 90 days',
-    'Add daily home blood pressure logging and dietary sodium restriction (< 2g/day)',
-    'Order complete metabolic panel and microalbuminuria screening',
-    'Consult certified endocrinology and diabetes care specialist',
-  ],
-  analysis_steps: [
-    'Clinical record parsed and authenticated',
-    'Extracted 8 biometric markers and lab indicators',
-    'Cross-referenced ICD-10 endocrine condition dictionary',
-    'Multimodal risk prediction model evaluated',
-    'Generated personalized clinical action plan',
-  ],
-  meta: {
-    confidence: 0.96,
-    reasoning: [
-      'HbA1c 8.1% indicates average blood sugar ~185 mg/dL over past 90 days.',
-      'Cardiometabolic co-morbidity (Hypertension + Diabetes) increases 10-year risk profile.',
-    ],
-  },
-};
-
-const generateReportAnalysisFallback = (text, filename) => {
-  const t = String(text || filename || '');
-  const bpMatch = t.match(/(?:bp|blood pressure)?\s*[:-]?\s*(\d{2,3})\s*\/\s*(\d{2,3})/i);
-  const hrMatch = t.match(/(?:hr|pulse|heart rate)\s*[:-]?\s*(\d{2,3})/i);
-  const bmiMatch = t.match(/\bbmi\s*[:-]?\s*(\d{1,2}(?:\.\d+)?)/i);
-  const glucoseMatch = t.match(/(?:glucose|sugar)\s*[:-]?\s*(\d{2,3})/i);
-  const hba1cMatch = t.match(/hba1c\s*[:-]?\s*(\d{1,2}(?:\.\d+)?)/i);
-
-  const detected_conditions = [];
-  if (/hypertens|high bp/i.test(t)) detected_conditions.push('Hypertension');
-  if (/diabet|glucose|sugar/i.test(t)) detected_conditions.push('Type 2 Diabetes');
-  if (/cardiac|heart|chest/i.test(t)) detected_conditions.push('Cardiovascular Assessment');
-  if (/asthma|copd|respirat|breath/i.test(t)) detected_conditions.push('Respiratory Evaluation');
-
-  return {
-    risk_level: bpMatch && Number(bpMatch[1]) >= 140 ? 'High' : 'Moderate',
-    risk_score: bpMatch && Number(bpMatch[1]) >= 140 ? 78 : 52,
-    primary_category: detected_conditions[0] || 'Internal Medicine',
-    detected_conditions: detected_conditions.length ? detected_conditions : ['Cardiometabolic Screening'],
-    summary: `Clinical record analysis completed for ${filename || 'provided text'}. Key vitals and biomarkers parsed successfully with risk estimation.`,
-    extracted_metrics: {
-      age: 45,
-      bmi: bmiMatch ? Number(bmiMatch[1]) : 28.4,
-      blood_pressure_systolic: bpMatch ? Number(bpMatch[1]) : 142,
-      blood_pressure_diastolic: bpMatch ? Number(bpMatch[2]) : 90,
-      heart_rate: hrMatch ? Number(hrMatch[1]) : 84,
-      glucose_mg_dl: glucoseMatch ? Number(glucoseMatch[1]) : 135,
-      hba1c: hba1cMatch ? Number(hba1cMatch[1]) : 6.8,
-    },
-    risk_flags: [
-      'Elevated hemodynamic readings',
-      'Metabolic monitoring indicated',
-    ],
-    explanation: [
-      'Record evaluation suggests continuous monitoring of vital trends.',
-      'Correlate clinical findings with comprehensive laboratory evaluation.',
-    ],
-    next_steps: [
-      'Review complete metabolic panel and lipid panel',
-      'Follow up with primary care physician within 2 weeks',
-    ],
-    meta: { confidence: 0.91 },
-  };
-};
-
 const AiRecordsTab = ({ user }) => {
-  const [reportText, setReportText] = useState(SAMPLE_REPORT);
-  const [reportResult, setReportResult] = useState(SAMPLE_REPORT_PRELOADED_RESULT);
+  const [reportText, setReportText] = useState('');
+  const [reportResult, setReportResult] = useState(null);
   const [analyzingReport, setAnalyzingReport] = useState(false);
   const [reportHistory, setReportHistory] = useState([]);
   const [reportFile, setReportFile] = useState(null);
@@ -235,15 +141,15 @@ const AiRecordsTab = ({ user }) => {
         res = await apiFetch('/api/analyze_report', { method: 'POST', body: JSON.stringify({ report_text: reportText, user_id: user?.id || null }), timeoutMs: 60000 });
       }
       if (!res.ok || res.data?.error) {
-        const fallback = generateReportAnalysisFallback(reportText, reportFile?.name);
-        setReportResult(fallback);
+        // Surface the real failure — a fabricated analysis is worse than an error.
+        // res.error is pre-flattened by apiFetch (handles object `detail`).
+        setReportResult({ error: res.error || `Analysis failed (HTTP ${res.status || 'error'}). Please try again.` });
       } else {
         setReportResult(res.data);
       }
       setActiveStep(ANALYSIS_STEPS.length - 1);
     } catch {
-      const fallback = generateReportAnalysisFallback(reportText, reportFile?.name);
-      setReportResult(fallback);
+      setReportResult({ error: 'Could not reach the analysis service. Check your connection and try again.' });
       setActiveStep(ANALYSIS_STEPS.length - 1);
     } finally {
       setAnalyzingReport(false);
@@ -256,42 +162,21 @@ const AiRecordsTab = ({ user }) => {
     }
   };
 
-  // ─── Simulated Disease Detection (from text or result) ──
+  // ─── Disease Detection (real conditions from the analysis API only) ──
   const detectedDiseases = useMemo(() => {
-    // Keyword-based deterministic matching from text
     const real = reportResult?.detected_conditions || [];
-    if (real.length > 0) {
-      return real.map((name, i) => {
-        const apiConf = reportResult?.disease_confidences?.[name];
-        return {
-          name,
-          confidence: apiConf || Math.min(95, 65 + name.length * 2),
-          color: COMMON_DISEASES[i % COMMON_DISEASES.length]?.color || '#6366F1',
-        };
-      });
-    }
-    if (!reportText && !reportResult) return [];
-    const text = (reportText || reportResult?.summary || '').toLowerCase();
-    const KEYWORD_MAP = {
-      Diabetes: ['diabetes', 'glucose', 'insulin', 'sugar', 'hba1c'],
-      Hypertension: ['hypertension', 'blood pressure', 'bp', 'systolic', 'diastolic'],
-      'Cardiac Risk': ['cardiac', 'heart', 'chest pain', 'palpitation', 'ecg', 'troponin'],
-      Respiratory: ['respiratory', 'lung', 'breathing', 'cough', 'pneumonia', 'asthma', 'copd'],
-      'Kidney Disease': ['kidney', 'renal', 'creatinine', 'egfr', 'dialysis', 'nephro'],
-      Liver: ['liver', 'hepatic', 'alt', 'ast', 'bilirubin', 'cirrhosis', 'jaundice'],
-      Stroke: ['stroke', 'cva', 'neurologic', 'paralysis', 'brain'],
-      Cancer: ['cancer', 'tumor', 'malignant', 'carcinoma', 'metastasis', 'biopsy'],
-    };
-    return COMMON_DISEASES.map((d) => {
-      const keywords = KEYWORD_MAP[d.name] || [d.name.toLowerCase()];
-      const matches = keywords.filter((kw) => text.includes(kw)).length;
-      const confidence = matches > 0 ? Math.min(96, 60 + matches * 10) : Math.floor(Math.random() * 8) + 3;
-      return { ...d, confidence };
-    }).filter((d) => d.confidence > 10).slice(0, 5);
-  }, [reportResult, reportText]);
+    if (real.length === 0) return [];
+    // Confidence is shown only when the model actually provides one —
+    // no invented percentages.
+    return real.map((name, i) => ({
+      name,
+      confidence: reportResult?.disease_confidences?.[name] ?? null,
+      color: COMMON_DISEASES[i % COMMON_DISEASES.length]?.color || '#6366F1',
+    }));
+  }, [reportResult]);
 
-  const riskLevel = reportResult?.risk_level || (detectedDiseases.some((d) => d.confidence > 85) ? 'Moderate' : 'Low');
-  const riskScore = reportResult?.risk_score || detectedDiseases.reduce((a, d) => a + (d.confidence || 0), 0) / Math.max(detectedDiseases.length, 1);
+  const riskLevel = reportResult?.risk_level || null;
+  const riskScore = reportResult?.risk_score ?? null;
   const sevColor = SEVERITY_COLORS[riskLevel] || SEVERITY_COLORS.Low;
 
   // ─── Analytics ─────────────────────────────────────
@@ -315,11 +200,11 @@ const AiRecordsTab = ({ user }) => {
         title="AI Medical Intelligence Center"
         subtitle="Upload any medical record — AI extracts, explains, predicts, and recommends."
         statusItems={[
-          { label: 'AI Online', value: '97.9%', color: '#10B981', pulse: true },
-          { label: 'OCR', value: 'Ready', color: '#6366F1' },
-          { label: 'NLP', value: 'Ready', color: '#2563EB' },
-          { label: 'Models', value: '7', color: '#8B5CF6' },
-          { label: 'Inference', value: '42ms', color: '#06B6D4' },
+          { label: 'Engine', value: 'LifeLink AI', color: '#10B981', pulse: true },
+          { label: 'Input', value: 'Text · PDF · Image', color: '#6366F1' },
+          { label: 'OCR', value: 'On upload', color: '#2563EB' },
+          { label: 'History', value: 'Per-user', color: '#8B5CF6' },
+          { label: 'Explainability', value: 'Included', color: '#06B6D4' },
         ]}
       />
 
@@ -356,6 +241,16 @@ const AiRecordsTab = ({ user }) => {
               <textarea value={reportText} onChange={(e) => setReportText(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-gray-200 text-xs h-24 resize-none focus:outline-none focus:ring-2 focus:ring-purple-200 placeholder:text-gray-300"
                 placeholder="Or paste report content here..." />
+              <div className="flex items-center justify-between mt-1.5">
+                <button type="button" onClick={() => { setReportText(SAMPLE_REPORT); setReportResult(null); }}
+                  className="text-[10px] text-purple-500 hover:text-purple-700 font-medium transition-colors">
+                  <i className="fas fa-wand-magic-sparkles mr-1" />Load sample report text
+                </button>
+                {(reportText || reportFile) && (
+                  <button type="button" onClick={() => { setReportText(''); setReportFile(null); setReportFileName(''); setReportResult(null); }}
+                    className="text-[10px] text-gray-400 hover:text-gray-600 font-medium transition-colors">Clear</button>
+                )}
+              </div>
               <button type="submit" disabled={analyzingReport}
                 className={`mt-3 w-full py-2.5 rounded-xl text-xs font-bold transition-all duration-200 active:scale-[0.98] ${analyzingReport ? 'bg-gradient-to-r from-purple-400 to-indigo-400 text-white cursor-not-allowed' : 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:shadow-[0_0_20px_rgba(139,92,246,0.25)] hover:-translate-y-0.5 shadow-md'}`}>
                 {analyzingReport ? <><i className="fas fa-spinner fa-spin mr-1" /> Analyzing...</> : <><i className="fas fa-robot mr-1" /> Analyze with AI</>}
@@ -434,15 +329,14 @@ const AiRecordsTab = ({ user }) => {
           )}
 
           {/* Results */}
-          {analyzingReport ? null : reportResult?.error ? (
-            <DashboardCard>
+          {analyzingReport ? null : reportResult?.error ? (            <DashboardCard>
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-4"><i className="fas fa-exclamation-triangle text-2xl text-red-500" /></div>
                 <p className="font-bold text-gray-800 text-sm mb-1">Analysis Failed</p>
                 <p className="text-xs text-red-500">{reportResult.error}</p>
               </div>
             </DashboardCard>
-          ) : reportResult || reportText ? (
+          ) : reportResult ? (
             <>
               {/* Disease Detection Cards */}
               {detectedDiseases.length > 0 && (
@@ -465,14 +359,14 @@ const AiRecordsTab = ({ user }) => {
                               <i className={`fas ${d.icon || 'fa-disease'} text-[10px]`} style={{ color: col }} />
                               <span className="text-[11px] font-semibold text-gray-700">{d.name}</span>
                             </span>
-                            <span className="text-[10px] font-bold" style={{ color: col }}>{d.confidence}%</span>
+                            <span className="text-[10px] font-bold" style={{ color: col }}>{d.confidence != null ? `${d.confidence}%` : '—'}</span>
                           </div>
                           <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${d.confidence}%`, backgroundColor: col }} />
+                            {d.confidence != null && <div className="h-full rounded-full transition-all duration-700" style={{ width: `${d.confidence}%`, backgroundColor: col }} />}
                           </div>
                           {selectedDisease === i && (
                             <div className="mt-2 pt-2 border-t border-gray-100 text-[9px] text-gray-500 animate-fade-in-up">
-                              <p>Confidence: {d.confidence}% — Further clinical correlation recommended.</p>
+                              <p>{d.confidence != null ? `Confidence: ${d.confidence}%` : 'Confidence not provided by the model'} — Further clinical correlation recommended.</p>
                             </div>
                           )}
                         </div>
@@ -491,9 +385,11 @@ const AiRecordsTab = ({ user }) => {
                     </div>
                     <p className="font-bold text-gray-800 text-xs">AI Assessment</p>
                   </div>
-                  <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: sevColor.bg, color: sevColor.color }}>
-                    {riskLevel} Risk • {Math.round(riskScore)}/100
-                  </span>
+                  {riskLevel && (
+                    <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: sevColor.bg, color: sevColor.color }}>
+                      {riskLevel} Risk{riskScore != null ? ` • ${Math.round(riskScore)}/100` : ''}
+                    </span>
+                  )}
                 </div>
                 {reportResult?.summary && (
                   <div className="p-3 rounded-xl bg-gray-50/70 border border-gray-100 mb-3">
@@ -660,8 +556,8 @@ const AiRecordsTab = ({ user }) => {
             </>
           ) : null}
 
-              {/* AI Summary Placeholder */}
-              {!analyzingReport && !reportResult && !reportText && !reportFile && (
+              {/* Empty state before the first real analysis */}
+              {!analyzingReport && !reportResult && (
                 <EmptyState
                   icon="fa-file-medical-alt"
                   title="AI Medical Intelligence"

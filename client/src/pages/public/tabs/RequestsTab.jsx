@@ -317,8 +317,6 @@ const RequestsTab = ({ user, onRequestSuccess }) => {
     return map[predictions?.severity] || '#6B7280';
   }, [predictions]);
 
-  const queueCount = useMemo(() => predictions ? Math.floor(Math.random() * 5) + 1 : 0, [predictions]);
-
   const acceptedTypes = REQUEST_TYPES.filter((t) => t.key === requestForm.type);
   const _currentType = acceptedTypes[0] || REQUEST_TYPES[0];
 
@@ -357,10 +355,8 @@ const RequestsTab = ({ user, onRequestSuccess }) => {
           <div className="flex flex-wrap gap-2">
             {[
               { label: 'AI Engine', value: 'Active', color: '#10B981', pulse: true },
-              { label: 'Accuracy', value: '97.8%', color: '#2563EB' },
-              { label: 'Model', value: 'ResNet v4', color: '#8B5CF6' },
+              { label: 'Severity Triage', value: 'Rule-based', color: '#8B5CF6' },
               { label: 'Network', value: 'Connected', color: '#06B6D4', pulse: true },
-              { label: 'Inference', value: '58ms', color: '#F97316' },
             ].map((s) => (
               <div key={s.label} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-white/5 backdrop-blur-sm border border-white/10">
                 {s.pulse && (
@@ -605,7 +601,6 @@ const RequestsTab = ({ user, onRequestSuccess }) => {
                 <div className="pt-2 border-t border-gray-100">
                   <div className="flex justify-between items-center text-[9px] text-gray-400">
                     <span>Model: LifeLink AI v4</span>
-                    <span>Queue: {queueCount} ahead</span>
                   </div>
                 </div>
               </div>

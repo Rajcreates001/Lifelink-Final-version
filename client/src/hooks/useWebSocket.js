@@ -19,7 +19,13 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 const WS_BASE = import.meta.env.VITE_API_URL
   ? import.meta.env.VITE_API_URL.replace(/^http/, 'ws')
   : typeof window !== 'undefined'
-    ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`
+    ? import.meta.env.DEV
+      // Dev server runs on :5000 while the API runs on :3001 — pointing the
+      // WebSocket at :5000 made every dashboard socket fail instantly and
+      // reattempt in a tight reconnect loop (console spam + constant
+      // connected/disconnected oscillation on "Live/Offline" indicators).
+      ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname}:3001`
+      : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`
     : 'ws://localhost:3001';
 
 const CHANNELS = {
@@ -35,9 +41,9 @@ const CHANNELS = {
  * with ±20% jitter to prevent thundering herd on reconnect.
  */
 const BASE_RECONNECT_MS = 1000;
-const MAX_RECONNECT_MS = 15000;
-const MAX_RECONNECT_ATTEMPTS = 20;
-const BACKOFF_MULTIPLIER = 1.5;
+const MAX_RECONNECT_MS = 30000;
+const MAX_RECONNECT_ATTEMPTS = 10;
+const BACKOFF_MULTIPLIER = 1.8;
 const JITTER_FACTOR = 0.2;
 
 function calculateBackoff(attempt) {
@@ -78,6 +84,19 @@ export function useWebSocket(channel, options = {}) {
   // useCallback referencing itself before declaration.
   const connectRef = useRef(null);
 
+  // Keep callbacks in refs so an unstable (inline) onMessage/onStatusChange
+  // from the consumer does NOT change `connect`'s identity. Previously every
+  // parent re-render recreated `connect` → the main effect re-ran → the socket
+  // was closed mid-CONNECTING ("WebSocket is closed before the connection is
+  // established" console spam) and a replacement connection was spawned,
+  // oscillating connected/disconnected indicators on every render.
+  const onMessageRef = useRef(onMessage);
+  const onStatusChangeRef = useRef(onStatusChange);
+  useEffect(() => {
+    onMessageRef.current = onMessage;
+    onStatusChangeRef.current = onStatusChange;
+  });
+
   const connect = useCallback(() => {
     if (!enabled || !CHANNELS[channel]) return;
 
@@ -100,7 +119,7 @@ export function useWebSocket(channel, options = {}) {
         setIsConnected(true);
         setError(null);
         reconnectAttemptRef.current = 0;
-        onStatusChange?.('connected');
+        onStatusChangeRef.current?.('connected');
       };
 
       ws.onmessage = (event) => {
@@ -110,24 +129,33 @@ export function useWebSocket(channel, options = {}) {
           // Ignore internal auth acknowledgment messages
           if (data.type === 'auth_ok') return;
           setLastMessage(data);
-          onMessage?.(data);
+          onMessageRef.current?.(data);
         } catch {
           // Plain text message
           setLastMessage({ text: event.data });
-          onMessage?.({ text: event.data });
+          onMessageRef.current?.({ text: event.data });
         }
       };
 
       ws.onerror = () => {
         if (!mountedRef.current) return;
         setError('WebSocket error');
-        onStatusChange?.('error');
+        onStatusChangeRef.current?.('error');
       };
 
-      ws.onclose = () => {
+      ws.onclose = (event) => {
         if (!mountedRef.current) return;
         setIsConnected(false);
-        onStatusChange?.('disconnected');
+        onStatusChangeRef.current?.('disconnected');
+
+        // A 4000-4999 close code means the server REJECTED us (missing/expired
+        // token, bad auth message). Retrying immediately just hammers the
+        // server in a tight connect/close loop — surface the error instead.
+        if (event.code >= 4000 && event.code < 5000) {
+          setError(`Realtime authentication failed (${event.code})`);
+          onStatusChangeRef.current?.('unauthorized');
+          return;
+        }
 
         // Exponential backoff reconnection with jitter
         if (reconnectAttemptRef.current < MAX_RECONNECT_ATTEMPTS) {
@@ -138,14 +166,16 @@ export function useWebSocket(channel, options = {}) {
         } else {
           console.error(`[WS] Max reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Giving up.`);
           setError('Max reconnection attempts reached');
-          onStatusChange?.('failed');
+          onStatusChangeRef.current?.('failed');
         }
       };
     } catch (err) {
       setError(`Connection failed: ${err.message}`);
-      onStatusChange?.('error');
+      onStatusChangeRef.current?.('error');
     }
-  }, [channel, enabled, onMessage, onStatusChange]);
+    // Only reconnect when the channel or enabled flag truly changes —
+    // callbacks are read through refs (see above).
+  }, [channel, enabled]);
 
   useEffect(() => {
     mountedRef.current = true;

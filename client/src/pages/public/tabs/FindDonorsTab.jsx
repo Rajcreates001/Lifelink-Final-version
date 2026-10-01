@@ -10,7 +10,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { apiFetch } from '../../../config/api';
 import { DashboardCard } from '../../../components/Common';
 import DonorIntelligenceModal from '../../../components/DonorIntelligenceModal';
-import mockDonors from '../../../data/mockDonors';
 
 // ─── Compatibility Charts ───────────────────────────────
 // Forward: which blood groups CAN each type DONATE TO?
@@ -102,8 +101,8 @@ const FindDonorsTab = ({ user, data }) => {
           timeoutMs: 15000,
         });
         if (res.ok) setDonorMatches(res.data?.donors || []);
-        else { setDonorMatchError('AI donor matching unavailable.'); setDonorMatches([]); }
-      } catch (err) { setDonorMatchError('AI donor matching unavailable.'); setDonorMatches([]); }
+        else { setDonorMatchError(res.error || res.data?.detail || 'AI donor matching unavailable.'); setDonorMatches([]); }
+      } catch (err) { setDonorMatchError(err?.message || 'AI donor matching unavailable.'); setDonorMatches([]); }
       finally { setDonorMatchLoading(false); }
     };
     fetchMatches();
@@ -124,8 +123,9 @@ const FindDonorsTab = ({ user, data }) => {
   }, []);
 
   // ─── Filtered & Sorted Donors ─────────────────────────
+  const usingMockDirectory = false; // demo directory removed — live data only
   const visibleDonors = useMemo(() => {
-    const source = donorMatches.length ? donorMatches : (data?.allDonors || mockDonors);
+    const source = donorMatches.length ? donorMatches : (data?.allDonors || []);
     const searchTerm = donorSearch.trim().toLowerCase();
     return source
       .filter((donor) => {
@@ -142,7 +142,7 @@ const FindDonorsTab = ({ user, data }) => {
         const sorters = {
           score_desc: () => (b.score || 0) - (a.score || 0),
           score_asc: () => (a.score || 0) - (b.score || 0),
-          distance_asc: () => (a.distance_km || 0) - (b.distance_km || 0),
+          distance_asc: () => (a.distance_km ?? Infinity) - (b.distance_km ?? Infinity),
           name_asc: () => (a.name || '').localeCompare(b.name || ''),
         };
         return (sorters[donorSortBy] || sorters.score_desc)();
@@ -161,7 +161,12 @@ const FindDonorsTab = ({ user, data }) => {
       const result = res.data || {};
       let score = result.probability || result.compatibility_score || 0;
       if (score <= 1 && score > 0) score *= 100;
-      if (score === 0) score = Math.floor(Math.random() * 30) + 70;
+      if (!score) {
+        // No computable score — surface that honestly instead of inventing
+        // a random 70-100% "match" that misleads the user.
+        setCompatResults((prev) => ({ ...prev, [cacheKey]: { loading: false, score: null, unavailable: true } }));
+        return;
+      }
       setCompatResults((prev) => ({ ...prev, [cacheKey]: { loading: false, score: Math.round(score) } }));
     } catch {
       setCompatResults((prev) => ({ ...prev, [cacheKey]: { loading: false, error: true } }));
@@ -266,9 +271,7 @@ const FindDonorsTab = ({ user, data }) => {
           <div className="flex flex-wrap gap-2">
             {[
               { label: 'AI Engine', value: 'Active', color: '#10B981', pulse: true },
-              { label: 'Dataset', value: '3.2M', color: '#6366F1' },
-              { label: 'Accuracy', value: '98.9%', color: '#2563EB' },
-              { label: 'Avg Match', value: '0.42s', color: '#F97316' },
+              { label: 'Scoring', value: 'Clinical Rules', color: '#6366F1' },
               { label: 'Response', value: 'Live', color: '#06B6D4', pulse: true },
             ].map((s) => (
               <div key={s.label} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-white/5 backdrop-blur-sm border border-white/10">
@@ -412,6 +415,11 @@ const FindDonorsTab = ({ user, data }) => {
               <i className="fas fa-location-dot" /> Enable location to see AI-ranked donor matching.
             </div>
           )}
+          {!usingMockDirectory && donorMatches.length === 0 && !data?.allDonors?.length && !donorMatchLoading && donorLocation && (
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-center gap-2">
+              <i className="fas fa-circle-info" /> No registered donors found yet — listings appear here as donors join with their profile and blood group.
+            </div>
+          )}
 
           {/* Donor Cards */}
           <div ref={listRef} className="space-y-3 max-h-[600px] overflow-y-auto custom-scrollbar-thin pr-1">
@@ -424,11 +432,16 @@ const FindDonorsTab = ({ user, data }) => {
             {visibleDonors.map((donor, idx) => {
               const donorId = donor.id || donor.user_id || donor._id || `idx-${idx}`;
               const compat = compatResults[String(donorId)];
-              const matchScore = compat?.score || donor.score || Math.floor(Math.random() * 25) + 70;
+              // Show only REAL scores (from the AI match endpoint or the
+              // compatibility check). The previous random 70-95% fallback
+              // fabricated a match quality that no model ever computed.
+              const hasScore = compat?.score != null || donor.score != null;
+              const matchScore = compat?.score ?? donor.score ?? 0;
               const sc = scoreColor(matchScore);
               const isSelected = selectedDonor === donor;
-              const bgIcon = donor.blood_group || donor.bloodGroup || 'O+';
-              const locationStr = typeof donor.location === 'string' ? donor.location : donor.location?.city || donor.location?.address || 'Unknown';
+              const bgIcon = donor.blood_group || donor.bloodGroup || null;
+              const locationStr = typeof donor.location === 'string' ? donor.location : donor.location?.city || donor.location?.address || null;
+              const hasDistance = donor.distance_km != null;
 
               return (
                 <div key={donorId} className={`relative rounded-xl transition-all duration-200 hover:-translate-y-0.5 ${isSelected ? 'shadow-lg ring-2 ring-rose-300 bg-white' : 'bg-white hover:shadow-md border border-gray-100'}`}
@@ -437,16 +450,22 @@ const FindDonorsTab = ({ user, data }) => {
                   {isSelected && <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-rose-50/50 to-transparent pointer-events-none" />}
 
                   <div className="relative z-10 p-4 flex items-start gap-4">
-                    {/* AI Match Score Ring */}
+                    {/* AI Match Score Ring — real scores only */}
                     <div className="relative w-14 h-14 shrink-0">
                       <svg className="w-full h-full -rotate-90" viewBox="0 0 48 48">
                         <circle cx="24" cy="24" r="20" fill="none" stroke="#F1F5F9" strokeWidth="3.5" />
-                        <circle cx="24" cy="24" r="20" fill="none" stroke={sc.color} strokeWidth="3.5" strokeLinecap="round"
-                          strokeDasharray={`${2 * Math.PI * 20}`} strokeDashoffset={`${2 * Math.PI * 20 * (1 - matchScore / 100)}`}
-                          style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(0.34, 1.56, 0.64, 1)' }} />
+                        {hasScore && (
+                          <circle cx="24" cy="24" r="20" fill="none" stroke={sc.color} strokeWidth="3.5" strokeLinecap="round"
+                            strokeDasharray={`${2 * Math.PI * 20}`} strokeDashoffset={`${2 * Math.PI * 20 * (1 - matchScore / 100)}`}
+                            style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(0.34, 1.56, 0.64, 1)' }} />
+                        )}
                       </svg>
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-[11px] font-bold" style={{ color: sc.color }}>{matchScore}%</span>
+                        {hasScore ? (
+                          <span className="text-[11px] font-bold" style={{ color: sc.color }}>{matchScore}%</span>
+                        ) : (
+                          <i className="fas fa-minus text-gray-300 text-[10px]" title="Score pending compatibility check" />
+                        )}
                       </div>
                       {/* Pulse ring overlay */}
                       {compat?.loading && (
@@ -458,10 +477,12 @@ const FindDonorsTab = ({ user, data }) => {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-bold text-gray-900 text-sm truncate">{donor.name || 'Anonymous Donor'}</p>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide"
-                          style={{ backgroundColor: '#FEE2E2', color: '#DC2626' }}>
-                          {bgIcon}
-                        </span>
+                        {bgIcon && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide"
+                            style={{ backgroundColor: '#FEE2E2', color: '#DC2626' }}>
+                            {bgIcon}
+                          </span>
+                        )}
                         {donor.verified && (
                           <span className="text-[9px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
                             <i className="fas fa-check-circle text-[8px]" /> Verified
@@ -470,8 +491,8 @@ const FindDonorsTab = ({ user, data }) => {
                       </div>
                       <p className="text-[11px] text-gray-500 mt-0.5">
                         <i className="fas fa-location-dot text-[8px] mr-1 text-gray-400" />
-                        {locationStr}
-                        {donor.distance_km !== undefined && <span className="text-gray-400 ml-1">· {donor.distance_km.toFixed(1)} km</span>}
+                        {locationStr || 'Location not shared'}
+                        {hasDistance && <span className="text-gray-400 ml-1">· {donor.distance_km.toFixed(1)} km</span>}
                       </p>
                       <div className="flex flex-wrap gap-2 mt-1.5 text-[10px] text-gray-500">
                         {donor.availability && (
@@ -501,17 +522,22 @@ const FindDonorsTab = ({ user, data }) => {
                     </div>
                   </div>
 
-                  {/* Compatibility bar (underneath) */}
+                  {/* Compatibility bar (underneath) — only when a score exists */}
                   <div className="px-4 pb-3 relative z-10">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[9px] text-gray-400 shrink-0">Match</span>
-                      <div className="flex-1 h-1 rounded-full bg-gray-100 overflow-hidden">
-                        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${matchScore}%`, backgroundColor: sc.color }} />
+                    {hasScore ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] text-gray-400 shrink-0">Match</span>
+                        <div className="flex-1 h-1 rounded-full bg-gray-100 overflow-hidden">
+                          <div className="h-full rounded-full transition-all duration-700" style={{ width: `${matchScore}%`, backgroundColor: sc.color }} />
+                        </div>
+                        <span className="text-[9px] font-medium" style={{ color: sc.color }}>{sc.text}</span>
                       </div>
-                      <span className="text-[9px] font-medium" style={{ color: sc.color }}>{sc.text}</span>
-                    </div>
+                    ) : (
+                      <p className="text-[9px] text-gray-400">Score unavailable — select the donor to run a compatibility check.</p>
+                    )}
                     {compat?.loading && <p className="text-[9px] text-indigo-400 mt-1 animate-pulse-slow">Checking compatibility...</p>}
                     {compat?.error && <p className="text-[9px] text-red-400 mt-1">Compatibility unavailable</p>}
+                    {compat?.unavailable && <p className="text-[9px] text-amber-500 mt-1">Blood types needed for a compatibility score.</p>}
                   </div>
 
                   {/* Selected: Notify Panel */}

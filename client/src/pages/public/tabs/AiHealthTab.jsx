@@ -10,9 +10,9 @@ import HealthRiskCalculator from '../../../components/HealthRiskCalculator';
 const STATUS_ITEMS = [
   { label: 'AI Engine', value: 'Active', color: '#10B981', pulse: true },
   { label: 'Model', value: 'LifeLink v3.2', color: '#6366F1' },
-  { label: 'Accuracy', value: '94.7%', color: '#2563EB' },
-  { label: 'Dataset', value: '3.8M Records', color: '#8B5CF6' },
-  { label: 'Inference', value: '62 ms', color: '#06B6D4' },
+  { label: 'Inputs', value: 'Vitals · Labs', color: '#2563EB' },
+  { label: 'History', value: 'Per-user', color: '#8B5CF6' },
+  { label: 'Data', value: 'Your records', color: '#06B6D4' },
 ];
 
 const AiHealthTab = () => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, _useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 const departments = [
   { id: 'emergency', label: 'Emergency', x: 15, y: 15, w: 30, h: 18, color: 'from-red-500 to-rose-600', load: 94, risk: 'high', beds: 18, wait: 12 },

@@ -10,7 +10,6 @@ import LifelinkAiChat from '../components/LifelinkAiChat';
 import NotificationHub from '../components/NotificationHub';
 import HospitalProfileModal from '../components/HospitalProfileModal';
 import { useWebSocket } from '../hooks/useWebSocket';
-import { useTranslation } from 'react-i18next';
 
 // ─── Lazy-loaded module components (code-split per module) ───
 const HospitalOverview = React.lazy(() => import('../components/HospitalOverview'));
@@ -142,7 +141,6 @@ const useIsDesktop = () => {
 
 const DesktopHospitalDashboard = () => {
     const { user } = useAuth();
-    const { t } = useTranslation();
 
     const navigate = useNavigate();
     const { module } = useParams();
@@ -150,17 +148,18 @@ const DesktopHospitalDashboard = () => {
     const [refreshKeys, setRefreshKeys] = useState({});
 
     const subRole = user?.subRole?.toLowerCase();
+    // NOTE: lookup is by subRole only — the stray `t` (i18n) index made module
+    // sets change when the language changed, remounting every module.
     const moduleSet = useMemo(() => {
-        const sets = hospitalModuleSets[t] || hospitalModuleSets;
-        return sets[subRole] || sets.default;
-    }, [subRole, t]);
+        return hospitalModuleSets[subRole] || hospitalModuleSets.default;
+    }, [subRole]);
     const allowedTabs = useMemo(() => moduleSet.map((item) => item.key), [moduleSet]);
     const defaultTab = allowedTabs[0] || 'overview';
     const moduleKey = (module || defaultTab).toLowerCase();
 
     useEffect(() => {
         if (user?.role === 'hospital' && !user?.subRole) {
-            navigate('/dashboard/hospital/roles');
+            navigate('/dashboard/hospital/roles', { replace: true });
         }
     }, [user?.role, user?.subRole, navigate]);
 
@@ -175,8 +174,8 @@ const DesktopHospitalDashboard = () => {
             return;
         }
 
-        const t = setTimeout(() => setActiveTab(moduleKey), 0);
-        return () => clearTimeout(t);
+        const timerId = setTimeout(() => setActiveTab(moduleKey), 0);
+        return () => clearTimeout(timerId);
     }, [module, moduleKey, allowedTabs, defaultTab, navigate]);
 
     useEffect(() => {
@@ -258,7 +257,7 @@ const DesktopHospitalDashboard = () => {
 };
 
 const MobileHospitalDashboard = () => {
-    const { user, logout } = useAuth();
+    const { user, performLogout } = useAuth();
 
     const navigate = useNavigate();
     const { module } = useParams();
@@ -287,7 +286,7 @@ const MobileHospitalDashboard = () => {
 
     useEffect(() => {
         if (user?.role === 'hospital' && !user?.subRole) {
-            navigate('/dashboard/hospital/roles');
+            navigate('/dashboard/hospital/roles', { replace: true });
         }
     }, [user?.role, user?.subRole, navigate]);
 
@@ -302,8 +301,8 @@ const MobileHospitalDashboard = () => {
             return;
         }
 
-        const t = setTimeout(() => setActiveTab(moduleKey), 0);
-        return () => clearTimeout(t);
+        const timerId = setTimeout(() => setActiveTab(moduleKey), 0);
+        return () => clearTimeout(timerId);
     }, [module, moduleKey, allowedTabs, defaultTab, navigate]);
 
     useEffect(() => {
@@ -365,13 +364,13 @@ const MobileHospitalDashboard = () => {
 
     const handleLogoutConfirm = () => {
         setShowLogoutConfirm(false);
-        logout();
-        const orgKey = user?.department_key || user?.subRole;
-        if (orgKey) {
-            navigate(`/hospital/${orgKey}`, { replace: true });
-        } else {
-            navigate('/hospital', { replace: true });
-        }
+        // performLogout is context-aware: clears the workspace but keeps the
+        // portal session, then returns the correct role-select route. The old
+        // logout() preserved the selected org and navigated to the org gateway
+        // — the gateway would instantly bounce the user back into the
+        // dashboard, making logout appear to "not work".
+        const redirectRoute = performLogout();
+        navigate(redirectRoute, { replace: true });
     };
 
     const activeLabel = moduleSet.find((item) => item.key === activeTab)?.label || 'Hospital';

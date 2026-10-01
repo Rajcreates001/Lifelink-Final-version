@@ -58,6 +58,8 @@ export const preloadPublicData = (userId = null) => {
   // Authenticated user-specific endpoints
   if (userId) {
     // Dashboard Home + User Activity (DonationsTab) + History timeline.
+    // Also powers the AI Health tab's real-data prefill (healthRecords +
+    // latestVitals are part of this payload).
     track('dashboard', () => apiFetch(`/api/dashboard/public/${userId}/full`, { method: 'GET', timeoutMs: 10000 }));
 
     // AI Records tab — document history.

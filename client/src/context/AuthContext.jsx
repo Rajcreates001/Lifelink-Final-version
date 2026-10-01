@@ -37,7 +37,9 @@ export const ROLE_ROUTES = {
   // Logout → Main Login /login.
   ambulance: {
     logoutRedirect: '/login',
-    workspaceSelect: '/ambulance',
+    // Ambulance role-selection page was removed; cross-role guards send
+    // logged-in ambulance users straight to their dashboard.
+    workspaceSelect: '/dashboard/ambulance',
     dashboard: '/dashboard/ambulance',
     label: 'Ambulance Command',
   },
@@ -182,12 +184,14 @@ export function getDashboardRoute(user) {
 
 /**
  * getWorkspaceRoute — Returns the workspace/role-selection route.
+ * Falls back to /login (not /government) so unknown roles never land
+ * on a portal they do not belong to.
  */
 export function getWorkspaceRoute(user) {
-  if (!user || !user.role) return '/government';
+  if (!user || !user.role) return '/login';
   const role = user.role.toLowerCase();
   const route = ROLE_ROUTES[role];
-  return route ? route.workspaceSelect : '/government';
+  return route ? route.workspaceSelect : '/login';
 }
 
 export const AuthProvider = ({ children }) => {
@@ -277,6 +281,10 @@ export const AuthProvider = ({ children }) => {
         sessionStorage.removeItem('lifelink_user');
         sessionStorage.removeItem('lifelink_token');
         sessionStorage.removeItem('lifelink_refresh_token');
+        // Kill the legacy localStorage copy too — WorkspaceRedirect used to
+        // read it as a fallback, resurrecting stale users after logout
+        // (e.g. ambulance users bounced to /ambulance instead of /login).
+        localStorage.removeItem('lifelink_user');
         setUser(null);
     }, []);
 
@@ -290,8 +298,11 @@ export const AuthProvider = ({ children }) => {
     const clearWorkspace = useCallback(() => {
         setUser((prev) => {
             if (!prev) return prev;
-            // Preserve portal identity but clear workspace context
-            const { _subRole, department_name: _deptName, organization: _org, workspaceId: _wsId, ...rest } = prev;
+            // Preserve portal identity but clear workspace context.
+            // CRITICAL: subRole MUST be cleared — role-select pages treat a
+            // stored subRole as "workspace still active" and bounce the user
+            // straight back into the dashboard, making logout impossible.
+            const { subRole: _subRole, department_name: _deptName, department_key: _deptKey, organization: _org, workspaceId: _wsId, ...rest } = prev;
             // Persist cleaned user (still authenticated at portal level)
             sessionStorage.setItem('lifelink_user', JSON.stringify(rest));
             return rest;
@@ -369,11 +380,14 @@ export const AuthProvider = ({ children }) => {
 
         const redirectRoute = getLogoutRoute(currentUser);
 
-        if (isPortal && currentUser?.subRole) {
-            // Portal role with active sub-role: clear workspace, keep portal auth
+        if (isPortal) {
+            // Portal role: clear workspace, keep portal auth.
+            // Clear the subRole even if it was somehow already absent so the
+            // role-select gate (user?.subRole redirect) cannot re-enter the
+            // dashboard after logout.
             clearWorkspace();
         } else {
-            // Standalone role or portal role without sub-role: full logout
+            // Standalone role (ambulance, police, fire, public, …): full logout
             clearAuth();
         }
 

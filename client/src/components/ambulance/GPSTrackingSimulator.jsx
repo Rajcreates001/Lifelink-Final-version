@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, _useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useApiData } from '../../hooks/useApiData';
 import { apiFetch } from '../../config/api';
 
@@ -19,19 +19,23 @@ const GPSTrackingSimulator = ({ __onAmbulanceSelect }) => {
   const [toast, setToast] = useState(null);
   const [mapView, setMapView] = useState('live'); // live, routes, stats
 
-  // Fetch simulation status
+  // Fetch simulation status — 15s poll (was 5s) and only while the tab is
+  // visible. The old tight poll made the Running/Stopped badge and the whole
+  // panel re-render every few seconds (constant "value flicker" + lag).
   const { data: statusData, loading: _statusLoading, refetch: refetchStatus } = useApiData(
     '/api/gps-tracking/status',
-    { pollInterval: 5000 }
+    { pollInterval: 15000 }
   );
 
-  // Fetch all ambulance positions
+  // Fetch all ambulance positions — 4s poll (was 2s), and it now only runs
+  // while the simulation is actually running (the enabled flag was already
+  // correct, but each tick used to flip `loading` and remount every marker).
   const { data: ambulancesData, loading: _ambulancesLoading, refetch: refetchAmbulances } = useApiData(
     '/api/gps-tracking/ambulances',
-    { pollInterval: 2000, enabled: simulationRunning }
+    { pollInterval: 4000, enabled: simulationRunning, silentPoll: true }
   );
 
-  // Fetch available routes
+  // Fetch available routes (static — no polling)
   const { data: routesData } = useApiData('/api/gps-tracking/routes');
 
   const showToast = useCallback((msg, type = 'success') => {
@@ -69,10 +73,18 @@ const GPSTrackingSimulator = ({ __onAmbulanceSelect }) => {
     }
   }, [showToast, refetchStatus]);
 
-  // Update simulation running state from status
+  // Update simulation running state from status.
+  // Guard against a flip-flop loop: this previously synced from EVERY status
+  // response, and a transient failure/empty response would set Running → the
+  // ambulances poll toggled → status refetched → Running again, making the
+  // badge and markers oscillate rapidly (the visible online/offline flicker).
+  // The setState is idempotent (no-op when unchanged) and deferred via
+  // setTimeout so a poll tick never causes a synchronous cascade.
   useEffect(() => {
-    if (statusData?.status !== 'running') return;
-    const t = setTimeout(() => setSimulationRunning(true), 0);
+    const isRunning = statusData?.status === 'running';
+    const t = setTimeout(() => {
+      setSimulationRunning((prev) => (prev === isRunning ? prev : isRunning));
+    }, 0);
     return () => clearTimeout(t);
   }, [statusData]);
 
