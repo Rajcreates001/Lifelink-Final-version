@@ -20,6 +20,13 @@ HOSPITAL_SUBROLES = {
     "icu",
     "radiology",
     "ot",
+    # Offered on the hospital role-select page (HospitalRoleSelect.jsx) and
+    # seeded as enterprise departments — must match or select-role rejects
+    # them with "Unsupported hospital sub-role".
+    "laboratory",
+    "pharmacy",
+    "blood_bank",
+    "admin",
 }
 
 GOVERNMENT_SUBROLES = {
@@ -90,6 +97,10 @@ HOSPITAL_SCOPES = {
     "icu": {"patients:read", "patients:write"},
     "radiology": {"imaging:read", "imaging:write"},
     "ot": {"surgery:read", "surgery:write"},
+    "laboratory": {"lab:read", "lab:write", "patients:read"},
+    "pharmacy": {"pharmacy:read", "pharmacy:write", "resources:read"},
+    "blood_bank": {"bloodbank:read", "bloodbank:write", "resources:read"},
+    "admin": {"hospital:admin", "users:create", "users:delete", "audit:view"},
 }
 
 GOVERNMENT_SCOPES = {

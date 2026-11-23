@@ -52,11 +52,11 @@ async def start_simulation(
     # Register default ambulances if none exist
     if not gps_simulator.ambulances:
         default_ambulances = [
-            ("AMB-001", "route_1"),
-            ("AMB-002", "route_2"),
-            ("AMB-003", "route_3"),
-            ("AMB-004", "route_1"),
-            ("AMB-005", "route_2"),
+            ("AMB-001", "route_mlr_1"),
+            ("AMB-002", "route_mlr_2"),
+            ("AMB-003", "route_mlr_3"),
+            ("AMB-004", "route_mlr_1"),
+            ("AMB-005", "route_mlr_2"),
         ]
         for amb_id, route in default_ambulances:
             gps_simulator.register_ambulance(amb_id, route)
@@ -97,10 +97,21 @@ async def get_all_ambulances():
 
 @router.get("/ambulance/{ambulance_id}")
 async def get_ambulance_position(ambulance_id: str):
-    """Get position of a specific ambulance."""
+    """Get position of a specific ambulance.
+
+    Any fleet vehicle can be tracked: an unregistered id is placed on a
+    Mangaluru corridor (chosen deterministically from the id) and the
+    simulation loop is started if it is not already running.
+    """
     position = gps_simulator.get_ambulance_position(ambulance_id)
     if not position:
-        raise HTTPException(status_code=404, detail=f"Ambulance {ambulance_id} not found")
+        import asyncio
+        import zlib
+        routes = ["route_mlr_1", "route_mlr_2", "route_mlr_3"]
+        gps_simulator.register_ambulance(ambulance_id, routes[zlib.crc32(ambulance_id.encode()) % len(routes)])
+        if not gps_simulator.running:
+            asyncio.create_task(gps_simulator.start_simulation())
+        position = gps_simulator.get_ambulance_position(ambulance_id)
     return position
 
 

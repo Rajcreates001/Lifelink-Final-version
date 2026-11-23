@@ -17,6 +17,9 @@ from app.core.celery_app import celery_app
 from app.core.auth import require_scopes
 from app.core.config import get_settings
 from app.core.dependencies import get_realtime_service
+import logging
+
+logger = logging.getLogger("lifelink.government_command")
 from app.core.rbac import AuthContext
 from app.db.database import require_db
 from app.db.models import (
@@ -669,23 +672,35 @@ async def trigger_disaster(payload: dict = Body(default_factory=dict), ctx: Auth
     db = require_db()
     lat = payload.get("lat")
     lng = payload.get("lng")
+    # Accept both the UI field names (disaster_type, location) and the older
+    # ones (type, zone) so a declared event keeps its real type and place.
+    location = payload.get("location") or payload.get("zone") or "Zone A"
     disaster = GovDisasterEvent(
         id=_uuid(),
-        disaster_type=payload.get("type", "manual"),
+        disaster_type=payload.get("disaster_type") or payload.get("type") or "manual",
         status="active",
-        zone=payload.get("zone", "Zone A"),
+        zone=str(location)[:120],
         severity=payload.get("severity", "High"),
         started_at=datetime.now(timezone.utc),
         peak_at=None,
         resolved_at=None,
         timeline={"events": ["manual_trigger"]},
-        meta={"reason": payload.get("reason", "manual"), "lat": lat, "lng": lng},
+        meta={"reason": payload.get("reason", "manual"), "lat": lat, "lng": lng, "location": location,
+              "declaredBy": ctx.user_id},
         created_at=datetime.now(timezone.utc)
     )
     async with db() as session:
         session.add(disaster)
         await session.commit()
-    return {"status": "ok", "disaster_id": disaster.id}
+    try:
+        await get_realtime_service().broadcast("government", {
+            "type": "disaster_declared",
+            "payload": {"id": disaster.id, "disaster_type": disaster.disaster_type, "zone": disaster.zone,
+                        "severity": disaster.severity, "started_at": disaster.started_at.isoformat()},
+        })
+    except Exception as exc:  # live push is best-effort; the record is already saved
+        logger.warning("disaster broadcast failed: %s", exc)
+    return {"status": "ok", "disaster_id": disaster.id, "zone": disaster.zone, "disaster_type": disaster.disaster_type}
 
 
 @router.post("/disaster/broadcast")
@@ -712,6 +727,7 @@ async def recent_disasters(ctx: AuthContext = Depends(require_scopes("dashboard:
                 "disaster_type": item.disaster_type,
                 "status": item.status,
                 "zone": item.zone,
+                "location": (item.meta or {}).get("location") or item.zone,
                 "severity": item.severity,
                 "lat": (item.meta or {}).get("lat"),
                 "lng": (item.meta or {}).get("lng"),

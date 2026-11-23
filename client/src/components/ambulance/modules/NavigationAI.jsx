@@ -1,15 +1,34 @@
-import React, { useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
+import React, { useEffect, useMemo } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 
 const ambulanceIcon = L.divIcon({ className: '', html: '<div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center shadow-lg animate-pulse border-2 border-white"><i class="fas fa-ambulance text-white text-sm"></i></div>', iconSize: [40, 40], iconAnchor: [20, 20] });
 const incidentIcon = L.divIcon({ className: '', html: '<div class="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center shadow-lg animate-ping border-2 border-white"><i class="fas fa-exclamation-triangle text-white text-sm"></i></div>', iconSize: [48, 48], iconAnchor: [24, 24] });
 const hospitalIcon = L.divIcon({ className: '', html: '<div class="w-10 h-10 bg-emerald-600 rounded-full flex items-center justify-center shadow-lg border-2 border-white"><i class="fas fa-hospital text-white text-sm"></i></div>', iconSize: [40, 40], iconAnchor: [20, 20] });
 
+// MapContainer only reads `center` once; re-fit when the mission data arrives.
+const FitToRoute = ({ points }) => {
+  const map = useMap();
+  const key = JSON.stringify(points);
+  useEffect(() => {
+    const valid = points.filter((p) => Array.isArray(p) && Number.isFinite(Number(p[0])) && Number.isFinite(Number(p[1])));
+    const fit = () => {
+      map.invalidateSize(); // the container is laid out after the map mounts
+      if (valid.length >= 2) map.fitBounds(valid, { padding: [40, 40], maxZoom: 15 });
+      else if (valid.length === 1) map.setView(valid[0], 14);
+    };
+    fit();
+    const t = setTimeout(fit, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- key captures the point values
+  }, [key, map]);
+  return null;
+};
+
 const NavigationAI = ({ vehicle, incident, hospital, toIncident, toHospital, onAction }) => {
   const mapCenter = useMemo(() => {
-    const lat = incident?.lat || 12.9716;
-    const lng = incident?.lng || 77.5946;
+    const lat = incident?.lat || 12.9141;
+    const lng = incident?.lng || 74.8560;
     return [lat, lng];
   }, [incident]);
 
@@ -20,8 +39,8 @@ const NavigationAI = ({ vehicle, incident, hospital, toIncident, toHospital, onA
     { label: 'Safest Route', eta: (toIncident?.etaMinutes || 7) + 5, distance: (toIncident?.distanceKm || 4.1) + 2.5, traffic: 'Light', risk: 'Very Low', confidence: 96, color: 'indigo' },
   ];
 
-  const toIncidentPath = toIncident?.path || [[vehicle?.lat || 12.9766, vehicle?.lng || 77.5713], [incident?.lat || 12.9763, incident?.lng || 77.5929]];
-  const toHospitalPath = toHospital?.path || [[incident?.lat || 12.9763, incident?.lng || 77.5929], [hospital?.lat || 12.9686, hospital?.lng || 77.5995]];
+  const toIncidentPath = toIncident?.path || [[vehicle?.lat || 12.9141, vehicle?.lng || 74.8560], [incident?.lat || 12.9172, incident?.lng || 74.8559]];
+  const toHospitalPath = toHospital?.path || [[incident?.lat || 12.9172, incident?.lng || 74.8559], [hospital?.lat || 12.8698, hospital?.lng || 74.8430]];
 
   return (
     <div className="space-y-4">
@@ -44,9 +63,10 @@ const NavigationAI = ({ vehicle, incident, hospital, toIncident, toHospital, onA
         <div className="h-[420px] w-full">
           <MapContainer center={mapCenter} zoom={14} className="h-full w-full" scrollWheelZoom={true}>
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap' />
-            {vehicle && <Marker position={[vehicle.lat || 12.9766, vehicle.lng || 77.5713]} icon={ambulanceIcon}><Popup><div className="text-xs"><p className="font-semibold">{vehicle.label || 'Ambulance A1'}</p><p>Speed: {vehicle.speedKph || 44} km/h</p></div></Popup></Marker>}
-            {incident && <Marker position={[incident.lat || 12.9763, incident.lng || 77.5929]} icon={incidentIcon}><Popup><div className="text-xs"><p className="font-semibold">{incident.label || 'Incident'}</p><p>{incident.address || ''}</p></div></Popup></Marker>}
-            {hospital && <Marker position={[hospital.lat || 12.9686, hospital.lng || 77.5995]} icon={hospitalIcon}><Popup><div className="text-xs"><p className="font-semibold">{hospital.label}</p><p>{hospital.address || ''}</p></div></Popup></Marker>}
+            <FitToRoute points={[...toIncidentPath, ...toHospitalPath]} />
+            {vehicle && <Marker position={[vehicle.lat || 12.9141, vehicle.lng || 74.8560]} icon={ambulanceIcon}><Popup><div className="text-xs"><p className="font-semibold">{vehicle.label || 'Ambulance A1'}</p><p>Speed: {vehicle.speedKph || 44} km/h</p></div></Popup></Marker>}
+            {incident && <Marker position={[incident.lat || 12.9172, incident.lng || 74.8559]} icon={incidentIcon}><Popup><div className="text-xs"><p className="font-semibold">{incident.label || 'Incident'}</p><p>{incident.address || ''}</p></div></Popup></Marker>}
+            {hospital && <Marker position={[hospital.lat || 12.8698, hospital.lng || 74.8430]} icon={hospitalIcon}><Popup><div className="text-xs"><p className="font-semibold">{hospital.label}</p><p>{hospital.address || ''}</p></div></Popup></Marker>}
             {toIncidentPath.length >= 2 && <Polyline positions={toIncidentPath} pathOptions={{ color: '#ef4444', weight: 4, opacity: 0.7, dashArray: '10, 6' }} />}
             {toHospitalPath.length >= 2 && <Polyline positions={toHospitalPath} pathOptions={{ color: '#0ea5e9', weight: 4, opacity: 0.7 }} />}
           </MapContainer>

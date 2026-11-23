@@ -69,13 +69,13 @@ const demoEmergencyStatus = () => ({
             id: 'demo-alert-1',
             message: 'Multi-vehicle collision reported',
             emergencyType: 'Critical',
-            locationDetails: 'Majestic, Bengaluru',
+            locationDetails: 'Hampankatta, Mangaluru',
         },
         {
             id: 'demo-alert-2',
             message: 'Severe asthma attack',
             emergencyType: 'High',
-            locationDetails: 'Cubbon Park, Bengaluru',
+            locationDetails: 'Kadri Park, Mangaluru',
         },
     ],
 });
@@ -101,12 +101,13 @@ const normalizeHistory = (items) => (items || []).map((item) => ({
     updatedAt: item.updatedAt || item.completedAt || item.createdAt,
 }));
 
-const DEFAULT_CENTER = [12.9716, 77.5946];
+// Service area: Karnataka (the deployment is centred on Mangaluru).
+const DEFAULT_CENTER = [12.9141, 74.8560];
 const BENGALURU_BOUNDS = {
-    latMin: 12.85,
-    latMax: 13.05,
-    lngMin: 77.45,
-    lngMax: 77.75,
+    latMin: 11.5,
+    latMax: 18.5,
+    lngMin: 74.0,
+    lngMax: 78.6,
 };
 
 const buildFallbackRoute = (start, end) => {
@@ -123,23 +124,23 @@ const buildFallbackRoute = (start, end) => {
 const demoEmergencyData = () => {
     const vehicle = {
         label: 'Ambulance A1',
-        lat: 12.9766,
-        lng: 77.5713,
-        address: 'Majestic Bus Station',
+        lat: 12.9141,
+        lng: 74.8560,
+        address: 'Hampankatta, Mangaluru',
         speedKph: 44,
     };
     const incident = {
         label: 'Incident: Multi-vehicle collision',
-        lat: 12.9763,
-        lng: 77.5929,
-        address: 'Cubbon Park Road',
+        lat: 12.8853,
+        lng: 74.8388,
+        address: 'Pumpwell Circle, NH-66',
         severity: 'Critical',
     };
     const hospital = {
-        label: "St. Martha's Hospital",
-        lat: 12.9686,
-        lng: 77.5995,
-        address: 'Nrupathunga Road',
+        label: 'Wenlock District Hospital',
+        lat: 12.8698,
+        lng: 74.8430,
+        address: 'Hampankatta, Mangaluru',
     };
 
     return {
@@ -208,8 +209,8 @@ const haversineKm = (start, end) => {
 const ensureBengaluruQuery = (value) => {
     if (!value || typeof value !== 'string') return value;
     const lowered = value.toLowerCase();
-    if (lowered.includes('bengaluru') || lowered.includes('bangalore')) return value;
-    return `${value}, Bengaluru`;
+    if (/(mangaluru|mangalore|karnataka|bengaluru|bangalore|udupi|mysuru)/.test(lowered)) return value;
+    return `${value}, Mangaluru`;
 };
 
 const trafficLevelFromRatio = (ratio) => {
@@ -337,7 +338,7 @@ export const AmbulanceEmergencyResponse = () => {
                 const hasAuth = Boolean(getAuthToken());
                 const [assignmentRes, ambulanceRes] = await Promise.all([
                     apiFetch(`/api/ambulance/assignments${ambulanceId ? `?ambulance_id=${ambulanceId}` : ''}`, { method: 'GET' }),
-                    apiFetch('/api/ambulance', { method: 'GET' }),
+                    apiFetch('/api/ambulance/', { method: 'GET' }),
                 ]);
                 const assignments = normalizeAssignments(assignmentRes.data?.data || assignmentRes.data || []);
                 const activeAssignment = assignments.find((item) => (
@@ -367,7 +368,7 @@ export const AmbulanceEmergencyResponse = () => {
                     label: activeAssignment?.emergencyType ? `Incident: ${activeAssignment.emergencyType}` : 'Emergency dispatch',
                     lat: pickupLoc.lat,
                     lng: pickupLoc.lng,
-                    address: pickupLoc.address || pickupAddress || 'Pickup location, Bengaluru',
+                    address: pickupLoc.address || pickupAddress || 'Pickup location, Mangaluru',
                     severity: activeAssignment?.priorityLevel || activeAssignment?.priority || 'High',
                 };
 
@@ -375,7 +376,7 @@ export const AmbulanceEmergencyResponse = () => {
                     label: destinationAddress || 'Nearest trauma center',
                     lat: destinationLoc.lat,
                     lng: destinationLoc.lng,
-                    address: destinationLoc.address || destinationAddress || 'Drop location, Bengaluru',
+                    address: destinationLoc.address || destinationAddress || 'Drop location, Mangaluru',
                 };
 
                 if (!hasCoords(incident) && incident.address) {

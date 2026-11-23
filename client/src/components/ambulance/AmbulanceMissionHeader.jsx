@@ -115,7 +115,7 @@ const AmbulanceMissionHeader = ({
           </div>
           <div className="flex items-center gap-1.5">
             <i className="fas fa-gauge-high text-emerald-500 text-[10px]" />
-            <span className="text-xs font-bold text-slate-800">{speedKph || '--'}<span className="text-[9px] font-medium text-slate-400 ml-0.5">km/h</span></span>
+            <span className="text-xs font-bold text-slate-800">{speedKph != null ? `${speedKph}` : '--'}<span className="text-[9px] font-medium text-slate-400 ml-0.5">km/h</span></span>
           </div>
         </div>
 

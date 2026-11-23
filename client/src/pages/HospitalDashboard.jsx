@@ -72,7 +72,7 @@ const hospitalModuleSets = {
             <LazyModule><AmbulanceETARoute
                 currentHospitalId={user?._id || user?.id}
                 currentHospitalName={user?.name}
-                hospitalLocation={{ lat: 12.9716, lng: 77.5946 }}
+                hospitalLocation={{ lat: 12.9141, lng: 74.8560 }}
             /></LazyModule>
         ) },
         { key: 'finance-overview', label: 'Finance Overview', icon: 'fa-coins', render: () => <LazyModule><HospitalFinanceOverview /></LazyModule> },
@@ -114,6 +114,27 @@ const hospitalModuleSets = {
         { key: 'surgery-scheduling', label: 'Surgery Scheduling', icon: 'fa-user-nurse', render: () => <LazyModule><HospitalOTSurgeryScheduling /></LazyModule> },
         { key: 'staff-allocation', label: 'Staff Allocation', icon: 'fa-users', render: () => <LazyModule><HospitalOTStaffAllocation /></LazyModule> },
         { key: 'equipment-tracking', label: 'Equipment Tracking', icon: 'fa-briefcase-medical', render: () => <LazyModule><HospitalResources /></LazyModule> },
+    ],
+    laboratory: [
+        { key: 'lab-requests', label: 'Lab Requests', icon: 'fa-flask', render: () => <LazyModule><HospitalRadiologyRequests /></LazyModule> },
+        { key: 'report-upload', label: 'Result Upload', icon: 'fa-file-upload', render: () => <LazyModule><HospitalRadiologyReportUpload /></LazyModule> },
+        { key: 'ai-insights', label: 'AI Insights', icon: 'fa-robot', render: () => <LazyModule><HospitalRadiologyAIInsights /></LazyModule> },
+    ],
+    pharmacy: [
+        { key: 'inventory', label: 'Medicine Inventory', icon: 'fa-tablets', render: () => <LazyModule><HospitalResources /></LazyModule> },
+        { key: 'global-overview', label: 'Global Overview', icon: 'fa-chart-pie', render: () => <LazyModule><HospitalOverview /></LazyModule> },
+    ],
+    blood_bank: [
+        { key: 'inventory', label: 'Blood Inventory', icon: 'fa-droplet', render: () => <LazyModule><HospitalResources /></LazyModule> },
+        { key: 'ai-risk-prediction', label: 'AI Insights', icon: 'fa-brain', render: () => <LazyModule><HospitalAnalytics /></LazyModule> },
+        { key: 'global-overview', label: 'Global Overview', icon: 'fa-chart-pie', render: () => <LazyModule><HospitalOverview /></LazyModule> },
+    ],
+    admin: [
+        { key: 'global-overview', label: 'Global Overview', icon: 'fa-chart-pie', render: () => <LazyModule><HospitalOverview /></LazyModule> },
+        { key: 'ai-insights', label: 'AI Insights', icon: 'fa-brain', render: () => <LazyModule><HospitalAnalytics /></LazyModule> },
+        { key: 'department-analytics', label: 'Department Analytics', icon: 'fa-chart-line', render: () => <LazyModule><HospitalDepartmentAnalytics /></LazyModule> },
+        { key: 'staff-management', label: 'Staff Management', icon: 'fa-user-nurse', render: () => <LazyModule><HospitalStaffManagement /></LazyModule> },
+        { key: 'reports', label: 'Reports', icon: 'fa-file-alt', render: () => <LazyModule><HospitalReports /></LazyModule> },
     ],
     default: [
         { key: 'global-overview', label: 'Global Overview', icon: 'fa-chart-pie', render: () => <LazyModule><HospitalOverview /></LazyModule> },
@@ -207,7 +228,7 @@ const DesktopHospitalDashboard = () => {
             }),
             apiFetch(`/api/hospital-ops/ceo/global-metrics?hospitalId=${hospitalId}`, { method: 'GET', ttlMs: 90000, staleWhileRevalidate: true }),
             apiFetch(`/api/hospital-ops/emergency/feed?hospitalId=${hospitalId}`, { method: 'GET', ttlMs: 90000, staleWhileRevalidate: true }),
-            apiFetch(`/api/hospital-ops/ceo/ai-insights?hospitalId=${hospitalId}`, { method: 'GET', ttlMs: 90000, staleWhileRevalidate: true }),
+            apiFetch(`/api/hospital-ops/ceo/ai-insights?hospitalId=${hospitalId}`, { method: 'GET', ttlMs: 90000, staleWhileRevalidate: true, timeoutMs: 20000 }),
         ];
 
         Promise.allSettled(insightCalls.concat(coreCalls));
@@ -334,7 +355,7 @@ const MobileHospitalDashboard = () => {
             }),
             apiFetch(`/api/hospital-ops/ceo/global-metrics?hospitalId=${hospitalId}`, { method: 'GET', ttlMs: 90000, staleWhileRevalidate: true }),
             apiFetch(`/api/hospital-ops/emergency/feed?hospitalId=${hospitalId}`, { method: 'GET', ttlMs: 90000, staleWhileRevalidate: true }),
-            apiFetch(`/api/hospital-ops/ceo/ai-insights?hospitalId=${hospitalId}`, { method: 'GET', ttlMs: 90000, staleWhileRevalidate: true }),
+            apiFetch(`/api/hospital-ops/ceo/ai-insights?hospitalId=${hospitalId}`, { method: 'GET', ttlMs: 90000, staleWhileRevalidate: true, timeoutMs: 20000 }),
         ];
 
         Promise.allSettled(insightCalls.concat(coreCalls));

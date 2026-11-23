@@ -68,7 +68,7 @@ const _normalizeHospitals = (items, limit = HOSPITAL_LIMIT) => {
 };
 
 const _pickCenter = (points) => {
-    if (!points || points.length === 0) return [12.9716, 77.5946];
+    if (!points || points.length === 0) return [12.9141, 74.8560];
     const lat = points[0].lat ?? points[0].latitude ?? 12.9716;
     const lng = points[0].lng ?? points[0].longitude ?? 77.5946;
     return [lat, lng];

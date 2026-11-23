@@ -62,6 +62,39 @@ class DonorNotifyRequest(BaseModel):
     requester_name: str | None = None
 
 
+def _sos_emergency_type(message: str | None) -> str:
+    text = (message or "").lower()
+    for words, kind in (
+        (("accident", "crash", "collision", "bike", "car ", "truck"), "road_accident"),
+        (("chest", "cardiac", "heart"), "cardiac"),
+        (("fire", "burn"), "fire"),
+        (("flood", "water", "drown"), "flood"),
+        (("breath", "covid", "fever", "oxygen"), "respiratory"),
+    ):
+        if any(w in text for w in words):
+            return kind
+    return "trauma"
+
+
+async def _record_gov_emergency(db, message: str | None, severity: str | None, lat: float, lng: float) -> None:
+    """Mirror a citizen SOS into the government live-monitoring feed."""
+    try:
+        from uuid import uuid4
+        from app.db.models import GovEmergency
+
+        now = datetime.now(timezone.utc)
+        async with db() as session:
+            session.add(GovEmergency(
+                id=uuid4().hex, emergency_type=_sos_emergency_type(message), severity=severity or "High",
+                latitude=lat, longitude=lng, status="active", hospital_id=None, ambulance_id=None,
+                occurred_at=now, created_at=now,
+            ))
+            await session.commit()
+    except Exception as exc:  # the SOS itself is already saved; the feed entry is best-effort
+        import logging
+        logging.getLogger("lifelink.public").warning("gov emergency mirror failed: %s", exc)
+
+
 def _parse_float(value: float, label: str) -> float:
     try:
         return float(value)
@@ -102,13 +135,18 @@ def _extract_coords(doc: dict[str, Any]) -> tuple[float, float] | None:
                 return float(doc[key_pair[0]]), float(doc[key_pair[1]])
             except (TypeError, ValueError):
                 return None
-    for container_key in ("coordinates", "location"):
+    # Ambulances store live position in currentLocation {latitude, longitude};
+    # hospitals use location {lat, lng}. Accept both shapes in every container.
+    for container_key in ("currentLocation", "coordinates", "location"):
         container = doc.get(container_key) or {}
-        if isinstance(container, dict) and "lat" in container and "lng" in container:
-            try:
-                return float(container["lat"]), float(container["lng"])
-            except (TypeError, ValueError):
-                return None
+        if not isinstance(container, dict):
+            continue
+        for a, b in (("lat", "lng"), ("latitude", "longitude")):
+            if a in container and b in container:
+                try:
+                    return float(container[a]), float(container[b])
+                except (TypeError, ValueError):
+                    break
     return None
 
 
@@ -422,10 +460,9 @@ async def create_sos(
     if cached_hospitals and isinstance(cached_hospitals.get("items"), list):
         hospitals = cached_hospitals["items"]
     else:
-        hospitals = await hospital_repo.find_many({}, limit=250)
-        if not hospitals:
-            await _seed_hospitals(db, latitude, longitude, count=25)
-            hospitals = await hospital_repo.find_many({}, limit=250)
+        # Consider every geocoded hospital (not an arbitrary first page), and never
+        # create synthetic hospitals from an SOS request.
+        hospitals = await hospital_repo.collection.find({"$or": [{"location.lat": {"$exists": True}}, {"lat": {"$exists": True}}, {"latitude": {"$exists": True}}]}).to_list(length=5000)
         cache.set("hospitals:all", {"items": hospitals}, ttl=300)
 
     candidates: list[dict[str, Any]] = []
@@ -504,10 +541,10 @@ async def create_sos(
         }
         enriched = [selected_hospital]
 
-    ambulances = await ambulance_repo.find_many({"status": {"$in": ["Available", "Idle"]}}, limit=200)
-    if not ambulances:
-        await _seed_ambulances(db, latitude, longitude, count=12)
-        ambulances = await ambulance_repo.find_many({"status": {"$in": ["Available", "Idle"]}}, limit=200)
+    # Status casing varies across seeders ("available" vs "Available"); match both.
+    ambulances = await ambulance_repo.collection.find(
+        {"status": {"$in": ["Available", "Idle", "available", "idle"]}}
+    ).to_list(length=5000)
     selected_ambulance = None
     best_distance = None
     for amb in ambulances:
@@ -534,6 +571,7 @@ async def create_sos(
         "updatedAt": datetime.now(timezone.utc),
     }
     created_alert = await alert_repo.insert_one(alert_doc)
+    await _record_gov_emergency(db, payload.message, severity_result.get("severity_level"), latitude, longitude)
     if ctx:
         await _log_activity(
             db,

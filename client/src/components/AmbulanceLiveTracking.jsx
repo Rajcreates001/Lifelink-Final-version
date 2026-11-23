@@ -51,22 +51,22 @@ const RecenterMap = ({ center, bounds }) => {
     return null;
 };
 
-const defaultCenter = [12.9716, 77.5946];
+const defaultCenter = [12.9141, 74.8560]; // Mangaluru
 
 const demoAmbulances = () => ([
     {
         ambulanceId: 'A1',
         status: 'en_route',
         currentLocation: {
-            latitude: 12.9716,
-            longitude: 77.5946,
-            address: 'Majestic, Bengaluru'
+            latitude: 12.9141,
+            longitude: 74.8560,
+            address: 'Hampankatta, Mangaluru'
         },
         activeRoute: {
             destinationLocation: {
-                latitude: 12.9784,
-                longitude: 77.6031,
-                address: "St. Martha's Hospital"
+                latitude: 12.8698,
+                longitude: 74.8430,
+                address: 'Wenlock Hospital, Mangaluru'
             }
         }
     },
@@ -74,18 +74,18 @@ const demoAmbulances = () => ([
         ambulanceId: 'A2',
         status: 'available',
         currentLocation: {
-            latitude: 12.9669,
-            longitude: 77.5865,
-            address: 'Shivajinagar, Bengaluru'
+            latitude: 12.8853,
+            longitude: 74.8388,
+            address: 'Pumpwell, Mangaluru'
         }
     },
     {
         ambulanceId: 'A3',
         status: 'at_location',
         currentLocation: {
-            latitude: 12.9812,
-            longitude: 77.5718,
-            address: 'Malleshwaram, Bengaluru'
+            latitude: 13.0068,
+            longitude: 74.7956,
+            address: 'Surathkal, Mangaluru'
         }
     }
 ]);
@@ -118,7 +118,7 @@ const AmbulanceLiveTracking = () => {
     useEffect(() => {
         const fetchInitial = async () => {
             try {
-                const res = await apiFetch('/api/ambulance', { method: 'GET' });
+                const res = await apiFetch('/api/ambulance/', { method: 'GET' });
                 const list = res.data?.data || res.data || [];
                 const normalized = Array.isArray(list) ? normalizeAmbulances(list) : [];
                 const hasCoords = normalized.some((item) => (

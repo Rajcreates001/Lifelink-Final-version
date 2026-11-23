@@ -549,6 +549,8 @@ const HealthRiskCalculator = () => {
   // ─── File Upload & AI Document Parsing ─────────────────
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
+    // Reset the input so choosing the same file again still triggers onChange.
+    if (e.target) e.target.value = '';
     if (!file) return;
     setUploadedFile(file);
     setIsAnalyzingFile(true);
@@ -614,12 +616,12 @@ const HealthRiskCalculator = () => {
       if (metrics.bmi) updatedForm.bmi = String(metrics.bmi);
       if (metrics.blood_pressure_systolic) updatedForm.blood_pressure = String(metrics.blood_pressure_systolic);
       if (metrics.heart_rate) updatedForm.heart_rate = String(metrics.heart_rate);
-      if (analysisData.detected_conditions && analysisData.detected_conditions.length > 0) {
-        updatedForm.has_condition = '1';
-        const condStr = analysisData.detected_conditions.join(', ');
-        updatedForm.symptoms = updatedForm.symptoms ? `${updatedForm.symptoms}, ${condStr}` : condStr;
-        setSymptomChips((prev) => Array.from(new Set([...prev, ...analysisData.detected_conditions])));
-      }
+      // Each upload describes a new report: replace (not append to) the
+      // previous report's conditions, or old findings leak into every result.
+      const newConditions = Array.isArray(analysisData.detected_conditions) ? analysisData.detected_conditions : [];
+      updatedForm.has_condition = newConditions.length > 0 ? '1' : '0';
+      updatedForm.symptoms = newConditions.join(', ');
+      setSymptomChips(newConditions);
 
       setFormData(updatedForm);
       setReportAnalysis(analysisData);

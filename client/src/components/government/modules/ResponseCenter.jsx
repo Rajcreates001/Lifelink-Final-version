@@ -4,24 +4,30 @@ import { DetailModal, ConfirmDialog, Toast, AnimatedBarChart, AIExplainPanel } f
 import { useApiData } from '../../../hooks/useApiData';
 import { apiFetch } from '../../../config/api';
 
+// useApiData already unwraps { data: [...] }; keep a stable transform identity.
+const toList = (d) => (Array.isArray(d) ? d : (d?.data || []));
+
 const ResponseCenter = () => {
   // Fetch real emergency data from API
   const { data: emergencyData, _loading } = useApiData(
-    '/v2/government/command/monitoring/feed',
-    { pollInterval: 30000, transform: (d) => d?.data || [] }
+    '/v2/government/monitoring/feed',
+    { pollInterval: 30000, transform: toList }
   );
 
   // Transform API data into mission format
+  const pretty = (t) => String(t || 'Emergency').split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  const where = (e) => e.zone || (Number.isFinite(Number(e.lat)) ? `${Number(e.lat).toFixed(3)}°N, ${Number(e.lng).toFixed(3)}°E` : 'Location pending');
+  const ago = (iso) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); };
   const apiMissions = (emergencyData || []).map((e, idx) => ({
     id: `M-${1000 + idx}`,
-    type: e.type || 'Emergency',
-    location: e.zone || 'Unknown Zone',
+    type: pretty(e.type),
+    location: where(e),
     priority: e.severity || 'Medium',
     agencies: ['NDRF', 'Police', 'Ambulance'],
     progress: Math.min(95, Math.max(10, 100 - idx * 15)),
     assigned: `Team ${['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo'][idx % 5]}`,
-    updated: `${idx * 5 + 2}m ago`,
-    details: `Emergency ${e.type} at ${e.zone}. Severity: ${e.severity}.`,
+    updated: e.occurred_at ? ago(e.occurred_at) : `${idx * 5 + 2}m ago`,
+    details: `${pretty(e.type)} at ${where(e)}. Severity: ${e.severity}.`,
   }));
 
   const fallbackMissions = [

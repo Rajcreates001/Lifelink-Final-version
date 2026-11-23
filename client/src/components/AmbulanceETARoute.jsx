@@ -228,7 +228,7 @@ const AmbulanceETARoute = ({ currentHospitalId, currentHospitalName, hospitalLoc
     const fetchAmbulances = useCallback(async () => {
         try {
             // Always fetch all ambulances (hospital filter handled on backend)
-            const response = await apiFetch('/api/ambulance', { method: 'GET' });
+            const response = await apiFetch('/api/ambulance/', { method: 'GET' });
             if (!response.ok) {
                 console.error('API Error:', response.status);
                 return; // Silently fail, don't set error repeatedly

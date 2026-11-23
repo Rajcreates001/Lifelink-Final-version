@@ -1,7 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { API_BASE_URL } from '../config/api';
+import { API_BASE_URL, getAuthToken } from '../config/api';
 import './HospitalCommunications.css';
+
+// Every hospital-communication route requires the session token.
+const authFetch = (url, options = {}) => {
+  const token = getAuthToken();
+  return fetch(url, {
+    ...options,
+    headers: { ...(options.headers || {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  });
+};
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component {
@@ -174,7 +183,7 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
         controller.abort();
       }, 8000);
       
-      const response = await fetch(url, { signal: controller.signal });
+      const response = await authFetch(url, { signal: controller.signal });
       clearTimeout(timeoutId);
       
 
@@ -233,7 +242,7 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
         controller.abort();
       }, 8000);
       
-      const response = await fetch(url, { signal: controller.signal });
+      const response = await authFetch(url, { signal: controller.signal });
       clearTimeout(timeoutId);
       
 
@@ -270,7 +279,7 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
       }
       setAgreementsLoading(true);
       const url = `${baseUrl}/api/hospital-communication/agreements/${hospitalId}`;
-      const response = await fetch(url);
+      const response = await authFetch(url);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
@@ -332,7 +341,7 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
       .map(([key]) => key);
 
     try {
-      const response = await fetch(`${baseUrl}/api/hospital-communication/agreements`, {
+      const response = await authFetch(`${baseUrl}/api/hospital-communication/agreements`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -363,7 +372,7 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
 
       const url = `${baseUrl}/api/hospital-communication/details/${hospitalId}`;
       
-      const response = await fetch(url);
+      const response = await authFetch(url);
 
       if (!response.ok) {
         let errorMsg = `HTTP ${response.status}`;
@@ -429,7 +438,7 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
       };
 
 
-      const response = await fetch(`${baseUrl}/api/hospital-communication/send-message`, {
+      const response = await authFetch(`${baseUrl}/api/hospital-communication/send-message`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -462,7 +471,7 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
     try {
       const newStatus = currentStatus === 'pending' ? 'resolved' : 'pending';
       
-      const response = await fetch(`${baseUrl}/api/hospital-communication/message/${messageId}`, {
+      const response = await authFetch(`${baseUrl}/api/hospital-communication/message/${messageId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -498,7 +507,7 @@ const HospitalCommunicationsContent = ({ currentHospitalId, currentHospitalName 
 
       setLoading(true);
 
-      const response = await fetch(`${baseUrl}/api/hospital-communication/message/${messageId}/reply`, {
+      const response = await authFetch(`${baseUrl}/api/hospital-communication/message/${messageId}/reply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

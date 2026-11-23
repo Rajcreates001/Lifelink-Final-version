@@ -343,20 +343,213 @@ async def patient_info(ambulance_id: str | None = None, ctx: AuthContext = Depen
 @router.get("/emergency-status")
 async def emergency_status(ctx: AuthContext = Depends(get_current_user)):
     db = require_db()
-    repo = MongoRepository(db, ALERTS)
-    alerts = await repo.find_many({"status": {"$ne": "Resolved"}}, sort=[("createdAt", -1)], limit=200)
+    alert_repo = MongoRepository(db, ALERTS)
+    amb_repo = MongoRepository(db, AMBULANCES)
+    assign_repo = MongoRepository(db, AMBULANCE_ASSIGNMENTS)
+    user_repo = MongoRepository(db, USERS)
+
+    alerts = await alert_repo.find_many({"status": {"$ne": "Resolved"}}, sort=[("createdAt", -1)], limit=200)
 
     severity_counts = {"Critical": 0, "High": 0, "Medium": 0, "Low": 0}
     for alert in alerts:
         severity = alert.get("emergencyType") or alert.get("priority") or "Medium"
         if severity not in severity_counts:
             severity = "Medium"
-        severity_counts[severity] += 1
+        severity_counts[severity] += 1    # Resolve the active mission context for the ambulance dashboard.
+    #
+    # The demo seeder created many orphan Active assignments (status == "Active")
+    # with no linked SOS alert, hospital or telemetry — those rows have nulls for
+    # patient, mechanism, ETAs, speed, fuel, GCS. Picking whichever Active row
+    # happens to be newest would hand the dashboard a mission full of dashes.
+    #
+    # We therefore pick the most recent joinable active assignment: one that has a
+    # linked SOS alert (patient + severity + pickup coords + GCS vitals) and/or a
+    # linked ambulance vehicle doc (speed/fuel/currentLocation) and/or a destination
+    # hospital. Only after no joinable active assignment exists do we fall back to an
+    # orphan Active row so the dashboard still has a mission shell instead of
+    # "No active mission".
+    assignments = await assign_repo.find_many({}, sort=[("createdAt", -1)], limit=200)
+    active_assignment = None
+    joinable: list[dict] = []
+    orphan: list[dict] = []
+    for a in assignments:
+        norm = _normalize_assignment_status(a.get("status"))
+        if norm != "active":
+            continue
+        has_join = (
+            bool(a.get("sos_id"))
+            or bool(a.get("hospital_id"))
+            or bool(a.get("patient"))
+            or (a.get("incidentLat") is not None)
+            or (a.get("etaToIncident") is not None)
+            or (a.get("gcs") is not None)
+        )
+        if has_join:
+            joinable.append(a)
+        else:
+            orphan.append(a)
+    if joinable:
+        # Prefer the newest joinable active assignment so the dashboard always shows
+        # a mission with real patient/severity/vehicle/ETAs instead of whichever orphan
+        # row happened to be newest.
+        active_assignment = max(joinable, key=lambda row: row.get("createdAt") or row.get("updatedAt"))
+    elif orphan:
+        # Last resort: an orphan Active row, so the dashboard has a mission shell instead
+        # of "No active mission". These rows have no joined alert/vehicle/hospital, so the
+        # frontend will show '--' for the fields that only exist on a linked mission.
+        active_assignment = max(orphan, key=lambda row: row.get("createdAt") or row.get("updatedAt"))
+
+    vehicle = None
+    incident = None
+    if active_assignment:
+        # ── Vehicle doc + current position ──
+        amb_ref = active_assignment.get("ambulance_id") or active_assignment.get("ambulanceId") or active_assignment.get("ambulanceUserId")
+        amb_doc = None
+        if amb_ref:
+            try:
+                amb_doc = await amb_repo.find_one({"_id": str(amb_ref)})
+            except HTTPException:
+                amb_doc = None
+            if not amb_doc:
+                try:
+                    amb_doc = await amb_repo.find_one({"ambulanceId": str(amb_ref)})
+                except HTTPException:
+                    amb_doc = None
+        vloc = (amb_doc or {}).get("currentLocation") or (amb_doc or {}).get("location") or {}
+        vehicle_lat = vehicle_lng = None
+        if isinstance(vloc, dict):
+            try:
+                vehicle_lat = float(vloc.get("latitude") or vloc.get("lat")) if (vloc.get("latitude") or vloc.get("lat")) is not None else None
+                vehicle_lng = float(vloc.get("longitude") or vloc.get("lng")) if (vloc.get("longitude") or vloc.get("lng")) is not None else None
+            except (TypeError, ValueError):
+                pass
+        # Show a human unit label: the unit code (AMB-1004) or registration,
+        # never a raw database id.
+        def _is_raw_id(v) -> bool:
+            s = str(v or "")
+            return len(s) >= 24 and all(c in "0123456789abcdef" for c in s.lower())
+
+        unit_code = next((v for v in ((amb_doc or {}).get("ambulanceId"), active_assignment.get("ambulanceId"), (amb_doc or {}).get("code"))
+                          if v and not _is_raw_id(v)), None)
+        registration = (amb_doc or {}).get("registrationNumber") or (amb_doc or {}).get("vehicleNumber")
+        raw_ref = str((amb_doc or {}).get("_id") or amb_ref or "")
+        unit_label = unit_code or registration or (f"AMB-{raw_ref[-4:].upper()}" if raw_ref else "Ambulance A1")
+        vehicle = {
+            "vehicleId": (amb_doc or {}).get("ambulanceId") or active_assignment.get("ambulanceId") or "Ambulance A1",
+            "label": f"{unit_label} · {registration}" if registration and unit_label != registration else unit_label,
+            "registration": registration,
+            "currentLat": vehicle_lat,
+            "currentLng": vehicle_lng,
+            "currentAddress": vloc.get("address") if isinstance(vloc, dict) else None,
+            "vehicleStatus": (amb_doc or {}).get("status"),
+            "speedKph": (amb_doc or {}).get("speed") or (amb_doc or {}).get("speedKph") or None,
+            "fuelLevel": (amb_doc or {}).get("fuel") or (amb_doc or {}).get("fuelLevel") or None,
+            "driver": (amb_doc or {}).get("driver"),
+        }
+
+        # ── Linked SOS alert → patient, severity, mechanism, GCS ──
+        sos_id = active_assignment.get("sos_id")
+        alert = None
+        if sos_id:
+            try:
+                alert = await alert_repo.find_one({"_id": sos_id})
+            except HTTPException:
+                alert = None
+        if alert:
+            alert_location = alert.get("location") or {}
+            incident_lat = incident_lng = None
+            if isinstance(alert_location, dict):
+                try:
+                    incident_lat = float(alert_location.get("lat")) if alert_location.get("lat") is not None else None
+                    incident_lng = float(alert_location.get("lng")) if alert_location.get("lng") is not None else None
+                except (TypeError, ValueError):
+                    pass
+            incident = {
+                "label": alert.get("message") or alert.get("emergencyType") or "Emergency call",
+                "lat": incident_lat,
+                "lng": incident_lng,
+                "address": _fmt_coords(incident_lat, incident_lng) or alert_location.get("address") or "Location pending",
+                "severity": alert.get("emergencyType") if alert.get("emergencyType") in {"Critical", "High", "Moderate", "Low"} else alert.get("severity") or "High",
+                "patientName": None,
+                "mechanism": alert.get("message") or alert.get("emergencyType") or "Emergency",
+                "vitals": alert.get("vitals") or {},
+            }
+            # Resolve real patient name + age from the reporting user's profile, rather than
+            # handing the frontend the raw user id (which previously rendered as a long hex string).
+            patient_user_id = alert.get("user")
+            if patient_user_id:
+                try:
+                    patient_user = await user_repo.find_one({"_id": _as_object_id(str(patient_user_id))})
+                except HTTPException:
+                    patient_user = None
+                if patient_user:
+                    incident["patientName"] = patient_user.get("name") or "Patient"
+                    health = (patient_user.get("publicProfile") or {}).get("healthRecords") or {}
+                    if health.get("age") is not None:
+                        active_assignment["patientAge"] = health.get("age")
+        else:
+            # No linked SOS alert — fall back to the assignment's own fields so the
+            # dashboard still renders real data when an assignment was created directly
+            # with patient/severity/coords (e.g. dispatcher-created missions).
+            incident = {
+                "label": active_assignment.get("emergencyType") or active_assignment.get("sos_message") or "Emergency dispatch",
+                "lat": active_assignment.get("incidentLat"),
+                "lng": active_assignment.get("incidentLng"),
+                "address": active_assignment.get("incidentAddress") or active_assignment.get("pickupAddress"),
+                "severity": active_assignment.get("severity") or "High",
+                "patientName": active_assignment.get("patient"),
+                "mechanism": active_assignment.get("emergencyType") or "Emergency",
+            }
+
+        # ── Pull patient name + age from the SOS alert's user profile when the
+        #    incident only carried the user id. This is why the earlier payload had
+        #    patientName == "000...001" (raw user id) instead of a real name.
+        if incident and incident.get("patientName") and str(incident.get("patientName")).count("0") >= 20:
+            patient_user_id = incident.get("patientName")
+            try:
+                patient_user = await user_repo.find_one({"_id": _as_object_id(str(patient_user_id))})
+            except HTTPException:
+                patient_user = None
+            if patient_user:
+                incident["patientName"] = patient_user.get("name") or "Patient"
+                health = (patient_user.get("publicProfile") or {}).get("healthRecords") or {}
+                if health.get("age") is not None:
+                    active_assignment["patientAge"] = health.get("age")
+
+        # ── Destination hospital: join it here so the crew sees the real
+        #    hospital the SOS chose, not the first hospital in some list.
+        hosp_id = active_assignment.get("hospital_id") or active_assignment.get("destinationHospitalId")
+        if hosp_id and not isinstance(active_assignment.get("hospital"), dict):
+            try:
+                hdoc = await MongoRepository(db, HOSPITALS).find_one({"_id": str(hosp_id)})
+            except HTTPException:
+                hdoc = None
+            if hdoc:
+                hloc = hdoc.get("location") if isinstance(hdoc.get("location"), dict) else {}
+                active_assignment["hospital"] = {
+                    "name": hdoc.get("name") or "Destination hospital",
+                    "lat": hdoc.get("lat") if hdoc.get("lat") is not None else hloc.get("lat"),
+                    "lng": hdoc.get("lng") if hdoc.get("lng") is not None else hloc.get("lng"),
+                    "address": hloc.get("address") or (hdoc.get("location") if isinstance(hdoc.get("location"), str) else None)
+                    or hloc.get("city") or "",
+                    "icuBeds": hdoc.get("icu_beds") or hdoc.get("icuBeds") or (hdoc.get("beds") or {}).get("icuAvailable") or 0,
+                    "traumaReady": bool(hdoc.get("traumaReady", True)),
+                }
+
+
+    # ── Active alert summary (most severe unresolved alert) ──
+    top_alert = alerts[0] if alerts else None
 
     return {
         "count": len(alerts),
         "severityCounts": severity_counts,
         "alerts": alerts,
+        "activeMission": {
+            "vehicle": vehicle,
+            "incident": incident,
+            "assignment": active_assignment,
+        } if active_assignment else None,
+        "topAlert": top_alert,
     }
 
 

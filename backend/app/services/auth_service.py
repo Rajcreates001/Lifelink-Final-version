@@ -184,7 +184,27 @@ class AuthService:
 
         updated = await self.user_repo.update_one({"_id": user_id}, {"$set": {"subRole": sub_role}}, return_new=True)
         if not updated:
-            raise HTTPException(status_code=404, detail="User not found")
+            # Enterprise (workspace-modal) logins have no row in the portal
+            # users collection — their identity lives in enterprise_users SQL.
+            # The JWT is already verified (get_current_user) and their token's
+            # sub_role claim is authoritative; accept the selection without a
+            # portal-DB write instead of failing with 404.
+            from app.core.auth import _lookup_enterprise_user
+            enterprise_user = await _lookup_enterprise_user(str(user_id))
+            if not enterprise_user:
+                raise HTTPException(status_code=404, detail="User not found")
+            claims = {"role": ctx.role, "sub_role": sub_role}
+            token = create_access_token(str(user_id), claims=claims)
+            return {
+                "token": token,
+                "user": {
+                    "id": str(user_id),
+                    "name": None,
+                    "role": ctx.role,
+                    "subRole": sub_role,
+                    "location": None,
+                },
+            }
 
         claims = {"role": ctx.role, "sub_role": sub_role}
         token = create_access_token(str(updated["_id"]), claims=claims)

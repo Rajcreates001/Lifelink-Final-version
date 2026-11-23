@@ -1254,7 +1254,17 @@ class GovernmentAuthService:
                     "sub_role": role_name or "department_officer",
                 },
             )
+            old_token = result.get("token")
             result["token"] = token
+            # The session row was written for the first token; point it at the
+            # re-issued one so session checks (e.g. LifeLink AI) accept it.
+            if old_token:
+                await _execute(
+                    self.pool,
+                    "UPDATE enterprise_sessions SET token_hash = $1 WHERE token_hash = $2",
+                    hashlib.sha256(token.encode()).hexdigest(),
+                    hashlib.sha256(old_token.encode()).hexdigest(),
+                )
         except Exception:
             logger.exception("Could not re-issue government token with role claims")
 

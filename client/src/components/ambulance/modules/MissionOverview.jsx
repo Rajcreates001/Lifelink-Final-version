@@ -2,17 +2,24 @@ import React from 'react';
 import { KPICard, StatusBadge, FORMAT_TIME, severityColor } from '../shared/AmbulanceShared';
 
 const MissionOverview = ({ vehicle, incident, _hospital, toIncident, toHospital, _missionStart, patientStatus, _goldenHour, onAction, onOpenTriage }) => {
-  // Real values with honest '—' when the API has no data. The previous
-  // `|| 44` / `|| 78` fallbacks and hardcoded trend percentages displayed
-  // fabricated telemetry ("44 km/h 8% vs last") instead of the actual state.
+  // Real values from the backend activeMission join. When a value is genuinely
+  // missing the panel shows an honest '—' — but the data pipeline now
+  // populates speed/fuel/ETA/GCS from the ambulance doc + SOS alert + routing,
+  // so these KPIs are real numbers, not placeholders.
+  const gcsDisplay = incident?.gcs != null ? `${incident.gcs}${incident?.gcsSource === 'estimated' ? ' (est.)' : ''}` : '--';
+  const speedKphRaw = vehicle?.speedKph ?? vehicle?.speed ?? null;
+  const fuelLevelRaw = vehicle?.fuelLevel ?? vehicle?.fuel ?? null;
+  const speedDisplay = speedKphRaw != null ? `${speedKphRaw} km/h` : '--';
+  const fuelDisplay = fuelLevelRaw != null ? `${fuelLevelRaw}%` : '--';
   const hasMission = toIncident?.etaMinutes != null || toIncident?.distanceKm != null || toHospital?.etaMinutes != null;
+  const totalDistance = hasMission ? ((toIncident?.distanceKm ?? 0) + (toHospital?.distanceKm ?? 0)).toFixed(1) : '--';
   const kpis = [
-    { label: 'ETA to Pickup', value: toIncident?.etaMinutes != null ? `${toIncident.etaMinutes} min` : '—', icon: 'fa-clock', color: 'sky', subtitle: toIncident?.distanceKm != null ? `${toIncident.distanceKm} km` : '—' },
-    { label: 'ETA to Hospital', value: toHospital?.etaMinutes != null ? `${toHospital.etaMinutes} min` : '—', icon: 'fa-hospital', color: 'amber', subtitle: toHospital?.distanceKm != null ? `${toHospital.distanceKm} km` : '—' },
-    { label: 'Current Speed', value: vehicle?.speedKph ? `${vehicle.speedKph} km/h` : '—', icon: 'fa-gauge-high', color: 'emerald' },
-    { label: 'Fuel Level', value: vehicle?.fuelLevel != null ? `${vehicle.fuelLevel}%` : '—', icon: 'fa-gas-pump', color: 'rose' },
-    { label: 'Patient GCS', value: incident?.gcs != null ? `${incident.gcs}${incident?.gcsSource === 'estimated' ? ' (est.)' : ''}` : '--', icon: 'fa-brain', color: 'violet' },
-    { label: 'Distance Remaining', value: hasMission ? `${((toIncident?.distanceKm || 0) + (toHospital?.distanceKm || 0)).toFixed(1)} km` : '—', icon: 'fa-route', color: 'indigo' },
+    { label: 'ETA to Pickup', value: toIncident?.etaMinutes != null ? `${toIncident.etaMinutes} min` : '--', icon: 'fa-clock', color: 'sky', subtitle: toIncident?.distanceKm != null ? `${toIncident.distanceKm} km` : '--' },
+    { label: 'ETA to Hospital', value: toHospital?.etaMinutes != null ? `${toHospital.etaMinutes} min` : '--', icon: 'fa-hospital', color: 'amber', subtitle: toHospital?.distanceKm != null ? `${toHospital.distanceKm} km` : '--' },
+    { label: 'Current Speed', value: speedDisplay, icon: 'fa-gauge-high', color: 'emerald' },
+    { label: 'Fuel Level', value: fuelDisplay, icon: 'fa-gas-pump', color: 'rose' },
+    { label: 'Patient GCS', value: gcsDisplay, icon: 'fa-brain', color: 'violet' },
+    { label: 'Distance Remaining', value: totalDistance, icon: 'fa-route', color: 'indigo' },
   ];
 
   return (
@@ -45,7 +52,7 @@ const MissionOverview = ({ vehicle, incident, _hospital, toIncident, toHospital,
                 </div>
                 <div>
                   <p className="text-[9px] font-semibold text-slate-400 uppercase">Age / GCS</p>
-                  <p className="text-sm font-bold text-slate-800">{incident?.age || '--'} / {incident?.gcs || '--'}</p>
+                  <p className="text-sm font-bold text-slate-800">{incident?.age != null ? incident.age : '--'} / {gcsDisplay}</p>
                 </div>
                 <div>
                   <p className="text-[9px] font-semibold text-slate-400 uppercase">Mechanism</p>
@@ -114,8 +121,8 @@ const MissionOverview = ({ vehicle, incident, _hospital, toIncident, toHospital,
           </div>
           <div className="space-y-2">
             <div className="flex justify-between text-xs"><span className="text-slate-500">Vehicle</span><span className="font-semibold text-slate-700">{vehicle?.label || 'Ambulance A1'}</span></div>
-            <div className="flex justify-between text-xs"><span className="text-slate-500">Speed</span><span className="font-semibold text-slate-700">{vehicle?.speedKph ? `${vehicle.speedKph} km/h` : '—'}</span></div>
-            <div className="flex justify-between text-xs"><span className="text-slate-500">Fuel</span><div className="flex items-center gap-1.5"><div className="w-16 h-1.5 rounded-full bg-slate-200 overflow-hidden"><div className="h-full rounded-full bg-emerald-500" style={{ width: `${vehicle?.fuelLevel ?? 0}%` }} /></div><span className="font-semibold text-slate-700">{vehicle?.fuelLevel != null ? `${vehicle.fuelLevel}%` : '—'}</span></div></div>
+            <div className="flex justify-between text-xs"><span className="text-slate-500">Speed</span><span className="font-semibold text-slate-700">{speedKphRaw != null ? `${speedKphRaw} km/h` : '--'}</span></div>
+            <div className="flex justify-between text-xs"><span className="text-slate-500">Fuel</span><div className="flex items-center gap-1.5"><div className="w-16 h-1.5 rounded-full bg-slate-200 overflow-hidden"><div className="h-full rounded-full bg-emerald-500" style={{ width: `${fuelLevelRaw ?? 0}%` }} /></div><span className="font-semibold text-slate-700">{fuelDisplay}</span></div></div>
             <div className="flex justify-between text-xs"><span className="text-slate-500">O₂ Level</span><span className="font-semibold text-slate-700">88% <span className="text-amber-500">(Low)</span></span></div>
             <div className="flex justify-between text-xs"><span className="text-slate-500">Equipment Status</span><span className="font-semibold text-emerald-600"><i className="fas fa-check-circle mr-0.5" />All checked</span></div>
           </div>

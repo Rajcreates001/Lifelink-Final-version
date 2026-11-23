@@ -3,6 +3,9 @@ import { GovKPICard, GovStatusBadge, GovSectionHeader, GovModuleHero, FORMAT_TIM
 import { DetailModal, Toast, AnimatedLineChart } from '../shared/InteractiveComponents';
 import { useApiData } from '../../../hooks/useApiData';
 
+// useApiData already unwraps { data: [...] }; keep a stable transform identity.
+const toList = (d) => (Array.isArray(d) ? d : (d?.data || []));
+
 const LiveMonitoring = () => {
   const [timeRefresh, setTimeRefresh] = useState(() => Date.now());
   const [wsConnected, _setWsConnected] = useState(true);
@@ -13,13 +16,13 @@ const LiveMonitoring = () => {
 
   // Fetch real monitoring data from API
   const { data: _monitoringData, _loading } = useApiData(
-    '/v2/government/command/monitoring/summary',
+    '/v2/government/monitoring/summary',
     { pollInterval: 15000 }
   );
 
   const { data: _feedData } = useApiData(
-    '/v2/government/command/monitoring/feed',
-    { pollInterval: 10000, transform: (d) => d?.data || [] }
+    '/v2/government/monitoring/feed',
+    { pollInterval: 10000, transform: toList }
   );
 
   const showToast = useCallback((msg, type = 'success') => setToast({ visible: true, message: msg, type }), []);

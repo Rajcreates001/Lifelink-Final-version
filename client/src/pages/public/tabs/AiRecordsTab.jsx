@@ -28,6 +28,20 @@ const ORGANS = [
   { id: 'blood', label: 'Blood', icon: 'fa-droplet', color: '#DC2626', x: 64, y: 44 },
 ];
 
+// Which organ each detected condition affects (names match backend ai_reports.py).
+const CONDITION_ORGANS = [
+  [/hypertens|hypotens|cardiac|chest pain|tachycard|bradycard|cholesterol|arrhythm/i, 'heart'],
+  [/stroke|seizure|consciousness/i, 'brain'],
+  [/hypox|oxygen|breath|respirat|pneumon|lung/i, 'lungs'],
+  [/liver|hepat/i, 'liver'],
+  [/kidney|renal/i, 'kidney'],
+  [/anemia|diabet|glucose|glyc|sepsis|blood/i, 'blood'],
+];
+const affectedOrgans = (diseases) => ORGANS.filter((o) => diseases.some((d) => {
+  const name = String(d?.name || '');
+  return CONDITION_ORGANS.some(([re, organ]) => organ === o.id && re.test(name)) || name.toLowerCase().includes(o.id);
+}));
+
 // ─── AIML Steps ────────────────────────────────────────
 const ANALYSIS_STEPS = [
   { icon: 'fa-file-import', text: 'Reading document...', delay: 300 },
@@ -66,6 +80,22 @@ function useCountUp(target, duration = 1200) {
 }
 
 // ─── Main Component ─────────────────────────────────────
+// Adult reference ranges (same thresholds the backend uses in ai_reports.py).
+const LAB_REFERENCE = {
+  age: { label: 'Age', unit: 'yrs' },
+  bmi: { label: 'BMI', min: 18.5, max: 29.9, range: '18.5–29.9' },
+  heart_rate: { label: 'Heart rate', unit: 'bpm', min: 50, max: 100, range: '50–100' },
+  oxygen: { label: 'SpO2', unit: '%', min: 94, range: '≥94' },
+  glucose_mg_dl: { label: 'Glucose', unit: 'mg/dL', min: 70, max: 99, range: '70–99 (fasting)' },
+  hba1c: { label: 'HbA1c', unit: '%', max: 5.6, range: '<5.7' },
+  cholesterol_mg_dl: { label: 'Cholesterol', unit: 'mg/dL', max: 199, range: '<200' },
+  hemoglobin_g_dl: { label: 'Hemoglobin', unit: 'g/dL', min: 12, max: 17.5, range: '12–17.5' },
+  creatinine_mg_dl: { label: 'Creatinine', unit: 'mg/dL', min: 0.5, max: 1.3, range: '0.5–1.3' },
+  blood_pressure_systolic: { label: 'BP systolic', unit: 'mmHg', min: 90, max: 129, range: '90–129' },
+  blood_pressure_diastolic: { label: 'BP diastolic', unit: 'mmHg', min: 60, max: 79, range: '60–79' },
+  temperature: { label: 'Temperature' },
+};
+
 const SAMPLE_REPORT = `Patient: 45-year-old male, admitted via OPD.
 Vitals: BP 150/95 mmHg, HR 92 bpm, SpO2 97%, BMI 28.4.
 Lab results: Fasting glucose 178 mg/dL, HbA1c 8.1%, creatinine 1.2 mg/dL.
@@ -107,13 +137,22 @@ const AiRecordsTab = ({ user }) => {
   // ─── File Handler ──────────────────────────────────
   const handleReportFile = async (event) => {
     const file = event.target.files?.[0];
+    // Reset so picking the same file again still fires onChange.
+    if (event.target) event.target.value = '';
     if (!file) return;
+    setReportResult(null);
     setReportFile(file); setReportFileName(file.name); setReportFileError(''); setReportFileHint('');
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
     const isTextFile = file.type.startsWith('text/') || ['txt', 'md', 'csv', 'json'].includes(ext);
     if (isTextFile) {
-      try { const text = await file.text(); if (!text.trim()) { setReportFileError('Unable to extract text.'); return; } setReportText(text); }
-      catch { setReportFileError('Unable to read file.'); }
+      // Text files load into the textarea, which becomes the single source:
+      // keeping the file attached mixed its old contents into later edits.
+      try {
+        const text = await file.text();
+        if (!text.trim()) { setReportFileError('Unable to extract text.'); return; }
+        setReportText(text); setReportFile(null);
+        setReportFileHint(`Loaded text from ${file.name}.`);
+      } catch { setReportFileError('Unable to read file.'); }
       return;
     }
     setReportText('');
@@ -181,7 +220,7 @@ const AiRecordsTab = ({ user }) => {
 
   // ─── Analytics ─────────────────────────────────────
   const reportsAnalyzed = useCountUp(reportHistory.length);
-  const diseasesDetected = useCountUp(reportHistory.reduce((a, h) => a + (h.detected_conditions?.length || 0), 0) + detectedDiseases.length);
+  const diseasesDetected = useCountUp(reportHistory.reduce((a, h) => a + ((h.detected_conditions || h.conditions)?.length || 0), 0) + detectedDiseases.length);
 
   return (
     <div className={`relative transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
@@ -242,7 +281,7 @@ const AiRecordsTab = ({ user }) => {
                 className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-gray-200 text-xs h-24 resize-none focus:outline-none focus:ring-2 focus:ring-purple-200 placeholder:text-gray-300"
                 placeholder="Or paste report content here..." />
               <div className="flex items-center justify-between mt-1.5">
-                <button type="button" onClick={() => { setReportText(SAMPLE_REPORT); setReportResult(null); }}
+                <button type="button" onClick={() => { setReportText(SAMPLE_REPORT); setReportFile(null); setReportFileName(''); setReportFileHint(''); setReportResult(null); }}
                   className="text-[10px] text-purple-500 hover:text-purple-700 font-medium transition-colors">
                   <i className="fas fa-wand-magic-sparkles mr-1" />Load sample report text
                 </button>
@@ -271,7 +310,8 @@ const AiRecordsTab = ({ user }) => {
             </div>
             <div className="space-y-2 max-h-52 overflow-y-auto custom-scrollbar-thin pr-1">
               {reportHistory.length === 0 && <p className="text-xs text-gray-400 text-center py-4">No reports analyzed yet.</p>}
-              {reportHistory.slice(-8).reverse().map((entry) => (
+              {/* API returns newest first — show the 8 most recent (was slice(-8), i.e. the 8 oldest). */}
+              {reportHistory.slice(0, 8).map((entry) => (
                 <div key={entry._id || entry.id}
                   onClick={() => setShowHistoryDetail(showHistoryDetail === entry._id ? null : entry._id)}
                   className={`p-2.5 rounded-lg cursor-pointer transition-all duration-200 border ${showHistoryDetail === entry._id ? 'bg-purple-50 border-purple-200 shadow-sm' : 'bg-gray-50/50 border-gray-100 hover:bg-gray-50'}`}>
@@ -430,14 +470,16 @@ const AiRecordsTab = ({ user }) => {
                     <p className="font-bold text-gray-800 text-xs">Lab Values</p>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {Object.entries(reportResult.extracted_metrics).slice(0, 9).map(([key, value]) => {
+                    {Object.entries(reportResult.extracted_metrics).filter(([key]) => key !== 'temperature_unit').map(([key, value]) => {
                       const num = parseFloat(value);
-                      const isAbnormal = !isNaN(num) && (num > 150 || num < 50);
+                      const ref = LAB_REFERENCE[key];
+                      const isAbnormal = !!ref && !isNaN(num) && ((ref.min != null && num < ref.min) || (ref.max != null && num > ref.max));
                       return (
                         <div key={key} className={`p-2.5 rounded-xl border ${isAbnormal ? 'bg-red-50/50 border-red-200' : 'bg-gray-50/50 border-gray-100'}`}>
-                          <p className="text-[8px] text-gray-400 uppercase tracking-wider">{key.replace(/_/g, ' ')}</p>
-                          <p className={`text-xs font-bold mt-0.5 ${isAbnormal ? 'text-red-600' : 'text-gray-800'}`}>{String(value)}</p>
-                          {isAbnormal && <span className="text-[8px] text-red-500 font-medium">⚠ Abnormal</span>}
+                          <p className="text-[8px] text-gray-500 uppercase tracking-wider">{ref?.label || key.replace(/_/g, ' ')}</p>
+                          <p className={`text-xs font-bold mt-0.5 ${isAbnormal ? 'text-red-600' : 'text-gray-800'}`}>{String(value)}{ref?.unit ? ` ${ref.unit}` : ''}</p>
+                          {isAbnormal && <span className="text-[8px] text-red-500 font-medium">⚠ Outside normal range</span>}
+                          {!isAbnormal && ref?.range && <span className="text-[8px] text-gray-400">Normal {ref.range}</span>}
                         </div>
                       );
                     })}
@@ -460,21 +502,24 @@ const AiRecordsTab = ({ user }) => {
                       <path d="M58,34 L70,52 Q74,58 72,62" fill="none" stroke="#E2E8F0" strokeWidth="1.5" />
                       <path d="M34,94 L30,130" fill="none" stroke="#E2E8F0" strokeWidth="1.5" />
                       <path d="M46,94 L50,130" fill="none" stroke="#E2E8F0" strokeWidth="1.5" />
-                      {ORGANS.map((o) => (
-                        <circle key={o.id} cx={o.x} cy={o.y} r={highlightedOrgan === o.id ? 7 : 5}
-                          fill={highlightedOrgan === o.id ? `${o.color}30` : `${o.color}12`}
-                          stroke={highlightedOrgan === o.id ? o.color : `${o.color}50`}
-                          strokeWidth={highlightedOrgan === o.id ? 2 : 1}
+                      {ORGANS.map((o) => {
+                        const hit = highlightedOrgan === o.id || affectedOrgans(detectedDiseases).some((a) => a.id === o.id);
+                        return (
+                        <circle key={o.id} cx={o.x} cy={o.y} r={hit ? 7 : 5}
+                          fill={hit ? `${o.color}30` : `${o.color}12`}
+                          stroke={hit ? o.color : `${o.color}50`}
+                          strokeWidth={hit ? 2 : 1}
                           className="cursor-pointer transition-all duration-200"
                           onMouseEnter={() => setHighlightedOrgan(o.id)}
                           onMouseLeave={() => setHighlightedOrgan(null)}
                         />
-                      ))}
+                        );
+                      })}
                     </svg>
                   </div>
                   <div className="flex-1 space-y-1.5">
-                    {ORGANS.filter((o) => detectedDiseases.some((d) => d.name.toLowerCase().includes(o.id) || o.id.includes(d.name.toLowerCase().slice(0, 4)))).length > 0 ? (
-                      ORGANS.filter((o) => detectedDiseases.some((d) => d.name.toLowerCase().includes(o.id) || o.id.includes(d.name.toLowerCase().slice(0, 4)))).map((o) => (
+                    {affectedOrgans(detectedDiseases).length > 0 ? (
+                      affectedOrgans(detectedDiseases).map((o) => (
                         <div key={o.id} className="flex items-center justify-between p-2 rounded-lg bg-gray-50/50 border border-gray-100">
                           <span className="flex items-center gap-1.5 text-[10px] text-gray-600">
                             <i className={`fas ${o.icon} text-[9px]`} style={{ color: o.color }} /> {o.label}

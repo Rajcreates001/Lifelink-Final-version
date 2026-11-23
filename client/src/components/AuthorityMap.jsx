@@ -14,7 +14,7 @@ L.Icon.Default.mergeOptions({
 });
 
 const AuthorityMap = () => {
-    const [center, setCenter] = useState([12.9716, 77.5946]); // Default Bengaluru
+    const [center, setCenter] = useState([12.9141, 74.8560]); // Default Bengaluru
     const [ambulances, setAmbulances] = useState([]);
     const [loading, setLoading] = useState(true);
 

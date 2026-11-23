@@ -365,7 +365,7 @@ const EmergencyCommandCenter = () => {
     try {
       const [feedRes, surgeRes, _insightRes] = await Promise.allSettled([
         apiFetch(`/api/hospital-ops/emergency/feed?hospitalId=${hospitalId}`, { method: 'GET', ttlMs: 15000 }),
-        apiFetch(`/api/hospital-ops/ceo/ai-insights?hospitalId=${hospitalId}`, { method: 'GET', ttlMs: 30000 }),
+        apiFetch(`/api/hospital-ops/ceo/ai-insights?hospitalId=${hospitalId}`, { method: 'GET', ttlMs: 30000, timeoutMs: 20000 }).catch(() => ({ ok: false })),
         apiFetch(`/v2/ai/insights?role=hospital&module_key=emergency`, { method: 'GET', ttlMs: 30000 }),
       ]);
 

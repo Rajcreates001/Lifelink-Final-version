@@ -4,6 +4,9 @@ import { Toast } from '../shared/InteractiveComponents';
 import { useApiData } from '../../../hooks/useApiData';
 import { apiFetch } from '../../../config/api';
 
+// useApiData already unwraps { data: [...] }; keep a stable transform identity.
+const toList = (d) => (Array.isArray(d) ? d : (d?.data || []));
+
 const Reports = () => {
   const [_toast, setToast] = useState({ visible: false, message: '', type: 'success' });
   const showToast = useCallback((msg, type = 'success') => setToast({ visible: true, message: msg, type }), []);
@@ -15,7 +18,7 @@ const Reports = () => {
   // Fetch real reports from API
   const { data: reportsData, _loading } = useApiData(
     '/api/government-ops/reports',
-    { transform: (d) => d?.data || [] }
+    { transform: toList }
   );
 
   const handleGenerateNew = useCallback(async () => {

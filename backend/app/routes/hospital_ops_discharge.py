@@ -297,8 +297,8 @@ async def discharge_statistics(
 
     # Count total and discharged patients
     hospital_oid = hospital_id
-    total = await repo.count({"hospitalId": hospital_oid})
-    discharged = await repo.count({"hospitalId": hospital_oid, "status": "discharged"})
+    total = await repo.count_documents({"hospitalId": hospital_oid})
+    discharged = await repo.count_documents({"hospitalId": hospital_oid, "status": "discharged"})
 
     # Discharge rate
     discharge_rate = round(discharged / max(total, 1) * 100, 1)

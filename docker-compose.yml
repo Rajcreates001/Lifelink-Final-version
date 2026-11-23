@@ -102,7 +102,10 @@ services:
       <<: *backend-env
     command: ["api"]
     ports:
-      - "3001:3001"
+      # Host port is configurable: Windows can reserve 3001 (Hyper-V/WinNAT
+      # excluded port range). The frontend reaches the API through Nginx on the
+      # Docker network, so changing only the host side is safe.
+      - "${BACKEND_HOST_PORT:-3001}:3001"
     depends_on:
       postgres:
         condition: service_healthy

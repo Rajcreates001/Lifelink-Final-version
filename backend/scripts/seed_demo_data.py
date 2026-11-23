@@ -774,7 +774,7 @@ def main() -> None:
             "ambulanceId": f"AMB-Y-{idx + 1:02d}",
             "registrationNumber": f"KA-01-AB-{3200 + idx}",
             "hospital": hospital_scope_id,
-            "status": random.choice(["available", "en_route", "at_location"]),
+            "status": "en_route" if idx == 0 else random.choice(["available", "at_location"]),
             "driver": {
                 "name": f"Driver {idx + 1}",
                 "licenseNumber": f"DL-{9100 + idx}",
@@ -790,7 +790,14 @@ def main() -> None:
             "currentLocation": {
                 "latitude": args.lat + (idx * 0.01),
                 "longitude": args.lng + (idx * 0.01),
+                "address": f"En route to {args.name}" if idx == 0 else f"Station {idx + 1}",
             },
+            # Real-time telemetry so the ambulance dashboard KPIs (speed/fuel)
+            # are populated instead of showing '—'.
+            "speed": 58.4 if idx == 0 else None,
+            "speedKph": 58.4 if idx == 0 else None,
+            "fuel": 72.5 if idx == 0 else None,
+            "fuelLevel": 72.5 if idx == 0 else None,
             "createdAt": now,
             "updatedAt": now,
             "seedTag": SEED_TAG,
@@ -799,18 +806,77 @@ def main() -> None:
         for idx in range(3)
     ]
 
+    # Seed a linked SOS alert so the enriched assignment endpoint can join
+    # patient identity, incident coordinates and severity.
+    patient_user_doc = {
+        "name": "Rahul Bhat",
+        "email": "patient.rahul@lifelink.local",
+        "role": "patient",
+        "location": "Bengaluru, Karnataka",
+        "publicProfile": {
+            "healthRecords": {
+                "age": 34,
+                "bloodGroup": "O+",
+            },
+        },
+        "createdAt": now,
+    }
+    patient_user_result = users.insert_one(patient_user_doc)
+    patient_user_doc["_id"] = patient_user_result.inserted_id
+
+    sos_alert = {
+        "user": patient_user_doc["_id"],
+        "userId": str(patient_user_doc["_id"]),
+        "message": "Multi-vehicle collision on Cubbon Road — patient trapped, GCS 8, severe trauma",
+        "emergencyType": "Critical",
+        "priority": "Critical",
+        "severity": "Critical",
+        "severity_score": 0.92,
+        "location": {
+            "lat": 12.9763,
+            "lng": 77.5929,
+            "address": "Cubbon Park Road, Bengaluru",
+        },
+        "vitals": {
+            "gcs": 8,
+            "heartRate": 122,
+            "bp": "92/58",
+            "oxygen": 88,
+            "respRate": 28,
+        },
+        "status": "Active",
+        "createdAt": now,
+        "updatedAt": now,
+        "seedTag": SEED_TAG,
+        "seedOwner": seed_owner,
+    }
+    alerts_seed = _seed_collection(db, "alerts", [sos_alert], seed_owner)
+    seeded += alerts_seed
+
     ambulance_assignments = [
         {
             "ambulanceId": "AMB-Y-01",
             "ambulanceUserId": str(user_doc["_id"]),
+            "sos_id": sos_alert["_id"],
             "hospital": str(user_doc["_id"]),
             "patient": "Rahul Bhat",
-            "emergencyType": "Cardiac",
+            "emergencyType": "Critical trauma",
             "status": "Active",
             "etaMinutes": 12,
-            "pickup": "MG Road",
+            "distance_km": 4.2,
+            "pickup": "Cubbon Park Road, Bengaluru",
             "destination": args.name,
-            "patientVitals": {"bp": "130/85", "oxygen": 93, "heartRate": 110},
+            "pickupLocation": {
+                "latitude": 12.9763,
+                "longitude": 77.5929,
+                "address": "Cubbon Park Road, Bengaluru",
+            },
+            "destinationLocation": {
+                "latitude": args.lat,
+                "longitude": args.lng,
+                "address": args.address,
+            },
+            "patientVitals": {"bp": "92/58", "oxygen": 88, "heartRate": 122, "gcs": 8},
             "createdAt": now,
             "updatedAt": now,
             "seedTag": SEED_TAG,

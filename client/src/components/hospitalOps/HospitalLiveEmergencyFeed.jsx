@@ -56,7 +56,7 @@ export const HospitalLiveEmergencyFeed = () => {
                 });
                 const [res, surgeRes] = await Promise.all([
                     apiFetch(`/api/hospital-ops/emergency/feed${feedQuery}`, { method: 'GET' }),
-                    apiFetch(`/api/hospital-ops/ceo/ai-insights?hospitalId=${hospitalId}`, { method: 'GET' })
+                    apiFetch(`/api/hospital-ops/ceo/ai-insights?hospitalId=${hospitalId}`, { method: 'GET', timeoutMs: 20000 }).catch(() => ({ ok: false }))
                 ]);
                 setAlerts(res.ok ? (res.data?.data || []) : []);
                 setSurgeInsight(surgeRes.ok ? surgeRes.data : null);

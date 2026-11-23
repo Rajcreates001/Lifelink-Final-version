@@ -55,7 +55,9 @@ async function refreshAccessToken() {
 const responseCache = new Map();
 const inflightRequests = new Map();
 const DEFAULT_TTL_MS = 120000;
-const DEFAULT_TIMEOUT_MS = 8000;
+// Cold starts (first login after a restart) fire ~20 parallel calls; 8 s was
+// too tight and surfaced as page errors. Warm calls answer in well under 1 s.
+const DEFAULT_TIMEOUT_MS = 20000;
 const MAX_CACHE_SIZE = 200;
 
 

@@ -4,6 +4,9 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { sweepStorageCaches } from './utils/storageSweeper'
+// Leaflet styles once for every map (several map modules did not import them,
+// so tiles scattered when such a module was the first map opened).
+import 'leaflet/dist/leaflet.css'
 // Font Awesome: self-hosted from npm so all `<i class="fas fa-...">` icons
 // (navbar logo, dashboards, 916 usages) render under the CSP without a CDN.
 import '@fortawesome/fontawesome-free/css/all.min.css'

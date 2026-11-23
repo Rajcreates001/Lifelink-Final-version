@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { apiFetch } from '../../config/api';
 import DashboardLayout from '../../layout/DashboardLayout';
@@ -37,7 +37,15 @@ const DesktopPublicDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState('home');
+  // The tab follows /dashboard/public/:module so deep links and refresh keep it.
+  const { module: routeModule } = useParams();
+  const VALID_TABS = ['home', 'ai_health', 'find_donors', 'requests', 'ai_records', 'donations', 'history'];
+  const [activeTab, setActiveTab] = useState(() => (VALID_TABS.includes(routeModule) ? routeModule : 'home'));
+  const [prevRouteModule, setPrevRouteModule] = useState(routeModule);
+  if (routeModule !== prevRouteModule) {
+    setPrevRouteModule(routeModule);
+    if (VALID_TABS.includes(routeModule)) setActiveTab(routeModule);
+  }
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sosStats, setSosStats] = useState({ recent_critical_alerts: 0, total_sos_calls: 0 });
@@ -160,6 +168,7 @@ const DesktopPublicDashboard = () => {
 
   const handleSelect = (key) => {
     setActiveTab(key);
+    if (VALID_TABS.includes(key)) navigate(`/dashboard/public/${key}`, { replace: true });
   };
 
   const renderContent = () => {

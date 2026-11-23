@@ -13,19 +13,25 @@ export const HospitalICURiskPanel = () => {
     useEffect(() => {
         let isActive = true;
         const load = async () => {
-            if (!hospitalId) return;
+            if (!hospitalId) { setLoading(false); return; }
             setLoading(true);
             try {
-                const res = await apiFetch(`/api/hospital-ops/icu/patients?hospitalId=${hospitalId}`, { method: 'GET' });
+                const res = await apiFetch(`/api/hospital-ops/icu/patients?hospitalId=${hospitalId}`, { method: 'GET', timeoutMs: 12000 });
                 const data = res.ok ? (res.data?.data || []) : [];
                 if (!isActive) return;
                 setPatients(data);
+                // Score the 25 patients with the lowest oxygen first; each call has its
+                // own timeout so one slow request can never leave the panel loading.
+                const sample = [...data]
+                    .sort((a, b) => (Number(a.oxygen) || 100) - (Number(b.oxygen) || 100))
+                    .slice(0, 25);
                 const riskResults = await Promise.all(
-                    data.map(async (patient) => {
+                    sample.map(async (patient) => {
                         const riskRes = await apiFetch('/api/hospital-ops/icu/risk', {
                             method: 'POST',
+                            timeoutMs: 8000,
                             body: JSON.stringify({ oxygen: patient.oxygen, heartRate: patient.heartRate })
-                        });
+                        }).catch(() => ({ ok: false }));
                         return {
                             patient,
                             risk: riskRes.ok ? riskRes.data : { riskScore: 0, riskLevel: 'Low' }

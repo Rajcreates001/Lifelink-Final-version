@@ -91,6 +91,22 @@ const GPSTrackingSimulator = ({ __onAmbulanceSelect }) => {
   const ambulances = ambulancesData?.ambulances || [];
   const routes = routesData?.routes || [];
 
+
+  const bounds = (() => {
+    const pts = (ambulances || []).filter((a) => Number.isFinite(Number(a.latitude)) && Number.isFinite(Number(a.longitude)));
+    const lats = pts.map((a) => Number(a.latitude));
+    const lngs = pts.map((a) => Number(a.longitude));
+    const minLat = lats.length ? Math.min(...lats) : 12.86;
+    const maxLat = lats.length ? Math.max(...lats) : 12.97;
+    const minLng = lngs.length ? Math.min(...lngs) : 74.80;
+    const maxLng = lngs.length ? Math.max(...lngs) : 74.90;
+    const centerLat = (minLat + maxLat) / 2;
+    const centerLng = (minLng + maxLng) / 2;
+    const place = centerLat > 12.7 && centerLat < 13.2 && centerLng > 74.6 && centerLng < 75.1 ? 'Mangaluru' : 'Live fleet area';
+    return { minLat, maxLat, minLng, centerLat, centerLng, place,
+      spanLat: Math.max(maxLat - minLat, 0.01), spanLng: Math.max(maxLng - minLng, 0.01) };
+  })();
+
   return (
     <div className="space-y-5">
       {/* Toast */}
@@ -192,8 +208,9 @@ const GPSTrackingSimulator = ({ __onAmbulanceSelect }) => {
               
               {/* Ambulance markers */}
               {ambulances.map((amb) => {
-                const x = ((amb.longitude - 77.55) / 0.25) * 100; // Normalize to map width
-                const y = ((12.99 - amb.latitude) / 0.08) * 100; // Normalize to map height
+                // Fit the schematic map to the live fleet (any city), with padding.
+                const x = ((amb.longitude - bounds.minLng) / bounds.spanLng) * 80 + 10;
+                const y = ((bounds.maxLat - amb.latitude) / bounds.spanLat) * 80 + 10;
                 return (
                   <div
                     key={amb.ambulanceId}
@@ -239,7 +256,7 @@ const GPSTrackingSimulator = ({ __onAmbulanceSelect }) => {
 
               {/* Coordinates display */}
               <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm rounded-lg px-2 py-1">
-                <span className="text-[9px] text-white/70">12.9716°N, 77.5946°E — Bangalore</span>
+                <span className="text-[9px] text-white/70">{bounds.centerLat.toFixed(4)}°N, {bounds.centerLng.toFixed(4)}°E — {bounds.place}</span>
               </div>
             </div>
           </div>

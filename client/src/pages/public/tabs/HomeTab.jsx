@@ -99,7 +99,7 @@ const HomeTab = ({ user, data, sosStats, fetchData, fetchNotifications }) => {
       responders: alert.ambulance_type || 'Response Unit',
       createdAt: alert.createdAt,
       location: alert.location,
-    })).filter((item) => item.location?.lat && item.location?.lng).slice(0, 8);
+    })).filter((item) => Number.isFinite(Number(item.location?.lat)) && Number.isFinite(Number(item.location?.lng))).slice(0, 8);
     return mapped.length > 0 ? mapped : fallbackIncidents;
   }, [data?.alerts]);
 
@@ -112,7 +112,8 @@ const HomeTab = ({ user, data, sosStats, fetchData, fetchNotifications }) => {
     let cancelled = false;
     const loadNearby = async () => {
       try {
-        const res = await apiFetch('/v2/hospital/nearby?lat=12.9716&lng=77.5946&limit=8&radius_km=100&include_eta=false', { method: 'GET', timeoutMs: 12000 });
+        // Centre on Mangaluru, the platform's primary city.
+        const res = await apiFetch('/v2/hospital/nearby?lat=12.9141&lng=74.8560&limit=8&radius_km=100&include_eta=false', { method: 'GET', timeoutMs: 12000 });
         if (!cancelled && res.ok) setNearbyHospitals(res.data?.hospitals || []);
       } catch { /* map section renders its empty state */ }
       finally { if (!cancelled) setNearbyLoading(false); }
@@ -121,11 +122,14 @@ const HomeTab = ({ user, data, sosStats, fetchData, fetchNotifications }) => {
     return () => { cancelled = true; };
   }, []);
 
+  // Accept both payload shapes ({lat, lng} or {location: {lat, lng}}) and drop
+  // any entry without valid numbers: one bad record must never crash the map.
   const hospitalMarkers = useMemo(() => (
     nearbyHospitals.map((h) => ({
-      id: h.id, name: h.name, location: h.location, lat: h.lat, lng: h.lng,
-      phone: h.phone, rating: h.rating, bedsAvailable: h.available_beds, specialties: h.specialties || [],
-    }))
+      id: h.id, name: h.name, location: h.location,
+      lat: Number(h.lat ?? h.location?.lat), lng: Number(h.lng ?? h.location?.lng),
+      phone: h.phone, rating: h.rating, bedsAvailable: h.beds_available ?? h.available_beds, specialties: h.specialties || [],
+    })).filter((h) => Number.isFinite(h.lat) && Number.isFinite(h.lng))
   ), [nearbyHospitals]);
 
   const activityHistory = useMemo(() => data?.activityHistory || [], [data?.activityHistory]);

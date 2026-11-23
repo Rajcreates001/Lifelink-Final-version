@@ -64,7 +64,7 @@ const EmergencyHotspotMap = () => {
                 </div>
             )}
             
-            <MapContainer center={[12.9716, 77.5946]} zoom={12} style={{ height: '500px', width: '100%', borderRadius: '0.75rem' }}>
+            <MapContainer center={[12.9141, 74.8560]} zoom={12} style={{ height: '500px', width: '100%', borderRadius: '0.75rem' }}>
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                 
                 {hotspots.map((h, idx) => (

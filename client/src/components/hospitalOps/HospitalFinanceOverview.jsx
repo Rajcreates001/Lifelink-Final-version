@@ -4,6 +4,14 @@ import { apiFetch } from '../../config/api';
 import { DashboardCard, LoadingSpinner } from '../Common';
 import { ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip } from 'recharts';
 
+// Indian currency in compact form: Rs 4.25 Cr, Rs 12.4 L, Rs 8,450
+const inr = (value) => {
+    const n = Number(value) || 0;
+    if (Math.abs(n) >= 1e7) return `₹${(n / 1e7).toFixed(2)} Cr`;
+    if (Math.abs(n) >= 1e5) return `₹${(n / 1e5).toFixed(1)} L`;
+    return `₹${Math.round(n).toLocaleString('en-IN')}`;
+};
+
 export const HospitalFinanceOverview = () => {
     const { user } = useAuth();
     const hospitalId = user?._id || user?.id;
@@ -80,7 +88,7 @@ export const HospitalFinanceOverview = () => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <DashboardCard className="animate-fade-in-up delay-100">
                             <p className="text-xs text-gray-500">Monthly Revenue</p>
-                            <p className="text-2xl font-bold text-gray-900">₹{latestMonth?.value || 0}</p>
+                            <p className="text-2xl font-bold text-gray-900">{inr(latestMonth?.value)}</p>
                             <p className={`text-xs ${monthDelta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                 {monthDelta >= 0 ? '+' : ''}{monthDelta.toFixed(1)}% vs last month
                             </p>
@@ -92,7 +100,7 @@ export const HospitalFinanceOverview = () => {
                         </DashboardCard>
                         <DashboardCard className="animate-fade-in-up delay-300">
                             <p className="text-xs text-gray-500">Operating Cost</p>
-                            <p className="text-2xl font-bold text-gray-900">₹{summary?.totalExpenses || 0}</p>
+                            <p className="text-2xl font-bold text-gray-900">{inr(summary?.totalExpenses)}</p>
                             <p className="text-xs text-indigo-600">Utilization {utilization}%</p>
                         </DashboardCard>
                     </div>
@@ -107,8 +115,8 @@ export const HospitalFinanceOverview = () => {
                                     <BarChart data={chartData}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                         <XAxis dataKey="month" />
-                                        <YAxis />
-                                        <Tooltip />
+                                        <YAxis width={78} tickFormatter={inr} />
+                                        <Tooltip formatter={(v) => inr(v)} />
                                         <Bar dataKey="revenue" fill="#16a34a" radius={[6, 6, 0, 0]}
                                             isAnimationActive={true} animationDuration={800} animationBegin={200} />
                                         <Bar dataKey="claims" fill="#f97316" radius={[6, 6, 0, 0]}

@@ -22,12 +22,18 @@ const Intelligence = () => {
         ]);
         if (threatRes.ok) {
           const items = Array.isArray(threatRes.data?.data) ? threatRes.data.data : (threatRes.data?.emergencies || []);
-          setThreats(items.map((t, i) => ({
-            source: t.source || t.reportSource || 'Intelligence',
-            type: t.type || t.incidentType || t.message || 'Threat detected',
-            severity: t.severity || t.priority || 'Moderate',
-            region: t.region || t.location || t.district || 'Unknown',
-            status: t.status || 'Active',
+          // API rows can carry objects (e.g. location {lat, lng}); render text only.
+          const txt = (v, d) => {
+            if (v == null || v === '') return d;
+            if (typeof v === 'object') return v.name || v.address || v.city || (v.lat != null ? `${Number(v.lat).toFixed(3)}, ${Number(v.lng ?? v.lon).toFixed(3)}` : d);
+            return String(v);
+          };
+          setThreats(items.slice(0, 25).map((t, i) => ({
+            source: txt(t.source || t.reportSource, 'Intelligence'),
+            type: txt(t.type || t.incidentType || t.message, 'Threat detected'),
+            severity: txt(t.severity || t.priority, 'Moderate'),
+            region: txt(t.region || t.zone || t.location || t.district, 'Unknown'),
+            status: txt(t.status, 'Active'),
             time: t.createdAt ? new Date(t.createdAt).toLocaleTimeString() : `${i + 5}m ago`,
           })));
           setStats(s => ({ ...s, active: items.filter(t => t.status === 'Active' || t.status === 'active').length }));

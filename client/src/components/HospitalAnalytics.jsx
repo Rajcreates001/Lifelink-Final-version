@@ -432,7 +432,8 @@ const HospitalAnalytics = () => {
         }
       } catch (_) { /* corrupt cache — refetch */ }
       if (!cached) setLoading(true);
-      const res = await apiFetch('/api/hospital-ops/ceo/ai-insights?hospitalId=' + hospitalId, { method: 'GET' });
+      // AI insights can take a few seconds when cold; never leave the promise unhandled.
+      const res = await apiFetch('/api/hospital-ops/ceo/ai-insights?hospitalId=' + hospitalId, { method: 'GET', timeoutMs: 20000 }).catch(() => ({ ok: false }));
       if (!on) return;
       if (res.ok) { setInsights(res.data); localStorage.setItem(cacheKey, JSON.stringify(res.data || {})); }
       setLoading(false);

@@ -9,6 +9,7 @@ Endpoints for analyzing medical reports:
 from __future__ import annotations
 
 import logging
+import math
 import re
 from datetime import datetime, timezone
 from typing import Any
@@ -79,7 +80,13 @@ def _extract_bp(text: str) -> tuple[int | None, int | None]:
 
 def extract_report_metrics(text: str) -> dict[str, Any]:
     metrics: dict[str, Any] = {}
-    age = _first_number([r"\bage\s*[:\-]?\s*(\d{1,3})\b"], text)
+    age = _first_number([
+        r"\bage\s*[:\-]?\s*(\d{1,3})\b",
+        r"\b(\d{1,3})\s*(?:-|\s)?\s*(?:years?|yrs?)[\s-]*old\b",
+        r"\b(\d{1,3})\s*(?:y/o|yo)\b",
+    ], text)
+    hemoglobin = _first_number([r"(?:hemoglobin|haemoglobin|\bhb\b|\bhgb\b)\s*[:\-]?\s*(\d{1,2}(?:\.\d+)?)"], text)
+    creatinine = _first_number([r"creatinine\s*[:\-]?\s*(\d{1,2}(?:\.\d+)?)"], text)
     bmi = _first_number([r"\bbmi\s*[:\-]?\s*(\d{1,2}(?:\.\d+)?)"], text)
     heart_rate = _first_number([r"(?:heart rate|hr|pulse)\s*[:\-]?\s*(\d{2,3})"], text)
     oxygen = _first_number([r"(?:oxygen|spo2|o2)\s*[:\-]?\s*(\d{2,3})\s*%?"], text)
@@ -112,6 +119,10 @@ def extract_report_metrics(text: str) -> dict[str, Any]:
         metrics["temperature"] = round(float(temp_value), 1)
         if temp_unit:
             metrics["temperature_unit"] = temp_unit
+    if hemoglobin is not None and 2 <= hemoglobin <= 25:
+        metrics["hemoglobin_g_dl"] = round(float(hemoglobin), 1)
+    if creatinine is not None and 0.1 <= creatinine <= 20:
+        metrics["creatinine_mg_dl"] = round(float(creatinine), 1)
     if systolic is not None:
         metrics["blood_pressure_systolic"] = systolic
     if diastolic is not None:
@@ -169,6 +180,156 @@ def build_risk_flags(metrics: dict[str, Any]) -> list[str]:
     return flags
 
 
+_SEVERITY_ORDER = {"Low": 0, "Moderate": 1, "High": 2, "Critical": 3}
+_LEVEL_FLOOR = {"Low": 5, "Moderate": 25, "High": 50, "Critical": 75}
+
+
+def _level_from_score(score: float) -> str:
+    if score >= 75:
+        return "Critical"
+    if score >= 50:
+        return "High"
+    if score >= 25:
+        return "Moderate"
+    return "Low"
+
+
+_CONDITION_CATEGORY = {
+    "Hypertensive Crisis": "Cardiovascular", "Hypertension": "Cardiovascular", "Hypotension": "Cardiovascular",
+    "Chest Pain": "Cardiovascular", "Cardiac Event": "Cardiovascular", "Tachycardia": "Cardiovascular",
+    "Bradycardia": "Cardiovascular", "High Cholesterol": "Cardiovascular",
+    "Diabetes": "Metabolic", "Elevated Glucose": "Metabolic", "Prediabetes": "Metabolic",
+    "Hypoglycemia": "Metabolic", "Obesity": "Metabolic",
+    "Anemia": "Blood", "Severe Anemia": "Blood",
+    "Kidney Disease": "Renal", "Reduced Kidney Function": "Renal",
+    "Hypoxemia": "Respiratory", "Low Oxygen": "Respiratory", "Breathlessness": "Respiratory",
+    "Fever": "Infection", "High Fever": "Infection",
+}
+
+
+def _primary_category(conditions: list[str], keyword_category: str | None) -> str:
+    """Category of the most frequent body system among the findings."""
+    counts: dict[str, int] = {}
+    for c in conditions:
+        cat = _CONDITION_CATEGORY.get(c)
+        if cat:
+            counts[cat] = counts.get(cat, 0) + 1
+    if keyword_category and keyword_category != "General":
+        counts[keyword_category] = counts.get(keyword_category, 0) + 2
+    return max(counts, key=counts.get) if counts else "General"
+
+
+def evidence_findings(metrics: dict[str, Any], text: str) -> list[dict[str, Any]]:
+    """Judge the report's own numbers against standard clinical reference
+    ranges. Each finding: condition (or None), human-readable flag, points.
+    This is what makes two different reports produce different results —
+    a mention of "BP" or "glucose" alone is no longer a finding."""
+    out: list[dict[str, Any]] = []
+    lowered = text.lower()
+
+    def add(condition, flag, points):
+        out.append({"condition": condition, "flag": flag, "points": points})
+
+    def num(key):
+        v = metrics.get(key)
+        return v if isinstance(v, (int, float)) else None
+
+    sys_bp, dia_bp = num("blood_pressure_systolic"), num("blood_pressure_diastolic")
+    if sys_bp is not None or dia_bp is not None:
+        s, d = sys_bp or 0, dia_bp or 0
+        bp = f"{sys_bp or '?'}/{dia_bp or '?'} mmHg"
+        if s >= 180 or d >= 120:
+            add("Hypertensive Crisis", f"BP {bp} is in the hypertensive-crisis range", 30)
+        elif s >= 140 or d >= 90:
+            add("Hypertension", f"BP {bp} is high (stage 2: >=140/90)", 15)
+        elif s >= 130 or d >= 80:
+            add(None, f"BP {bp} is mildly elevated (stage 1)", 5)
+        elif sys_bp is not None and sys_bp < 90:
+            add("Hypotension", f"BP {bp} is low (<90 systolic)", 15)
+
+    glucose, hba1c = num("glucose_mg_dl"), num("hba1c")
+    if (hba1c is not None and hba1c >= 6.5) or (glucose is not None and glucose >= 200):
+        severe = (hba1c is not None and hba1c >= 9) or (glucose is not None and glucose >= 250)
+        detail = ", ".join(x for x in [f"glucose {glucose} mg/dL" if glucose else "", f"HbA1c {hba1c}%" if hba1c else ""] if x)
+        add("Diabetes", f"Diabetic range ({detail})" + (" — poorly controlled" if severe else ""), 20 if severe else 15)
+    elif glucose is not None and glucose >= 126:
+        add("Elevated Glucose", f"Glucose {glucose} mg/dL is high (>=126)", 10)
+    elif (glucose is not None and glucose >= 100) or (hba1c is not None and hba1c >= 5.7):
+        add("Prediabetes", "Glucose/HbA1c in the prediabetes range", 6)
+    if glucose is not None and glucose < 70:
+        add("Hypoglycemia", f"Glucose {glucose} mg/dL is low (<70)", 15)
+
+    hb = num("hemoglobin_g_dl")
+    if hb is not None:
+        male = re.search(r"\bmale\b|\bman\b|\bmr\.?\b", lowered) and not re.search(r"\bfemale\b|\bwoman\b", lowered)
+        low_cut = 13.0 if male else 12.0
+        if hb < 7:
+            add("Severe Anemia", f"Hemoglobin {hb} g/dL is severely low", 25)
+        elif hb < 10:
+            add("Anemia", f"Hemoglobin {hb} g/dL is low (moderate anemia)", 15)
+        elif hb < low_cut:
+            add("Anemia", f"Hemoglobin {hb} g/dL is below normal (<{low_cut})", 6)
+
+    creat = num("creatinine_mg_dl")
+    if creat is not None:
+        if creat >= 2.0:
+            add("Kidney Disease", f"Creatinine {creat} mg/dL suggests significant kidney impairment", 20)
+        elif creat > 1.3:
+            add("Reduced Kidney Function", f"Creatinine {creat} mg/dL is above normal", 8)
+
+    spo2 = num("oxygen")
+    if spo2 is not None:
+        if spo2 < 90:
+            add("Hypoxemia", f"SpO2 {spo2}% is dangerously low (<90%)", 25)
+        elif spo2 < 94:
+            add("Low Oxygen", f"SpO2 {spo2}% is below normal (<94%)", 12)
+
+    hr = num("heart_rate")
+    if hr is not None:
+        if hr > 120:
+            add("Tachycardia", f"Heart rate {hr} bpm is very high", 15)
+        elif hr > 100:
+            add("Tachycardia", f"Heart rate {hr} bpm is high (>100)", 8)
+        elif hr < 50:
+            add("Bradycardia", f"Heart rate {hr} bpm is low (<50)", 10)
+
+    chol = num("cholesterol_mg_dl")
+    if chol is not None:
+        if chol >= 240:
+            add("High Cholesterol", f"Total cholesterol {chol} mg/dL is high (>=240)", 8)
+        elif chol >= 200:
+            add(None, f"Total cholesterol {chol} mg/dL is borderline high", 3)
+
+    temp, unit = num("temperature"), metrics.get("temperature_unit")
+    if temp is not None:
+        temp_c = (temp - 32) * 5 / 9 if (unit == "F" or temp > 50) else temp
+        if temp_c >= 39.5:
+            add("High Fever", f"Temperature {temp}{unit or ''} is a high fever", 15)
+        elif temp_c >= 38.0:
+            add("Fever", f"Temperature {temp}{unit or ''} indicates fever", 8)
+
+    bmi = num("bmi")
+    if bmi is not None and bmi >= 30:
+        add("Obesity", f"BMI {bmi} is in the obese range", 6)
+
+    symptom_checks = [
+        (r"chest pain|chest tightness", "Chest Pain", "Chest pain reported", 20),
+        (r"shortness of breath|breathless|dyspn", "Breathlessness", "Shortness of breath reported", 12),
+        (r"unconscious|syncope|fainted|loss of consciousness", "Loss of Consciousness", "Loss of consciousness reported", 20),
+    ]
+    for pattern, cond, flag, pts in symptom_checks:
+        m = re.search(pattern, lowered)
+        if m and not re.search(r"(?:\bno\b|\bdenies\b|\bwithout\b)[^.;\n]{0,25}$", lowered[max(0, m.start() - 30):m.start()]):
+            add(cond, flag, pts)
+
+    age = num("age")
+    if age is not None and age >= 65:
+        add(None, f"Age {int(age)} raises baseline risk", 6)
+    elif age is not None and age >= 45:
+        add(None, f"Age {int(age)} slightly raises baseline risk", 3)
+    return out
+
+
 def normalize_conditions(conditions: list[str]) -> list[str]:
     if not conditions:
         return []
@@ -213,6 +374,22 @@ def build_condition_guidance(conditions: list[str]) -> tuple[list[str], list[str
         "Infection": "Infection-related terms appear. Consider CBC, cultures, and clinician review.",
         "Sepsis": "Sepsis terms appear. This usually needs urgent clinical evaluation.",
         "Fracture": "Fracture terms appear. Imaging is needed to confirm the location and severity.",
+        "Hypertensive Crisis": "Blood pressure is at or above 180/120 — this can damage organs and needs same-day care.",
+        "Prediabetes": "Glucose/HbA1c is above normal but below the diabetic range; lifestyle change can reverse it.",
+        "Hypoglycemia": "Blood sugar below 70 mg/dL can cause confusion or fainting.",
+        "Severe Anemia": "Hemoglobin below 7 g/dL usually needs urgent evaluation and sometimes transfusion.",
+        "Reduced Kidney Function": "Creatinine is mildly raised; kidney function should be rechecked.",
+        "Hypoxemia": "Oxygen saturation below 90% means the blood is not carrying enough oxygen.",
+        "Low Oxygen": "Oxygen saturation is below the normal 95-100% range.",
+        "Tachycardia": "Heart rate is above 100 bpm at rest.",
+        "Bradycardia": "Heart rate is below 50 bpm at rest.",
+        "High Cholesterol": "Total cholesterol of 240 mg/dL or more raises heart-disease risk.",
+        "Fever": "Body temperature indicates fever.",
+        "High Fever": "Body temperature is very high.",
+        "Obesity": "BMI of 30 or more raises the risk of diabetes, BP and heart disease.",
+        "Chest Pain": "Chest pain with abnormal vitals can be a heart emergency.",
+        "Breathlessness": "Shortness of breath needs assessment, especially with low SpO2.",
+        "Loss of Consciousness": "Fainting or unconsciousness needs urgent evaluation.",
     }
     next_steps_map = {
         "Liver Cancer": ["Review imaging (US/CT/MRI) and pathology with oncology."],
@@ -236,6 +413,22 @@ def build_condition_guidance(conditions: list[str]) -> tuple[list[str], list[str
         "Infection": ["Check CBC and follow clinician guidance for cultures/antibiotics."],
         "Sepsis": ["Seek urgent medical evaluation."],
         "Fracture": ["Confirm with X-ray/CT and review treatment plan."],
+        "Hypertensive Crisis": ["Seek emergency care today — do not wait for a routine appointment."],
+        "Prediabetes": ["Repeat fasting glucose/HbA1c in 3 months; increase activity and reduce sugar."],
+        "Hypoglycemia": ["Take fast-acting sugar now and review diabetes medicines with a doctor."],
+        "Severe Anemia": ["Get urgent medical review; a repeat CBC and iron studies are needed."],
+        "Reduced Kidney Function": ["Repeat creatinine/eGFR and urine tests; avoid painkillers like NSAIDs."],
+        "Hypoxemia": ["Seek urgent care — oxygen therapy may be needed."],
+        "Low Oxygen": ["Recheck SpO2 at rest; see a doctor if it stays below 94%."],
+        "Tachycardia": ["Get an ECG and check for fever, dehydration or thyroid problems."],
+        "Bradycardia": ["Get an ECG and review medicines that slow the heart."],
+        "High Cholesterol": ["Get a full lipid profile and discuss diet and statins."],
+        "Fever": ["Hydrate, monitor temperature and see a doctor if it lasts over 3 days."],
+        "High Fever": ["See a doctor today, especially with rash, stiff neck or confusion."],
+        "Obesity": ["Discuss a weight-management plan; screen for diabetes and BP."],
+        "Chest Pain": ["Call an ambulance (108) if chest pain is ongoing — use LifeLink SOS."],
+        "Breathlessness": ["Seek urgent evaluation if breathlessness is new or worsening."],
+        "Loss of Consciousness": ["Get urgent medical evaluation and an ECG."],
     }
 
     explanations = []
@@ -253,7 +446,8 @@ def build_condition_guidance(conditions: list[str]) -> tuple[list[str], list[str
     return explanations, next_steps
 
 
-def build_condition_confidences(conditions: list[str], metrics: dict[str, Any], analysis_confidence: float) -> dict[str, float]:
+def build_condition_confidences(conditions: list[str], metrics: dict[str, Any], analysis_confidence: float,
+                                findings: list[dict[str, Any]] | None = None) -> dict[str, float]:
     """Per-condition confidence (0-100) derived from supporting evidence.
 
     Text-pattern detection alone anchors at the analysis confidence (which is
@@ -308,6 +502,12 @@ def build_condition_confidences(conditions: list[str], metrics: dict[str, Any], 
             if has_fever:
                 confidence = min(95, base + 15)
         confidences[condition] = round(confidence)
+    # Conditions backed by a measured value: confidence scales with how far
+    # outside the normal range the value is (finding points), not one constant.
+    for finding in findings or []:
+        cond = finding.get("condition")
+        if cond in confidences:
+            confidences[cond] = round(min(97, max(confidences[cond] - 25, 55 + 1.4 * finding["points"])))
     return confidences
 
 
@@ -368,7 +568,20 @@ async def build_report_analysis(report_text: str, user_id: str | None, source_me
         if key in validated_metrics and validated_metrics[key] is not None:
             metrics[key] = validated_metrics[key]
 
-    risk_flags = build_risk_flags(metrics)
+    findings = evidence_findings(metrics, report_text)
+    for finding in findings:
+        if finding["condition"] and finding["condition"] not in conditions:
+            conditions.append(finding["condition"])
+    if "Hypertensive Crisis" in conditions:
+        conditions = [c for c in conditions if c != "Hypertension"]
+    if "Severe Anemia" in conditions:
+        conditions = [c for c in conditions if c != "Anemia"]
+    if "Diabetes" in conditions:
+        conditions = [c for c in conditions if c not in ("Elevated Glucose", "Prediabetes")]
+    conditions = normalize_conditions(conditions)
+
+    # evidence_findings covers every check build_risk_flags made, with values.
+    risk_flags = [f["flag"] for f in findings]
     lifestyle = extract_lifestyle(report_text)
     ml_payload = None
     if metrics.get("heart_rate") or metrics.get("blood_pressure_systolic") or metrics.get("age"):
@@ -389,10 +602,15 @@ async def build_report_analysis(report_text: str, user_id: str | None, source_me
         except HTTPException:
             ml_result = None
 
-    risk_level = result.get("risk_level") or "Moderate"
-    risk_score = result.get("risk_score") or (82 if risk_level == "Critical" else 65 if risk_level == "High" else 42)
-    primary_category = result.get("primary_category") or (conditions[0] if conditions else "General")
-    summary = result.get("summary") or "Automated summary generated from the submitted report."
+    # Keyword (text-mention) severity — e.g. "metastatic carcinoma" — is kept,
+    # but a missing/zero keyword score must not default to a fixed 42.
+    risk_level = result.get("risk_level") if result.get("risk_level") in _SEVERITY_ORDER else "Low"
+    risk_score = result.get("risk_score") if isinstance(result.get("risk_score"), (int, float)) else 0
+    evidence_points = sum(f["points"] for f in findings)
+    evidence_score = round(100 * (1 - math.exp(-evidence_points / 55)))
+    risk_score = max(risk_score, evidence_score, 5)
+    primary_category = _primary_category(conditions, result.get("primary_category"))
+    summary = "Automated summary generated from the submitted report."
 
     # Evidence-based vital assessment
     assess_vitals(
@@ -428,13 +646,15 @@ async def build_report_analysis(report_text: str, user_id: str | None, source_me
            severity_order.get(clinical_risk["risk_level"], 0) > severity_order.get(risk_level, 0):
             risk_level = clinical_risk["risk_level"]
 
-    if risk_flags:
-        if risk_level == "Low" and len(risk_flags) >= 2:
-            risk_level = "Moderate"
-        if risk_level == "Moderate" and len(risk_flags) >= 3:
-            risk_level = "High"
-        if risk_level == "High" and len(risk_flags) >= 4:
-            risk_level = "Critical"
+    # One consistent answer: level follows the score, a single dangerous
+    # finding (crisis BP, SpO2 < 90, severe anemia...) is at least High, and
+    # the score is lifted to the level's floor so "Critical (45/100)" can't occur.
+    risk_score = int(min(100, round(risk_score)))
+    candidates = [_level_from_score(risk_score), risk_level]
+    if any(f["points"] >= 25 for f in findings):
+        candidates.append("High")
+    risk_level = max(candidates, key=lambda lvl: _SEVERITY_ORDER.get(lvl, 0))
+    risk_score = max(risk_score, _LEVEL_FLOOR[risk_level])
 
     provided_inputs = {
         "heart_rate": metrics.get("heart_rate") is not None,
@@ -458,10 +678,12 @@ async def build_report_analysis(report_text: str, user_id: str | None, source_me
     if metrics.get("glucose_mg_dl"):
         metric_notes.append(f"Glucose {metrics['glucose_mg_dl']} mg/dL")
 
-    if summary == "Automated summary generated from the submitted report." and (conditions or metric_notes):
+    if conditions or metric_notes:
         summary_parts = []
         if conditions:
-            summary_parts.append(f"Detected terms suggest: {', '.join(conditions)}")
+            summary_parts.append(f"Findings: {', '.join(conditions)}")
+        else:
+            summary_parts.append("No abnormal values detected in the report")
         if metric_notes:
             summary_parts.append("Key vitals: " + ", ".join(metric_notes))
         if risk_flags:
@@ -570,8 +792,15 @@ async def build_report_analysis(report_text: str, user_id: str | None, source_me
     if conf_result.warnings:
         meta_reasoning.extend(conf_result.warnings[:2])
 
+    meta_reasoning.insert(
+        0,
+        f"{len(findings)} value(s) outside reference ranges: " + "; ".join(f["flag"] for f in findings[:4])
+        if findings else "All extracted values are within reference ranges.",
+    )
+    # Fresh meta: the keyword pre-scan's own meta ("Normal report.",
+    # confidence 1.0) contradicted the evidence-based result shown to users.
     meta = ensure_meta(
-        result.get("meta") if isinstance(result, dict) else None,
+        {"command": "analyze_report"},
         round(analysis_confidence, 3),
         meta_reasoning,
         [
@@ -601,7 +830,7 @@ async def build_report_analysis(report_text: str, user_id: str | None, source_me
         "risk_score": risk_score,
         "primary_category": primary_category,
         "detected_conditions": conditions,
-        "disease_confidences": build_condition_confidences(conditions, metrics, analysis_confidence),
+        "disease_confidences": build_condition_confidences(conditions, metrics, analysis_confidence, findings),
         "summary": patient_summary,
         "explanation": explanation_lines,
         "next_steps": next_steps,

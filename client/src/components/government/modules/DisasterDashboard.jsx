@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { GovKPICard, GovStatusBadge, GovSectionHeader, GovModuleHero, AlertBanner, FORMAT_TIME } from '../shared/GovernmentShared';
 import { DetailModal, ConfirmDialog, Toast, AnimatedBarChart, AIExplainPanel } from '../shared/InteractiveComponents';
 import { useApiData } from '../../../hooks/useApiData';
@@ -7,23 +7,77 @@ import { apiFetch } from '../../../config/api';
 // Module-level so render stays pure (react-hooks/purity)
 const NOW = Date.now();
 
+// Stable identity: an inline transform would re-create the fetcher every render.
+const toDisasterList = (d) => (Array.isArray(d) ? d : (d?.disasters || d?.data || []));
+
 const DisasterDashboard = () => {
   const [timeRange, _setTimeRange] = useState('24h');
   const { data: disastersData, loading: _disastersLoading, refetch: _refetchDisasters } = useApiData(
     '/v2/government/disaster/recent',
-    { pollInterval: 30000, transform: (d) => d?.disasters || d || [] }
+    { pollInterval: 30000, transform: toDisasterList }
   );
-  const [disasters, _setDisasters] = useState([
+  const [sampleDisasters] = useState([
     { id: 'D-1001', name: 'Cyclone', location: 'Arabian Sea', severity: 'Critical', status: 'Active', affected: '42,000', updated: '5m ago', lat: 12.95, lng: 74.5, details: 'Severe cyclonic storm with wind speeds up to 140 km/h.' },
     { id: 'D-1002', name: 'Flood', location: 'Netravati Valley', severity: 'High', status: 'Active', affected: '18,500', updated: '12m ago', lat: 12.85, lng: 75.1, details: 'River Netravati water level at 4.2m and rising.' },
     { id: 'D-1003', name: 'Earthquake', location: 'Western Ghats', severity: 'Moderate', status: 'Monitoring', affected: '3,200', updated: '45m ago', lat: 13.1, lng: 75.5, details: 'Magnitude 4.8 earthquake at depth 12km.' },
   ]);
-  // Use real data if available, fallback to initial state
-  const _activeDisasters = disastersData?.length > 0 ? disastersData : disasters;
+  // Declared disasters from the API come first; the reference scenarios only
+  // fill the board when nothing has been declared yet.
+  const disasters = useMemo(() => {
+    const pretty = (t) => String(t || 'Disaster').split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    const live = (disastersData || [])
+      .filter((d) => String(d.status || 'active').toLowerCase() === 'active')
+      .slice(0, 6)
+      .map((d) => {
+        const sev = d.severity === 'Medium' ? 'Moderate' : (d.severity || 'High');
+        const where = d.location || d.zone || 'Unknown';
+        const at = d.started_at ? new Date(d.started_at) : null;
+        return {
+          id: `D-${String(d.id || '').slice(0, 4).toUpperCase()}`,
+          name: pretty(d.disaster_type || d.type),
+          location: where,
+          severity: sev,
+          status: 'Active',
+          affected: '—',
+          updated: at && !Number.isNaN(at.getTime()) ? at.toLocaleString([], { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '',
+          lat: d.lat,
+          lng: d.lng,
+          details: `${pretty(d.disaster_type || d.type)} declared for ${where}. Severity: ${sev}.`,
+        };
+      });
+    return live.length > 0 ? live : sampleDisasters;
+  }, [disastersData, sampleDisasters]);
   const [showDetail, setShowDetail] = useState(null);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
 
   const showToast = useCallback((msg, type = 'success') => setToast({ visible: true, message: msg, type }), []);
+
+  // Declare a disaster from the dashboard: saved, broadcast live, shown on the board.
+  const [declare, setDeclare] = useState({ type: 'flood', severity: 'High', location: '' });
+  const [declaring, setDeclaring] = useState(false);
+  const declareDisaster = useCallback(async (e) => {
+    e.preventDefault();
+    const location = declare.location.trim();
+    if (!location) { showToast('Enter the affected area first', 'error'); return; }
+    setDeclaring(true);
+    try {
+      const res = await apiFetch('/v2/government/disaster/trigger', {
+        method: 'POST',
+        body: JSON.stringify({ disaster_type: declare.type, severity: declare.severity, location }),
+      });
+      if (res.ok) {
+        showToast(`${declare.type.charAt(0).toUpperCase() + declare.type.slice(1)} declared for ${location}; all agencies notified`, 'success');
+        setDeclare((d) => ({ ...d, location: '' }));
+        _refetchDisasters({ force: true });
+      } else {
+        showToast(res.data?.detail || 'Could not declare the disaster', 'error');
+      }
+    } catch (err) {
+      showToast('Could not declare the disaster', 'error');
+    } finally {
+      setDeclaring(false);
+    }
+  }, [declare, showToast, _refetchDisasters]);
 
   return (
     <div className="space-y-5">
@@ -48,6 +102,36 @@ const DisasterDashboard = () => {
         />
       )}
 
+      <form onSubmit={declareDisaster} className="rounded-xl bg-white border border-rose-200 p-4 shadow-sm flex flex-wrap items-end gap-3">
+        <div className="flex items-center gap-2 mr-2">
+          <i className="fas fa-bullhorn text-rose-600" />
+          <span className="text-sm font-bold text-slate-800">Declare a disaster</span>
+        </div>
+        <label className="text-[11px] text-slate-500 flex flex-col gap-1">Type
+          <select value={declare.type} onChange={(e) => setDeclare((d) => ({ ...d, type: e.target.value }))}
+            className="text-sm border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-800">
+            {['flood', 'cyclone', 'earthquake', 'landslide', 'pandemic', 'fire', 'industrial_accident'].map((t) => (
+              <option key={t} value={t}>{t.replace('_', ' ').replace(/^./, (c) => c.toUpperCase())}</option>
+            ))}
+          </select>
+        </label>
+        <label className="text-[11px] text-slate-500 flex flex-col gap-1">Severity
+          <select value={declare.severity} onChange={(e) => setDeclare((d) => ({ ...d, severity: e.target.value }))}
+            className="text-sm border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-800">
+            {['Critical', 'High', 'Moderate', 'Low'].map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </label>
+        <label className="text-[11px] text-slate-500 flex flex-col gap-1 flex-1 min-w-[200px]">Affected area
+          <input value={declare.location} onChange={(e) => setDeclare((d) => ({ ...d, location: e.target.value }))}
+            placeholder="e.g. Mangaluru – Netravati basin"
+            className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800" />
+        </label>
+        <button type="submit" disabled={declaring}
+          className="px-4 py-2 text-sm font-bold bg-rose-600 text-white rounded-lg hover:bg-rose-500 disabled:opacity-60">
+          {declaring ? 'Declaring…' : 'Declare & alert agencies'}
+        </button>
+      </form>
+
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <GovKPICard label="Total Incidents" value={disasters.length.toString()} icon="fa-list" color="slate" subtitle={timeRange + ' window'} />
         <GovKPICard label="Critical" value={disasters.filter(d => d.severity === 'Critical').length.toString()} icon="fa-circle-exclamation" color="red" trend={12} />
@@ -69,7 +153,7 @@ const DisasterDashboard = () => {
                   <span className={`w-2 h-2 rounded-full flex-shrink-0 ${d.severity === 'Critical' ? 'bg-red-500 animate-pulse' : d.severity === 'High' ? 'bg-amber-500' : 'bg-amber-400'}`} />
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-800 truncate">{d.name} — {d.location}</p>
-                    <p className="text-[10px] text-slate-400">{d.affected} affected · {d.updated}</p>
+                    <p className="text-[10px] text-slate-400">{d.affected && d.affected !== '—' ? `${d.affected} affected · ` : 'Declared · '}{d.updated}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0 ml-2">

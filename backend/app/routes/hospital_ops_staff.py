@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi import APIRouter, Body, HTTPException, Query, Depends
 from app.core.auth import get_current_user, AuthContext
 
 from app.db.database import require_db
@@ -154,4 +154,128 @@ async def delete_staff(staff_id: str,
         raise HTTPException(status_code=404, detail="Staff member not found")
     return {"message": "Staff member removed"}
 
+# ─── Shift roster and leave requests (Staff Scheduling screen) ───────────────
+STAFF_SCHEDULE = "staff_schedule"
+STAFF_LEAVE_REQUESTS = "staff_leave_requests"
 
+
+@router.post("/staff/optimizer")
+async def staff_optimizer_post(payload: dict = Body(default_factory=dict),
+    ctx: AuthContext = Depends(get_current_user)
+):
+    """POST form of the optimizer used by the Staff Scheduling screen."""
+    hospital_id = payload.get("hospitalId")
+    if not hospital_id:
+        raise HTTPException(status_code=400, detail="hospitalId is required")
+    return await staff_optimizer(hospitalId=hospital_id, ctx=ctx)
+
+
+@router.get("/schedule")
+async def get_schedule(hospitalId: str = Query(...), date: str | None = Query(None),
+    ctx: AuthContext = Depends(get_current_user)
+):
+    """Day roster: every staff member on their assigned shift, plus shifts added
+    for that date through POST /schedule."""
+    db = require_db()
+    await _ensure_seeded(db, hospitalId)
+    oid = _require_hospital_id(hospitalId)
+    day = (date or datetime.now(timezone.utc).date().isoformat())[:10]
+    staff = await MongoRepository(db, HOSPITAL_STAFF).find_many({"hospital": oid}, limit=400)
+    added = await MongoRepository(db, STAFF_SCHEDULE).find_many({"hospital": oid, "date": day}, limit=400)
+    roster = [
+        {
+            "_id": f"roster-{s.get('_id')}",
+            "staffId": str(s.get("_id")),
+            "staffName": s.get("name"),
+            "department": s.get("department"),
+            "role": s.get("role"),
+            "shift": s.get("shift") or "Morning",
+            "date": day,
+            "source": "roster",
+        }
+        for s in staff if s.get("availability") is not False
+    ]
+    return {"count": len(roster) + len(added), "date": day, "data": roster + added}
+
+
+@router.post("/schedule", status_code=201)
+async def add_schedule_shift(payload: dict = Body(default_factory=dict),
+    ctx: AuthContext = Depends(get_current_user)
+):
+    db = require_db()
+    hospital_id = payload.get("hospitalId")
+    staff_id = payload.get("staffId")
+    if not hospital_id or not staff_id:
+        raise HTTPException(status_code=400, detail="hospitalId and staffId are required")
+    oid = _require_hospital_id(hospital_id)
+    member = await MongoRepository(db, HOSPITAL_STAFF).find_one({"_id": _as_object_id(staff_id)}) or {}
+    now = datetime.now(timezone.utc)
+    doc = {
+        "hospital": oid,
+        "staffId": str(staff_id),
+        "staffName": member.get("name") or payload.get("staffName") or "Staff",
+        "role": member.get("role") or payload.get("role"),
+        "department": payload.get("department") or member.get("department") or "General",
+        "shift": payload.get("shift") or "Morning",
+        "date": (payload.get("date") or now.date().isoformat())[:10],
+        "source": "manual",
+        "createdBy": ctx.user_id,
+        "createdAt": now,
+        "updatedAt": now,
+    }
+    return await MongoRepository(db, STAFF_SCHEDULE).insert_one(doc)
+
+
+@router.get("/leave-requests")
+async def list_leave_requests(hospitalId: str = Query(...), status: str | None = Query(None),
+    ctx: AuthContext = Depends(get_current_user)
+):
+    db = require_db()
+    oid = _require_hospital_id(hospitalId)
+    query: dict[str, Any] = {"hospital": oid}
+    if status:
+        query["status"] = status
+    records = await MongoRepository(db, STAFF_LEAVE_REQUESTS).find_many(query, sort=[("createdAt", -1)], limit=200)
+    return {"count": len(records), "data": records}
+
+
+@router.post("/leave-requests", status_code=201)
+async def create_leave_request(payload: dict = Body(default_factory=dict),
+    ctx: AuthContext = Depends(get_current_user)
+):
+    db = require_db()
+    hospital_id = payload.get("hospitalId")
+    if not hospital_id:
+        raise HTTPException(status_code=400, detail="hospitalId is required")
+    now = datetime.now(timezone.utc)
+    doc = {
+        "hospital": _require_hospital_id(hospital_id),
+        "staffId": payload.get("staffId"),
+        "staffName": payload.get("staffName") or "Staff",
+        "department": payload.get("department"),
+        "startDate": payload.get("startDate") or now.date().isoformat(),
+        "endDate": payload.get("endDate") or now.date().isoformat(),
+        "reason": payload.get("reason") or "Personal",
+        "status": "pending",
+        "createdAt": now,
+        "updatedAt": now,
+    }
+    return await MongoRepository(db, STAFF_LEAVE_REQUESTS).insert_one(doc)
+
+
+@router.patch("/leave-requests/{leave_id}")
+async def update_leave_request(leave_id: str, payload: dict = Body(default_factory=dict),
+    ctx: AuthContext = Depends(get_current_user)
+):
+    status_value = str(payload.get("status") or "").lower()
+    if status_value not in {"approved", "rejected", "pending"}:
+        raise HTTPException(status_code=400, detail="status must be approved, rejected or pending")
+    db = require_db()
+    updated = await MongoRepository(db, STAFF_LEAVE_REQUESTS).update_one(
+        {"_id": _as_object_id(leave_id)},
+        {"$set": {"status": status_value, "reviewedBy": ctx.user_id, "updatedAt": datetime.now(timezone.utc)}},
+        return_new=True,
+    )
+    if not updated:
+        raise HTTPException(status_code=404, detail="Leave request not found")
+    return updated

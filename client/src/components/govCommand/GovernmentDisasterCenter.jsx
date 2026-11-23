@@ -7,7 +7,7 @@ export const GovernmentDisasterCenter = () => {
     const [loading, setLoading] = useState(true);
     const [form, setForm] = useState({ type: 'manual', zone: 'Zone A', severity: 'High', reason: '' });
     const [broadcastMessage, setBroadcastMessage] = useState('Evacuate priority zones and activate disaster response.');
-    const [center, setCenter] = useState([12.9716, 77.5946]);
+    const [center, setCenter] = useState([12.9141, 74.8560]);
     const [activeTab, setActiveTab] = useState('control');
     const [actionLog, setActionLog] = useState(null);
     const [history, setHistory] = useState(() => {

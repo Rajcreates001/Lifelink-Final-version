@@ -61,6 +61,44 @@ AMBULANCE_ROUTES = {
         "distance_km": 15.0,
         "estimated_minutes": 30,
     },
+    # Mangaluru corridors (the platform's primary city in the demo data).
+    "route_mlr_1": {
+        "name": "Surathkal to Wenlock Hospital via NH-66",
+        "waypoints": [
+            {"lat": 13.0090, "lng": 74.7943, "name": "Surathkal"},
+            {"lat": 12.9480, "lng": 74.8090, "name": "Panambur"},
+            {"lat": 12.8960, "lng": 74.8380, "name": "Kottara Chowki"},
+            {"lat": 12.8850, "lng": 74.8410, "name": "Lalbagh"},
+            {"lat": 12.8700, "lng": 74.8430, "name": "Hampankatta"},
+            {"lat": 12.8645, "lng": 74.8435, "name": "Wenlock Hospital"},
+        ],
+        "distance_km": 18.0,
+        "estimated_minutes": 26,
+    },
+    "route_mlr_2": {
+        "name": "Pumpwell to KMC Attavar",
+        "waypoints": [
+            {"lat": 12.8605, "lng": 74.8573, "name": "Pumpwell"},
+            {"lat": 12.8720, "lng": 74.8620, "name": "Kankanady"},
+            {"lat": 12.8760, "lng": 74.8560, "name": "Bendoor"},
+            {"lat": 12.8670, "lng": 74.8460, "name": "Falnir"},
+            {"lat": 12.8628, "lng": 74.8476, "name": "KMC Hospital Attavar"},
+        ],
+        "distance_km": 5.5,
+        "estimated_minutes": 12,
+    },
+    "route_mlr_3": {
+        "name": "Bajpe Airport to AJ Hospital",
+        "waypoints": [
+            {"lat": 12.9613, "lng": 74.8901, "name": "Bajpe Airport"},
+            {"lat": 12.9300, "lng": 74.8650, "name": "Kavoor"},
+            {"lat": 12.8990, "lng": 74.8400, "name": "Kottara"},
+            {"lat": 12.8880, "lng": 74.8430, "name": "Kuntikana"},
+            {"lat": 12.8889, "lng": 74.8460, "name": "AJ Hospital"},
+        ],
+        "distance_km": 14.0,
+        "estimated_minutes": 22,
+    },
 }
 
 # Traffic patterns (hour -> speed multiplier)

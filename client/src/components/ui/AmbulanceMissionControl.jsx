@@ -39,7 +39,7 @@ const hospitalIcon = L.divIcon({
 
 // ─── Constants & Helpers ──────────────────────────────────────────
 
-const DEFAULT_CENTER = [12.9716, 77.5946];
+const DEFAULT_CENTER = [12.9141, 74.8560];
 const BENGALURU_BOUNDS = { latMin: 12.85, latMax: 13.05, lngMin: 77.45, lngMax: 77.75 };
 
 const resolveAmbulanceId = (user) => user?._id || user?.id || '';

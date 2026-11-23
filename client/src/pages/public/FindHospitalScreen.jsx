@@ -35,7 +35,7 @@ const FindHospitalScreen = ({ onBack, rightSlot }) => {
     if (location || hospitals.length > 0) return;
     let cancelled = false;
     const loadWarm = async () => {
-      const res = await apiFetch('/v2/hospital/nearby?lat=12.9716&lng=77.5946&limit=5&radius_km=50&include_eta=true', { method: 'GET', timeoutMs: 12000 });
+      const res = await apiFetch('/v2/hospital/nearby?lat=12.9141&lng=74.8560&limit=5&radius_km=50&include_eta=true', { method: 'GET', timeoutMs: 12000 });
       if (!cancelled && res?.ok) {
         const list = res.data?.hospitals || [];
         if (list.length) {

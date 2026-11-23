@@ -7,7 +7,7 @@
  * Usage:
  *   <HeatMapView
  *     incidents={incidentData}
- *     center={[12.9716, 77.5946]}
+ *     center={[12.9141, 74.8560]}
  *     zoom={11}
  *     height="400px"
  *   />
@@ -88,7 +88,7 @@ const HeatMapLayer = ({ points = [], radius = 25, blur = 15, maxZoom = 17 }) => 
  */
 const HeatMapView = ({
   incidents = [],
-  center = [12.9716, 77.5946],
+  center = [12.9141, 74.8560],
   zoom = 11,
   height = '400px',
   showMarkers = true,

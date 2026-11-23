@@ -315,6 +315,38 @@ class PgCollection:
             result = await session.execute(stmt)
             return int(result.scalar() or 0)
 
+    async def update_many(
+        self,
+        query: dict[str, Any],
+        update: dict[str, Any],
+        limit_value: int | None = None,
+    ) -> dict[str, Any]:
+        """Bulk update documents matching the query in one transaction.
+
+        Returns a dict with ``modified_count`` so callers can treat it like a
+        MongoDB-style result without special-casing per-call sites.
+        """
+        async with self._session_factory() as session:
+            stmt = select(Document).where(Document.collection == self._collection)
+            filters = _build_filters(query)
+            if filters:
+                stmt = stmt.where(and_(*filters))
+            result = await session.execute(stmt)
+            records = list(result.scalars())
+            if limit_value:
+                records = records[:limit_value]
+            set_data = update.get("$set") or update
+            modified = 0
+            for record in records:
+                next_data = dict(record.data or {})
+                next_data.update(to_serializable(set_data))
+                record.data = next_data
+                record.updated_at = datetime.now(timezone.utc)
+                modified += 1
+            if modified:
+                await session.commit()
+            return type("UpdateManyResult", (), {"modified_count": modified})()
+
 
 class MongoRepository:
     def __init__(self, db: async_sessionmaker[AsyncSession], collection_name: str):

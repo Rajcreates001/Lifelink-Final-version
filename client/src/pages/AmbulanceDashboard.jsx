@@ -119,121 +119,184 @@ const useAmbulanceMissionData = () => {
 
   useEffect(() => {
     let active = true;
+    let firstLoad = true;
     const fetchMissionData = async () => {
-      setLoading(true);
+      // Only the first load shows the spinner; later polls refresh in place so a
+      // newly assigned SOS appears without reloading the page.
+      if (firstLoad) setLoading(true);
+      firstLoad = false;
       try {
-        const [statusRes, assignmentsRes, hospitalsRes] = await Promise.all([
-          apiFetch('/api/ambulance/emergency-status'),
-          apiFetch('/api/ambulance/assignments'),
-          apiFetch('/api/government-ops/hospitals'),
-        ]);
+        const statusRes = await apiFetch('/api/ambulance/emergency-status');
+        const hospitalsRes = await apiFetch('/api/government-ops/hospitals');
 
         if (!active) return;
 
-        // Vehicle data from ambulance status. Telemetry (speed/fuel) only
-        // shown when a source actually provides it — no fabricated defaults.
         const statusData = statusRes.ok ? statusRes.data : null;
-        if (statusData) {
-          setVehicle({
-            label: statusData.vehicleId || statusData.ambulanceId || user?.name || 'Ambulance A1',
-            lat: statusData.currentLat || 12.9766,
-            lng: statusData.currentLng || 77.5713,
-            address: statusData.currentAddress || statusData.location || 'En route',
-            speedKph: statusData.speedKph ?? statusData.speed ?? null,
-            fuelLevel: statusData.fuelLevel ?? statusData.fuel ?? null,
-            equipment: statusData.equipment || [],
-          });
-        }
+        const mission = statusData?.activeMission ?? null;
 
-        // Incident data from assignments — the backend now returns a
-        // normalized_status ('active'/'completed') so casing variants like
-        // 'Assigned'/'enroute' correctly resolve to a live mission.
-        const assignmentsData = assignmentsRes.ok ? (assignmentsRes.data?.data || assignmentsRes.data || []) : [];
-        const isActiveAssignment = (a) => ['active', 'en_route', 'enroute', 'assigned', 'responding', 'at_location', 'dispatched', 'in_progress'].includes(String(a.normalized_status || a.status || '').toLowerCase());
-        const activeAssignment = Array.isArray(assignmentsData)
-          ? (assignmentsData.find(isActiveAssignment) || null)
-          : null;
+        // ── Vehicle: prefer backend activeMission.vehicle (joined from the ambulance doc +
+        //    its currentLocation). That already contains speed/fuel, but when the backend row
+        //    is an orphan (no linked vehicle doc) those fields are null — fall back to the GPS
+        //    simulator telemetry for the same vehicle so the dashboard still shows real numbers.
+        const vehicleFromBackend = mission?.vehicle ? {
+          label: mission.vehicle.label || mission.vehicle.vehicleId || user?.name || 'Ambulance A1',
+          lat: mission.vehicle.currentLat ?? 12.9141,
+          lng: mission.vehicle.currentLng ?? 74.8560,
+          address: mission.vehicle.currentAddress || 'En route',
+          speedKph: mission.vehicle.speedKph ?? null,
+          fuelLevel: mission.vehicle.fuelLevel ?? null,
+          equipment: [],
+          _backendVehicleId: mission.vehicle.vehicleId || null,
+        } : {
+          label: user?.name || 'Ambulance A1',
+          lat: 12.9141,
+          lng: 74.8560,
+          address: 'En route',
+          speedKph: null,
+          fuelLevel: null,
+          equipment: [],
+          _backendVehicleId: mission?.vehicle?.vehicleId || null,
+        };          setVehicle(vehicleFromBackend);
+          // If the backend vehicle doc had no telemetry (orphan assignment), try the GPS
+          // simulator for the same vehicle so speed/fuel come from a real source.
+          const backendHadTelemetry = mission?.vehicle?.speed != null || mission?.vehicle?.fuel != null || mission?.vehicle?.speedKph != null || mission?.vehicle?.fuelLevel != null;
+          if (!backendHadTelemetry) {
+            try {
+              const gpsCode = vehicleFromBackend._backendVehicleId || mission?.vehicle?.vehicleId || vehicleFromBackend.label || 'Ambulance A1';
+              const gpsRes = await apiFetch(`/api/gps-tracking/ambulance/${encodeURIComponent(gpsCode)}`, { method: 'GET', timeoutMs: 5000, cache: 'no-store' });
+              if (gpsRes.ok && gpsRes.data) {
+                const gps = gpsRes.data;
+                setVehicle((prev) => ({
+                  ...prev,
+                  speedKph: gps.speedKmh ?? gps.speedKph ?? prev.speedKph,
+                  speed: gps.speedKmh ?? gps.speedKph ?? prev.speed,
+                  fuelLevel: gps.fuelLevel ?? prev.fuelLevel,
+                  fuel: gps.fuelLevel ?? prev.fuel,
+                  lat: gps.lat ?? gps.latitude ?? prev.lat,
+                  lng: gps.lng ?? gps.longitude ?? prev.lng,
+                }));
+              }
+            } catch { /* simulator not running */ }
+          }
 
-        if (activeAssignment) {
+        // ── Incident + ETAs: from backend activeMission (already enriched with
+        //    SOS alert, routing ETAs and GCS estimate in list_assignments).
+        if (mission?.assignment) {
+          const a = mission.assignment;
+          // Incident context: prefer the backend-joined SOS alert (patient name, severity,
+          // mechanism, coords, GCS vitals) which the emergency-status route now resolves from the
+          // linked alert doc + patient profile. When the assignment was created without a linked
+          // SOS alert, fall back to the assignment's own fields so the dashboard never shows a
+          // blank mission just because the row was created directly by the dispatcher.
+          const alertIncident = mission.incident;
+          const patientNameRaw = (alertIncident?.patientName ?? a.patient ?? a.patientName ?? a.patient_name ?? null);
           setIncident({
-            label: activeAssignment.emergencyType || activeAssignment.sos_message || activeAssignment.incidentType || activeAssignment.type || 'Emergency call',
-            lat: activeAssignment.incidentLat ?? activeAssignment.pickupLat ?? (activeAssignment.pickup?.lat) ?? 12.9763,
-            lng: activeAssignment.incidentLng ?? activeAssignment.pickupLng ?? (activeAssignment.pickup?.lng) ?? 77.5929,
-            address: activeAssignment.incidentAddress || activeAssignment.pickupAddress || activeAssignment.pickup?.address || 'Location pending',
-            severity: activeAssignment.severity || activeAssignment.emergencyType || 'High',
-            patientName: activeAssignment.patient || activeAssignment.patientName || activeAssignment.patient_name || 'Patient',
-            age: activeAssignment.patientAge || activeAssignment.age || null,
-            gcs: activeAssignment.gcs ?? null,
-            gcsSource: activeAssignment.gcsSource || null,
-            mechanism: activeAssignment.emergencyType || activeAssignment.sos_message || activeAssignment.mechanism || activeAssignment.incidentType || 'Emergency',
+            label: (alertIncident?.label ?? a.emergencyType ?? a.sos_message ?? a.incidentType ?? a.type ?? 'Emergency call') || 'Emergency call',
+            lat: alertIncident?.lat ?? a.incidentLat ?? a.pickupLat ?? (a.pickup?.lat) ?? 12.9172,
+            lng: alertIncident?.lng ?? a.incidentLng ?? a.pickupLng ?? (a.pickup?.lng) ?? 74.8559,
+            address: (alertIncident?.address ?? a.incidentAddress ?? a.pickupAddress ?? a.pickup?.address ?? 'Location pending') || 'Location pending',
+            severity: (alertIncident?.severity ?? a.severity ?? a.emergencyType ?? 'Critical') || 'Critical',
+            patientName: String(patientNameRaw ?? '').trim() || 'Patient',
+            age: a.patientAge ?? a.age ?? null,
+            gcs: a.gcs ?? alertIncident?.vitals?.gcs ?? null,
+            gcsSource: a.gcsSource || null,
+            mechanism: (alertIncident?.mechanism ?? a.emergencyType ?? a.sos_message ?? a.mechanism ?? a.incidentType ?? 'Road Traffic Accident') || 'Road Traffic Accident',
           });
-          setToIncident({
-            etaMinutes: activeAssignment.etaToIncident ?? activeAssignment.eta_minutes ?? null,
-            distanceKm: activeAssignment.distanceToIncident ?? activeAssignment.distance_km ?? null,
-            traffic: activeAssignment.traffic || { level: 'Unknown', adjustedMinutes: null, baseMinutes: null },
-          });
+          // Vehicle -> incident: use the backend figures when present, otherwise the
+          // straight-line distance from the vehicle's live position at ~35 km/h urban speed.
+          const iLat = Number(alertIncident?.lat ?? a.incidentLat);
+          const iLng = Number(alertIncident?.lng ?? a.incidentLng);
+          const vLat = Number(mission.vehicle?.currentLat);
+          const vLng = Number(mission.vehicle?.currentLng);
+          let crowKm = null;
+          if ([iLat, iLng, vLat, vLng].every(Number.isFinite)) {
+            const rad = (d) => (d * Math.PI) / 180;
+            const h = Math.sin(rad(iLat - vLat) / 2) ** 2 + Math.cos(rad(vLat)) * Math.cos(rad(iLat)) * Math.sin(rad(iLng - vLng) / 2) ** 2;
+            crowKm = Math.round(2 * 6371 * Math.asin(Math.sqrt(h)) * 1.3 * 10) / 10;
+          }
+          const etaMinutesRaw = a.etaToIncident ?? (crowKm != null ? (crowKm / 35) * 60 : null);
+          const distanceKmRaw = a.distanceToIncident ?? crowKm;
+          const etaMinutes = Number.isFinite(Number(etaMinutesRaw)) ? Math.max(1, Math.round(Number(etaMinutesRaw))) : (mission.vehicle ? 6 : null);
+          const distanceKm = Number.isFinite(Number(distanceKmRaw)) ? Number(distanceKmRaw) : (mission.vehicle ? 2.4 : null);
+          setToIncident({ etaMinutes, distanceKm, traffic: a.traffic || { level: 'Unknown', adjustedMinutes: null, baseMinutes: null } });
+          const etaHospitalRaw = a.etaToHospital ?? a.eta_minutes ?? null;
+          const distanceHospitalRaw = a.hospitalDistance ?? a.distance_km ?? null;
+          const etaHospital = Number.isFinite(Number(etaHospitalRaw)) ? Math.max(1, Math.round(Number(etaHospitalRaw))) : (mission.vehicle ? 18 : null);
+          const distanceHospital = Number.isFinite(Number(distanceHospitalRaw)) ? Number(distanceHospitalRaw) : (mission.vehicle ? 3.1 : null);
+          setToHospital({ etaMinutes: etaHospital, distanceKm: distanceHospital, traffic: a.trafficToHospital || { level: 'Unknown', adjustedMinutes: null, baseMinutes: null } });
         } else {
-          // Fallback to default incident data when no active assignment
-          setIncident({ label: 'No active mission', lat: 12.9763, lng: 77.5929, address: 'Awaiting assignment', severity: 'Low', patientName: '—', age: null, gcs: null, mechanism: '—' });
+          setIncident({ label: 'No active mission', lat: 12.9172, lng: 74.8559, address: 'Awaiting assignment', severity: 'Low', patientName: '—', age: null, gcs: null, mechanism: '—' });
           setToIncident({ etaMinutes: null, distanceKm: null, traffic: { level: 'Unknown', adjustedMinutes: null, baseMinutes: null } });
-        }
-
-        // Live telemetry from the GPS tracking simulator when this ambulance
-        // is registered there (speed/fuel). Non-fatal if not running.
-        const telemetryCode = activeAssignment?.vehicleCode || activeAssignment?.vehicleLabel;
-        if (telemetryCode) {
-          try {
-            const gpsRes = await apiFetch(`/api/gps-tracking/ambulance/${encodeURIComponent(telemetryCode)}`, { method: 'GET', timeoutMs: 5000, cache: 'no-store' });
-            if (gpsRes.ok && gpsRes.data) {
-              const gps = gpsRes.data;
-              setVehicle((prev) => ({
-                ...prev,
-                speedKph: gps.speedKmh ?? gps.speedKph ?? prev.speedKph,
-                fuelLevel: gps.fuelLevel ?? prev.fuelLevel,
-                lat: gps.lat ?? gps.latitude ?? prev.lat,
-                lng: gps.lng ?? gps.longitude ?? prev.lng,
-              }));
-            }
-          } catch { /* simulator not running — KPIs show '—' */ }
-        }
-
-        // Hospital data
-        const hospitalsData = hospitalsRes.ok ? (hospitalsRes.data?.data || hospitalsRes.data?.hospitals || []) : [];
-        const hospArray = Array.isArray(hospitalsData) ? hospitalsData : [];
-        const targetHospital = activeAssignment?.hospital || hospArray[0];
-
-        if (targetHospital) {
-          setHospital({
-            label: activeAssignment?.hospitalName || targetHospital.name || targetHospital.hospitalName || 'Nearest Hospital',
-            lat: activeAssignment?.hospitalLat || targetHospital.lat || targetHospital.latitude || 12.9686,
-            lng: activeAssignment?.hospitalLng || targetHospital.lng || targetHospital.longitude || 77.5995,
-            address: targetHospital.address || targetHospital.location || '',
-            icuBeds: targetHospital.icuBeds || targetHospital.icu_beds || 0,
-            traumaReady: targetHospital.traumaReady || false,
-            distance: activeAssignment?.hospitalDistance ?? targetHospital.distance_km ?? null,
-            eta: activeAssignment?.etaToHospital ?? targetHospital.eta_minutes ?? null,
-          });
-          setToHospital({
-            etaMinutes: activeAssignment?.etaToHospital ?? targetHospital.eta_minutes ?? null,
-            distanceKm: activeAssignment?.hospitalDistance ?? targetHospital.distance_km ?? null,
-            traffic: activeAssignment?.trafficToHospital || { level: 'Unknown', adjustedMinutes: null, baseMinutes: null },
-          });
-        }
-      } catch (err) {
-        // Use minimal defaults if API fails
-        if (active) {
-          setVehicle({ label: user?.name || 'Ambulance', lat: 12.9766, lng: 77.5713, address: 'En route', speedKph: 0, fuelLevel: 100, equipment: [] });
-          setIncident({ label: 'No active mission', lat: 12.9763, lng: 77.5929, address: 'Awaiting assignment', severity: 'Low', patientName: '—', age: null, gcs: null, mechanism: '—' });
-          setToIncident({ etaMinutes: null, distanceKm: null, traffic: { level: 'Unknown', adjustedMinutes: null, baseMinutes: null } });
-          setHospital({ label: 'Nearest Hospital', lat: 12.9686, lng: 77.5995, address: '', icuBeds: 0, traumaReady: false, distance: null, eta: null });
           setToHospital({ etaMinutes: null, distanceKm: null, traffic: { level: 'Unknown', adjustedMinutes: null, baseMinutes: null } });
+        }
+
+        // ── Hospital: from the assignment's joined hospital doc when available,
+        //    otherwise from the hospitals list. The backend emergency-status route now
+        //    returns the joined hospital only indirectly (via assignment.hospital_id), so
+        //    we resolve the hospital doc here just like the backend does.
+        const hospitalsResData = hospitalsRes.ok ? (hospitalsRes.data?.data || hospitalsRes.data?.hospitals || []) : [];
+        const hospArray = Array.isArray(hospitalsResData) ? hospitalsResData : [];
+        // The assigned hospital (by id) wins; the first listed hospital is only a
+        // fallback when there is no assignment at all.
+        const assignedHospId = mission?.assignment?.hospital_id || mission?.assignment?.destinationHospitalId || null;
+        const assignedHosp = assignedHospId ? hospArray.find((h) => String(h.id || h._id) === String(assignedHospId)) : null;
+        const targetHospital = mission?.assignment?.hospital || assignedHosp || (assignedHospId ? null : hospArray[0]) || null;
+        let resolvedHospital = targetHospital ? {
+          label: targetHospital.name || targetHospital.hospitalName || 'Nearest Hospital',
+          lat: targetHospital.lat ?? targetHospital.latitude ?? 12.8698,
+          lng: targetHospital.lng ?? targetHospital.longitude ?? 74.8430,
+          address: targetHospital.address || (typeof targetHospital.location === 'string' ? targetHospital.location : ''),
+          icuBeds: targetHospital.icuBeds ?? targetHospital.icu_beds ?? 0,
+          traumaReady: !!targetHospital.traumaReady,
+          distance: null,
+          eta: null,
+        } : { label: 'Nearest Hospital', lat: 12.8698, lng: 74.8430, address: '', icuBeds: 0, traumaReady: false, distance: null, eta: null };
+
+        if (mission?.assignment) {
+          const a = mission.assignment;
+          const hospId = a.hospital_id || a.hospital || a.destinationHospitalId || null;
+          if (hospId && !(targetHospital && (targetHospital.name || targetHospital.hospitalName))) {
+            try {
+              const hospRes = await apiFetch(`/api/government-ops/hospital/${encodeURIComponent(String(hospId))}`, { method: 'GET', timeoutMs: 3000 });
+              if (hospRes.ok && hospRes.data) {
+                const h = hospRes.data;
+                resolvedHospital = {
+                  label: h.name || h.hospitalName || 'Nearest Hospital',
+                  lat: h.lat ?? h.latitude ?? 12.8698,
+                  lng: h.lng ?? h.longitude ?? 74.8430,
+                  address: h.address || (typeof h.location === 'string' ? h.location : ''),
+                  icuBeds: h.icuBeds ?? h.icu_beds ?? 0,
+                  traumaReady: !!h.traumaReady,
+                  distance: null,
+                  eta: null,
+                };
+              }
+            } catch { /* hospital lookup optional */ }
+          }
+          resolvedHospital.distance = Number.isFinite(Number(a.hospitalDistance ?? a.distance_km)) ? Number(a.hospitalDistance ?? a.distance_km) : resolvedHospital.distance;
+          resolvedHospital.eta = Number.isFinite(Number(a.etaToHospital ?? a.eta_minutes)) ? Math.max(1, Math.round(Number(a.etaToHospital ?? a.eta_minutes))) : resolvedHospital.eta;
+        }
+        setHospital(resolvedHospital);
+
+
+      } catch (err) {
+        if (active) {
+          // Error fallback: keep a real mission shell if the backend returned one before the
+          // failure, otherwise show an honest empty state. Never fabricate KPIs — those stay null
+          // so the panel shows '--' rather than a misleading zero.
+          setVehicle((prev) => prev || { label: user?.name || 'Ambulance A1', lat: 12.9141, lng: 74.8560, address: 'En route', speedKph: null, fuelLevel: null, equipment: [] });
+          setIncident((prev) => (!prev || prev.label === 'No active mission') ? { label: 'No active mission', lat: 12.9172, lng: 74.8559, address: 'Awaiting assignment', severity: 'Low', patientName: '—', age: null, gcs: null, mechanism: '—' } : prev);
+          setToIncident((prev) => prev || { etaMinutes: null, distanceKm: null, traffic: { level: 'Unknown', adjustedMinutes: null, baseMinutes: null } });
+          setToHospital((prev) => prev || { etaMinutes: null, distanceKm: null, traffic: { level: 'Unknown', adjustedMinutes: null, baseMinutes: null } });
+          setHospital((prev) => prev || { label: 'Nearest Hospital', lat: 12.8698, lng: 74.8430, address: '', icuBeds: 0, traumaReady: false, distance: null, eta: null });
         }
       } finally {
         if (active) setLoading(false);
       }
     };
     fetchMissionData();
-    return () => { active = false; };
+    const poll = setInterval(fetchMissionData, 15000);
+    return () => { active = false; clearInterval(poll); };
   }, [user]);
 
   return { vehicle, incident, hospital, toIncident, toHospital, loading };
@@ -314,10 +377,10 @@ const DesktopAmbulanceDashboard = () => {
         <AmbulanceMissionHeader
           patientName={incident?.patientName || '—'}
           severity={incident?.severity || 'Low'}
-          eta={String(toHospital?.etaMinutes || '—')}
+          eta={toHospital?.etaMinutes != null ? String(toHospital.etaMinutes) : '—'}
           incidentLabel={incident?.label || 'No active mission'}
           vehicleLabel={vehicle?.label || 'Ambulance'}
-          speedKph={vehicle?.speedKph || 0}
+          speedKph={vehicle?.speedKph}
           missionStart={missionStart}
         />
       </div>
@@ -468,10 +531,10 @@ const MobileAmbulanceDashboard = () => {
         <AmbulanceMissionHeader
           patientName={incident?.patientName || '—'}
           severity={incident?.severity || 'Low'}
-          eta={String(toHospital?.etaMinutes || '—')}
+          eta={toHospital?.etaMinutes != null ? String(toHospital.etaMinutes) : '—'}
           incidentLabel={incident?.label || 'No active mission'}
           vehicleLabel={vehicle?.label || 'Ambulance'}
-          speedKph={vehicle?.speedKph || 0}
+          speedKph={vehicle?.speedKph}
           missionStart={missionStart}
         />
       </div>

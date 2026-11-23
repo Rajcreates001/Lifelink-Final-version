@@ -175,8 +175,8 @@ const FamilyMonitoring = () => {
     };
 
     const pushLocation = async (member) => {
-        const lat = 12.97 + Math.random() * 0.05;
-        const lng = 77.59 + Math.random() * 0.05;
+        const lat = 12.88 + Math.random() * 0.05;
+        const lng = 74.83 + Math.random() * 0.05;
         await apiFetch(`/api/family/members/${member._id || member.id}/location`, {
             method: 'PATCH',
             body: JSON.stringify({ latitude: lat, longitude: lng, label: 'Live location' })

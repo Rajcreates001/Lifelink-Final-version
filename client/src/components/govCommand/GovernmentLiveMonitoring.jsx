@@ -291,7 +291,7 @@ export const GovernmentLiveMonitoring = () => {
                 </div>
                 <HeatMapView
                     incidents={realtimeFeed.length > 0 ? realtimeFeed.slice(0, 50) : feed.slice(0, 50)}
-                    center={[12.9716, 77.5946]}
+                    center={[12.9141, 74.8560]}
                     zoom={11}
                     height="420px"
                 />

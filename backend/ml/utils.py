@@ -34,10 +34,13 @@ _REPORT_PATTERNS = [
     (r"\bheart failure\b|\bcardiac arrest\b|\bmyocardial infarction\b|\bheart attack\b", "Cardiac Event", "Cardiovascular", 10),
     (r"\bhypertension\b|\bhigh blood pressure\b", "Hypertension", "Cardiovascular", 6),
     (r"\bhypotension\b|\blow blood pressure\b", "Hypotension", "Cardiovascular", 5),
-    (r"\bblood pressure\b|\bbp\b", "Blood Pressure Issue", "Cardiovascular", 4),
+    # NOTE: no bare "blood pressure"/"bp"/"glucose" patterns — every lab report
+    # mentions those words, which flagged every upload with the same
+    # conditions. Abnormal values are judged from the numbers in
+    # app/routes/ai_reports.py::evidence_findings instead.
     (r"\barrhythmia\b|\birregular heartbeat\b", "Arrhythmia", "Cardiovascular", 7),
     (r"\bdiabetes\b|\btype 1 diabetes\b|\btype 2 diabetes\b", "Diabetes", "Metabolic", 6),
-    (r"\bhyperglycemia\b|\bglucose\b|\bhigh blood sugar\b", "Elevated Glucose", "Metabolic", 4),
+    (r"\bhyperglycemia\b|\bhigh blood sugar\b", "Elevated Glucose", "Metabolic", 4),
     (r"\basthma\b|\bcopd\b|\bchronic obstructive\b", "Respiratory Disease", "Respiratory", 6),
     (r"\bpneumonia\b|\brespiratory infection\b", "Pneumonia", "Respiratory", 7),
     (r"\bstroke\b|\bcerebrovascular\b", "Stroke", "Neurological", 9),
@@ -46,6 +49,18 @@ _REPORT_PATTERNS = [
     (r"\bsepsis\b|\bsystemic infection\b", "Sepsis", "Infection", 9),
     (r"\binfection\b|\bfever\b|\bcovid\b", "Infection", "Infection", 5),
 ]
+
+
+_NEGATION = re.compile(r"(?:\bno\b|\bnot\b|\bdenies\b|\bnegative for\b|\bwithout\b|\bruled out\b|\bfree of\b)[^.;\n]{0,30}$")
+
+
+def _affirmed_match(pattern: str, lowered: str) -> bool:
+    """True when the pattern occurs at least once without a nearby negation
+    ("no history of diabetes", "negative for malignancy")."""
+    for m in re.finditer(pattern, lowered):
+        if not _NEGATION.search(lowered[max(0, m.start() - 40):m.start()]):
+            return True
+    return False
 
 
 def analyze_medical_report(text: str) -> dict:
@@ -84,7 +99,7 @@ def analyze_medical_report(text: str) -> dict:
     categories = {}
 
     for pattern, label, category, score in _REPORT_PATTERNS:
-        if re.search(pattern, lowered):
+        if _affirmed_match(pattern, lowered):
             detected.append(label)
             total_score += score
             categories[category] = categories.get(category, 0) + 1

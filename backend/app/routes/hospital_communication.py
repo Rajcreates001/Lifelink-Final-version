@@ -101,8 +101,10 @@ async def _resolve_hospital_doc(db, value: str, auto_create: bool = True) -> dic
 def _format_location(hospital_doc: dict | None) -> str | None:
     if not hospital_doc:
         return None
+    if isinstance(hospital_doc.get("location"), str) and hospital_doc.get("location").strip():
+        return hospital_doc["location"].strip()
     location = hospital_doc.get("location") if isinstance(hospital_doc.get("location"), dict) else {}
-    city = location.get("city") or location.get("address")
+    city = location.get("city") or location.get("address") or hospital_doc.get("city")
     state = location.get("state")
     if city and state:
         return f"{city}, {state}"
@@ -160,7 +162,8 @@ async def list_hospitals(current_hospital_id: str,
 
     others = await hospital_repo.find_many(
         {"_id": {"$ne": current["_id"]}},
-        projection={"user": 1, "beds": 1, "doctors": 1, "resources": 1}
+        projection={"user": 1, "beds": 1, "doctors": 1, "resources": 1, "name": 1, "location": 1,
+                    "city": 1, "address": 1, "phone": 1, "email": 1}
     )
     user_ids = [h.get("user") for h in others if h.get("user")]
     oid_list = []

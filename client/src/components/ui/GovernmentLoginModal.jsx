@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { apiFetch } from '../../config/api';
+import { apiFetch, getAuthToken, getRefreshToken } from '../../config/api';
 
 // ─── Demo Users per Organization ──────────────────────────────
 // Pre-configured test accounts for government portal (seeded in database)
@@ -72,70 +72,52 @@ const GovernmentLoginModal = ({ org, onClose, onSuccess }) => {
   const handleLogin = useCallback(async () => {
     setLoading(true);
     setError('');
-    try {
-      const res = await apiFetch('/v2/auth/login', {
+    // Bind the org to the session so the dashboard gate lets the officer in.
+    const bind = (userData = {}) => ({
+      ...userData,
+      name: userData.name || userData.full_name || selectedUser.name,
+      email: userData.email || selectedUser.email,
+      role: 'government',
+      subRole: org.key,
+      designation: userData.designation || selectedUser.role,
+      organization: org.title,
+      department: org.desc,
+    });
+    const finish = (userData, token, refreshToken) => {
+      login(userData, token, refreshToken);
+      onSuccess(userData, token);
+      onClose();
+    };
+    const tryLogin = async (path, email, password, extra = {}) => {
+      const res = await apiFetch(path, {
         method: 'POST',
-        body: JSON.stringify({
-          email: selectedUser.email,
-          password: selectedUser.password,
-          role: 'government',
-        }),
-      });
-
-      if (!res.ok) {
-        // Demo mode: use local credentials directly
-        const userData = {
-          name: selectedUser.name,
-          email: selectedUser.email,
-          role: 'government',
-          subRole: org.key,
-          designation: selectedUser.role,
-          organization: org.title,
-          department: org.desc,
-        };
-        // Store service token in sessionStorage only (not localStorage for security)
-        const serviceToken = 'demo-' + Date.now();
-        sessionStorage.setItem('lifelink_token', serviceToken);
-        login(userData, serviceToken);
-        onSuccess(userData, serviceToken);
-        onClose();
-        setLoading(false);
+        body: JSON.stringify({ email, password, ...extra }),
+      }).catch(() => ({ ok: false }));
+      const token = res.ok ? (res.data?.token || res.data?.access_token) : null;
+      return token ? { user: res.data.user, token, refreshToken: res.data.refreshToken || res.data.refresh_token } : null;
+    };
+    try {
+      // 1. Government organisation login (real officer account and JWT).
+      let auth = await tryLogin('/v2/gov/auth/login', selectedUser.email, selectedUser.password);
+      // 2. Any seeded officer of this organisation (development credentials).
+      if (!auth) {
+        const creds = await apiFetch('/v2/gov/auth/dev-creds').catch(() => ({ ok: false }));
+        const match = creds.ok ? (creds.data?.credentials || []).find((c) => c.department === org.key) : null;
+        if (match) auth = await tryLogin('/v2/gov/auth/login', match.email, match.password);
+      }
+      // 3. Portal government account.
+      if (!auth) auth = await tryLogin('/v2/auth/login', selectedUser.email, selectedUser.password, { role: 'government' });
+      if (auth) {
+        finish(bind(auth.user), auth.token, auth.refreshToken);
         return;
       }
-
-      const { user: userData, token, refreshToken } = res.data;
-      if (!userData || !token) {
-        throw new Error('Invalid server response');
+      // 4. Keep the portal session the user already signed in with.
+      const existing = getAuthToken();
+      if (existing) {
+        finish(bind({}), existing, getRefreshToken());
+        return;
       }
-      // The user logged in through THIS org's modal — bind the org as their
-      // subRole so the dashboard gate lets them straight in (the raw server
-      // response has no subRole and would bounce to the role selector).
-      const boundUser = {
-        ...userData,
-        role: 'government',
-        subRole: userData.subRole || org.key,
-        organization: userData.organization || org.title,
-        department: userData.department || org.desc,
-      };
-      login(boundUser, token, refreshToken);
-      onSuccess(boundUser, token);
-      onClose();
-    } catch (err) {
-      // Fallback to demo login
-      const userData = {
-        name: selectedUser.name,
-        email: selectedUser.email,
-        role: 'government',
-        subRole: org.key,
-        designation: selectedUser.role,
-        organization: org.title,
-        department: org.desc,
-      };
-      const serviceToken = 'demo-' + Date.now();
-      sessionStorage.setItem('lifelink_token', serviceToken);
-      login(userData, serviceToken);
-      onSuccess(userData, serviceToken);
-      onClose();
+      setError('Sign-in failed. Check the account and try again.');
     } finally {
       setLoading(false);
     }

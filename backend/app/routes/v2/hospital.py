@@ -203,14 +203,11 @@ async def nearby_hospitals(
     latitude = _parse_float(lat, "lat")
     longitude = _parse_float(lng, "lng")
     db = require_db()
-    await _ensure_hospital_locations(db, latitude, longitude)
+    # Read-only: a nearby search must never rewrite or create hospital records.
     repo = MongoRepository(db, HOSPITALS)
     # Only geocoded hospitals can be distance-ranked — query them directly
     # instead of fetching an arbitrary page of the directory.
-    docs = await repo.collection.find({"$or": [{"location.lat": {"$exists": True}}, {"lat": {"$exists": True}}, {"latitude": {"$exists": True}}]}).to_list(length=1000)
-    if not docs:
-        await _seed_hospitals(db, latitude, longitude)
-        docs = await repo.collection.find({"$or": [{"location.lat": {"$exists": True}}, {"lat": {"$exists": True}}, {"latitude": {"$exists": True}}]}).to_list(length=1000)
+    docs = await repo.collection.find({"$or": [{"location.lat": {"$exists": True}}, {"lat": {"$exists": True}}, {"latitude": {"$exists": True}}]}).to_list(length=5000)
 
     candidates: list[dict[str, Any]] = []
     for doc in docs:
@@ -276,6 +273,8 @@ async def nearby_hospitals(
                 "name": name,
                 "distance_km": item["distance_km"],
                 "eta_seconds": item.get("eta_seconds"),
+                "lat": item["lat"],
+                "lng": item["lng"],
                 "location": location_payload,
                 "beds_available": available_beds,
                 "beds_total": total_beds,

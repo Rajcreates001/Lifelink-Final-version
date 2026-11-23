@@ -50,8 +50,10 @@ def _as_object_id(value: str) -> ObjectId:
 def _format_location(hospital_doc: dict | None) -> str | None:
     if not hospital_doc:
         return None
+    if isinstance(hospital_doc.get("location"), str) and hospital_doc.get("location").strip():
+        return hospital_doc["location"].strip()
     location = hospital_doc.get("location") if isinstance(hospital_doc.get("location"), dict) else {}
-    city = location.get("city") or location.get("address")
+    city = location.get("city") or location.get("address") or hospital_doc.get("city")
     state = location.get("state")
     if city and state:
         return f"{city}, {state}"
@@ -96,7 +98,8 @@ async def list_hospitals(
     hospital_repo = MongoRepository(db, HOSPITALS)
     user_repo = MongoRepository(db, USERS)
 
-    hospitals = await hospital_repo.find_many({}, projection={"user": 1, "beds": 1, "location": 1})
+    hospitals = await hospital_repo.find_many({}, projection={"user": 1, "beds": 1, "location": 1, "name": 1, "city": 1,
+                                                              "phone": 1, "email": 1, "lat": 1, "lng": 1, "icu_beds": 1, "updatedAt": 1})
     user_ids = []
     for h in hospitals:
         if h.get("user"):
@@ -121,6 +124,9 @@ async def list_hospitals(
                 "email": disp["email"],
                 "phone": disp["phone"],
                 "beds": beds,
+                "lat": h.get("lat") if h.get("lat") is not None else ((h.get("location") or {}).get("lat") if isinstance(h.get("location"), dict) else None),
+                "lng": h.get("lng") if h.get("lng") is not None else ((h.get("location") or {}).get("lng") if isinstance(h.get("location"), dict) else None),
+                "icuBeds": h.get("icu_beds"),
                 "updatedAt": h.get("updatedAt"),
             }
         )

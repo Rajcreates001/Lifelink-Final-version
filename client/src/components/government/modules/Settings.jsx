@@ -14,7 +14,18 @@ const Settings = () => {
     const loadProfile = async () => {
       try {
         const res = await apiFetch('/v2/gov/auth/profile');
-        if (res.ok) setProfile(res.data);
+        if (res.ok && res.data) {
+          // /gov/auth/profile returns { user, organization: {name,...}, workspaces }
+          const u = res.data.user || res.data;
+          const o = res.data.organization;
+          const ws = (res.data.workspaces || [])[0] || {};
+          setProfile({
+            name: u.full_name || u.name,
+            email: u.email,
+            role: u.designation || ws.role_name,
+            organization: typeof o === 'object' && o ? o.name : o,
+          });
+        }
       } catch (err) { /* use defaults */ }
     };
     loadProfile();
